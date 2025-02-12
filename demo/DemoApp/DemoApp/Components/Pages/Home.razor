@@ -1,0 +1,17 @@
+﻿@page "/"
+
+<h1>Number of steps:</h1>
+@steps
+
+
+@code{
+    private int steps = 0;
+    protected override void OnInitialized()
+    {
+        steps = 0;
+
+        #if ANDROID
+
+        #endif
+    }
+}
