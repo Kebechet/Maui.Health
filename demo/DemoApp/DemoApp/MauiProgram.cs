@@ -1,6 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
 
+#if ANDROID
+using Maui.Health;
+#endif
+
 namespace DemoApp;
+
 public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
@@ -18,6 +23,10 @@ public static class MauiProgram
 #if DEBUG
 		builder.Services.AddBlazorWebViewDeveloperTools();
 		builder.Logging.AddDebug();
+#endif
+
+#if ANDROID
+        builder.Services.AddHealth();
 #endif
 
         return builder.Build();
