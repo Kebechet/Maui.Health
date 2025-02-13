@@ -28,5 +28,14 @@
     </array>
     <key>XSAppIconAssets</key>
     <string>Assets.xcassets/appicon.appiconset</string>
+
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>healthkithealthkit</string>
+    </array>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>We need to say something useful here</string>
+    <key>NSHealthShareUsageDescription</key>
+    <string>We need to say something useful here</string>
 </dict>
 </plist>
