@@ -74,10 +74,11 @@ public partial class HealthService
 
             ActivityResultLauncher? launcher = null;
             ISet? newlyGrantedPermissions = null;
+            ActivityResultRegistry? activityResultRegistry = null;
             try
             {
-                var observer = ((ComponentActivity)_activityContext).ActivityResultRegistry;
-                launcher = observer.Register(key, requestPermissionActivityContract, callback);
+                activityResultRegistry = ((ComponentActivity)_activityContext).ActivityResultRegistry;
+                launcher = activityResultRegistry.Register(key, requestPermissionActivityContract, callback);
                 launcher.Launch(new HashSet(missingPermissions));
 
                 newlyGrantedPermissions = await callback.Task;

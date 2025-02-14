@@ -36,7 +36,7 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>1.0.0-preview2</Version>
+    <Version>1.0.0-preview3</Version>
     <PackageReleaseNotes>Improved android stability</PackageReleaseNotes>
   </PropertyGroup>
 
