@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Threading;
+﻿using Maui.Health.Models;
 
 namespace Maui.Health.Services;
 
