@@ -23,9 +23,10 @@ Then setup all [Android and iOS necessities](https://github.com/Kebechet/Maui.He
     - change of `AndroidManifest.xml`
     - change of min. Android version to v26
 - iOS (3)  [docs](https://learn.microsoft.com/en-us/previous-versions/xamarin/ios/platform/healthkit), [docs2](https://developer.apple.com/documentation/healthkit)
-    -  generating new provisioning profile containing HealthKit permissions. These permissions are changed in [Identifiers](https://developer.apple.com/account/resources/identifiers/list)
-    -  adding `Entitlements.plist`
+    - generating new provisioning profile containing HealthKit permissions. These permissions are changed in [Identifiers](https://developer.apple.com/account/resources/identifiers/list)
+    - adding `Entitlements.plist`
     - adjustment of `Info.plist`
+      -  ⚠️ Beware, if your app already exists and targets various devices adding `UIRequiredDeviceCapabilities` with `healthkit` can get your [release rejected](https://developer.apple.com/library/archive/qa/qa1623/_index.html). For that reason I ommited adding this requirement and I just make sure that I check if the device is capable of using `healthkit`.
 
 
 After you have everzything setup correctly you can use `IHealthService` from DI container and call it's methods.
