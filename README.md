@@ -20,7 +20,7 @@ Then setup all [Android and iOS necessities](https://github.com/Kebechet/Maui.He
 - Android (4) [docs](https://developer.android.com/jetpack/androidx/releases/health-connect), [docs2](https://learn.microsoft.com/en-us/dotnet/api/healthkit?view=xamarin-ios-sdk-12)
     - in Google Play console give [Health permissions to the app](https://support.google.com/googleplay/android-developer/answer/14738291?hl=en)
     - for successful app approval your Policy page must contain `Health data collection and use`, `Data retention policy`
-    - change of `AndroidManifest.xml`
+    - change of `AndroidManifest.xml` + new activity showing [privacy policy](https://developer.android.com/health-and-fitness/guides/health-connect/develop/get-started#show-privacy-policy)
     - change of min. Android version to v26
 - iOS (3)  [docs](https://learn.microsoft.com/en-us/previous-versions/xamarin/ios/platform/healthkit), [docs2](https://developer.apple.com/documentation/healthkit)
     - generating new provisioning profile containing HealthKit permissions. These permissions are changed in [Identifiers](https://developer.apple.com/account/resources/identifiers/list)
