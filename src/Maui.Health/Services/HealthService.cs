@@ -1,5 +1,6 @@
 ﻿using Maui.Health.Enums;
 using Maui.Health.Models;
+using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Services;
 
@@ -11,8 +12,9 @@ public partial class HealthService : IHealthService
     {
         return RequestPermissions([healthPermission]);
     }
+    
     public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
-    //public partial Task<ReadRecordResult> ReadRecords(HealthDataType healthDataType, DateTime from, DateTime until, CancellationToken cancellationToken = default);
 
-    public partial Task<long?> GetStepsTodayAsync(CancellationToken cancellationToken = default);
+    public partial Task<TDto[]> GetHealthDataAsync<TDto>(DateTime from, DateTime to, CancellationToken cancellationToken = default) 
+        where TDto : HealthMetricBase;
 }

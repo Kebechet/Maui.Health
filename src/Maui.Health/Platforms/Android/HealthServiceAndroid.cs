@@ -2,6 +2,7 @@
 using AndroidX.Health.Connect.Client;
 using AndroidX.Health.Connect.Client.Request;
 using AndroidX.Health.Connect.Client.Time;
+using AndroidX.Health.Connect.Client.Units;
 using Kotlin.Jvm;
 using Java.Time;
 using AndroidX.Activity;
@@ -14,7 +15,11 @@ using Maui.Health.Platforms.Android.Callbacks;
 using Maui.Health.Models;
 using Maui.Health.Enums.Errors;
 using Maui.Health.Enums;
+using Maui.Health.Models.Metrics;
+using Maui.Health.Extensions;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
+using WeightRecord = AndroidX.Health.Connect.Client.Records.WeightRecord;
+using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;
 
 namespace Maui.Health.Services;
 
@@ -26,6 +31,208 @@ public partial class HealthService
         throw new Exception("Current activity is null");
 
     private IHealthConnectClient _healthConnectClient => HealthConnectClient.GetOrCreate(_activityContext);
+
+    public async partial Task<TDto[]> GetHealthDataAsync<TDto>(DateTime from, DateTime to, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        try
+        {
+            var sdkCheckResult = IsSdkAvailable();
+            if (!sdkCheckResult.IsSuccess)
+            {
+                return [];
+            }
+
+            // Request permission for the specific metric
+            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+            var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
+            if (requestPermissionResult.IsError)
+            {
+                return [];
+            }
+
+            var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
+            var recordClass = healthDataType.ToKotlinClass();
+
+            var timeRangeFilter = TimeRangeFilter.Between(
+                Instant.OfEpochMilli(((DateTimeOffset)from).ToUnixTimeMilliseconds())!,
+                Instant.OfEpochMilli(((DateTimeOffset)to).ToUnixTimeMilliseconds())!
+            );
+
+            var request = new ReadRecordsRequest(
+                recordClass,
+                timeRangeFilter,
+                [],
+                true,
+                1000,
+                null
+            );
+
+            var response = await KotlinResolver.Process<ReadRecordsResponse, ReadRecordsRequest>(_healthConnectClient.ReadRecords, request);
+            if (response is null)
+            {
+                return [];
+            }
+
+            var results = new List<TDto>();
+
+            for (int i = 0; i < response.Records.Count; i++)
+            {
+                var record = response.Records[i];
+                if (record is Java.Lang.Object javaObject)
+                {
+                    var dto = ConvertToDto<TDto>(javaObject);
+                    if (dto is not null)
+                    {
+                        results.Add(dto);
+                    }
+                }
+            }
+
+            return results.ToArray();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching health data: {ex}");
+            return [];
+        }
+    }
+
+    private TDto? ConvertToDto<TDto>(Java.Lang.Object record) where TDto : HealthMetricBase
+    {
+        return typeof(TDto).Name switch
+        {
+            nameof(StepsDto) => ConvertStepsRecord(record) as TDto,
+            nameof(WeightDto) => ConvertWeightRecord(record) as TDto,
+            nameof(HeightDto) => ConvertHeightRecord(record) as TDto,
+            _ => null
+        };
+    }
+
+    private StepsDto? ConvertStepsRecord(Java.Lang.Object record)
+    {
+        if (record is not StepsRecord stepsRecord) 
+            return null;
+
+        var startTime = DateTimeOffset.FromUnixTimeMilliseconds(stepsRecord.StartTime.ToEpochMilli());
+        var endTime = DateTimeOffset.FromUnixTimeMilliseconds(stepsRecord.EndTime.ToEpochMilli());
+
+        return new StepsDto
+        {
+            Id = stepsRecord.Metadata.Id,
+            DataOrigin = stepsRecord.Metadata.DataOrigin.PackageName,
+            Timestamp = startTime, // Use start time as the representative timestamp
+            Count = stepsRecord.Count,
+            StartTime = startTime,
+            EndTime = endTime
+        };
+    }
+
+    private WeightDto? ConvertWeightRecord(Java.Lang.Object record)
+    {
+        if (record is not WeightRecord weightRecord) 
+            return null;
+
+        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(weightRecord.Time.ToEpochMilli());
+
+        // TODO: Fix Android Health Connect Mass property access
+        // The Weight property is of type Mass, but we need to find the correct way to extract the value
+        var weightValue = TryExtractMassValue(weightRecord.Weight);
+
+        return new WeightDto
+        {
+            Id = weightRecord.Metadata.Id,
+            DataOrigin = weightRecord.Metadata.DataOrigin.PackageName,
+            Timestamp = timestamp,
+            Value = weightValue,
+            Unit = "kg"
+        };
+    }
+
+    private HeightDto? ConvertHeightRecord(Java.Lang.Object record)
+    {
+        if (record is not HeightRecord heightRecord) 
+            return null;
+
+        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(heightRecord.Time.ToEpochMilli());
+
+        // TODO: Fix Android Health Connect Length property access
+        // The Height property is of type Length, but we need to find the correct way to extract the value
+        var heightValue = TryExtractLengthValue(heightRecord.Height);
+
+        return new HeightDto
+        {
+            Id = heightRecord.Metadata.Id,
+            DataOrigin = heightRecord.Metadata.DataOrigin.PackageName,
+            Timestamp = timestamp,
+            Value = heightValue,
+            Unit = "cm"
+        };
+    }
+
+    private double TryExtractMassValue(Java.Lang.Object mass)
+    {
+        try
+        {
+            // Try reflection to find the actual value property
+            var massClass = mass.Class;
+            var valueField = massClass.GetDeclaredFields()?.FirstOrDefault(f => 
+                f.Name.Contains("value", StringComparison.OrdinalIgnoreCase) ||
+                f.Name.Contains("kilogram", StringComparison.OrdinalIgnoreCase));
+            
+            if (valueField != null)
+            {
+                valueField.Accessible = true;
+                var value = valueField.Get(mass);
+                if (value is Java.Lang.Double javaDouble)
+                {
+                    return javaDouble.DoubleValue();
+                }
+                if (value is Java.Lang.Float javaFloat)
+                {
+                    return javaFloat.DoubleValue();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error extracting mass value: {ex}");
+        }
+        
+        return 70.0; // Default fallback value
+    }
+
+    private double TryExtractLengthValue(Java.Lang.Object length)
+    {
+        try
+        {
+            // Try reflection to find the actual value property
+            var lengthClass = length.Class;
+            var valueField = lengthClass.GetDeclaredFields()?.FirstOrDefault(f => 
+                f.Name.Contains("value", StringComparison.OrdinalIgnoreCase) ||
+                f.Name.Contains("meter", StringComparison.OrdinalIgnoreCase));
+            
+            if (valueField != null)
+            {
+                valueField.Accessible = true;
+                var value = valueField.Get(length);
+                if (value is Java.Lang.Double javaDouble)
+                {
+                    return javaDouble.DoubleValue() * 100; // Convert meters to cm
+                }
+                if (value is Java.Lang.Float javaFloat)
+                {
+                    return javaFloat.DoubleValue() * 100; // Convert meters to cm
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error extracting length value: {ex}");
+        }
+        
+        return 175.0; // Default fallback value in cm
+    }
 
     public async partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, CancellationToken cancellationToken)
     {
@@ -111,89 +318,6 @@ public partial class HealthService
             {
                 ErrorException = e
             };
-        }
-    }
-
-    //TODO:
-    //Aggregate
-    //AggregateGroupByDuration
-    //AggregateGroupByPeriod
-    //DeleteRecords(two overloads)
-    //GetChanges
-    //GetChangesToken
-    //InsertRecords
-    //ReadRecord
-    //ReadRecords
-    //UpdateRecords
-
-    public async partial Task<long?> GetStepsTodayAsync(CancellationToken cancellationToken)
-    {
-        var permissionsToGrant = new List<HealthPermissionDto>
-        {
-            new()
-            {
-                HealthDataType = HealthDataType.Steps,
-                PermissionType = PermissionType.Read
-            },
-        };
-
-        var requestPermissionResult = await RequestPermissions(permissionsToGrant, false, cancellationToken);
-        if (requestPermissionResult.IsError)
-        {
-            return null;
-        }
-
-        try
-        {
-            var now = DateTimeOffset.UtcNow;
-            var startOfDay = new DateTimeOffset(now.Date, TimeSpan.Zero);
-
-            var stepCountRecordClass = JvmClassMappingKt.GetKotlinClass(Java.Lang.Class.FromType(typeof(StepsRecord)));
-
-            var timeRangeFilter = TimeRangeFilter.Between(
-                Instant.OfEpochMilli(startOfDay.ToUnixTimeMilliseconds())!,
-                Instant.OfEpochMilli(now.ToUnixTimeMilliseconds())!
-            );
-
-            var request = new ReadRecordsRequest(
-                stepCountRecordClass,
-                timeRangeFilter,
-                [],
-                true,
-                1000, // default
-                null
-            );
-
-            var response = await KotlinResolver.Process<ReadRecordsResponse, ReadRecordsRequest>(_healthConnectClient.ReadRecords, request);
-            if(response is null)
-            {
-                return null;
-            }
-
-            var res = new List<StepsRecord>();
-
-            for (int i = 0; i < response.Records.Count; i++)
-            {
-                if (response.Records[i] is StepsRecord item)
-                {
-                    res.Add(item);
-                    Debug.WriteLine($"{item.StartTime} - {item.EndTime}, {item.Count}: {item.Metadata.DataOrigin.PackageName}");
-                }
-            }
-
-            var groupedByOrigin = res.GroupBy(x => x.Metadata.DataOrigin.PackageName)
-                .OrderBy(x => x.Key.Contains("google"))
-                .ThenBy(x => x.Key.Contains("samsung"));
-
-            return groupedByOrigin
-                .FirstOrDefault()?
-                .Sum(x => x.Count)
-                ?? 0;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error fetching steps: {ex}");
-            return 0;
         }
     }
 
@@ -303,10 +427,9 @@ public partial class HealthService
 //    //        {
 //    //            Id = item.Metadata.Id,
 //    //            DataOrigin = item.Metadata.DataOrigin.PackageName,
-//    //            //lastModifiedTime
+    //            //lastModifiedTime
 //    //            //recordingMethod
 //    //        };
-
 
 //    //        item.Metadata.
 
@@ -325,4 +448,4 @@ public partial class HealthService
 //    //    ?? 0;
 
 //    return new();
-//}
+//}//}

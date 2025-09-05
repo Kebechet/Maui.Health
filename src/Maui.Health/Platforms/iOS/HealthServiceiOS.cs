@@ -3,6 +3,8 @@ using HealthKit;
 using Maui.Health.Enums;
 using Maui.Health.Enums.Errors;
 using Maui.Health.Models;
+using Maui.Health.Models.Metrics;
+using Maui.Health.Extensions;
 using Maui.Health.Platforms.iOS.Extensions;
 
 namespace Maui.Health.Services;
@@ -10,6 +12,137 @@ namespace Maui.Health.Services;
 public partial class HealthService
 {
     public partial bool IsSupported => HKHealthStore.IsHealthDataAvailable;
+
+    public async partial Task<TDto[]> GetHealthDataAsync<TDto>(DateTime from, DateTime to, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        if (!IsSupported)
+        {
+            return [];
+        }
+
+        try
+        {
+            // Request permission for the specific metric
+            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+            var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
+            if (!permissionResult.IsSuccess)
+            {
+                return [];
+            }
+
+            var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
+            var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier())!;
+
+            var predicate = HKQuery.GetPredicateForSamples(
+                (NSDate)from,
+                (NSDate)to,
+                HKQueryOptions.StrictStartDate
+            );
+
+            var tcs = new TaskCompletionSource<TDto[]>();
+
+            // Use HKSampleQuery to get individual records
+            var query = new HKSampleQuery(
+                quantityType,
+                predicate,
+                0, // No limit
+                new[] { new NSSortDescriptor(HKSample.SortIdentifierStartDate, false) },
+                (HKSampleQuery sampleQuery, HKSample[] results, NSError error) =>
+                {
+                    if (error != null)
+                    {
+                        tcs.TrySetResult([]);
+                        return;
+                    }
+
+                    var dtos = new List<TDto>();
+                    foreach (var sample in results.OfType<HKQuantitySample>())
+                    {
+                        var dto = ConvertToDto<TDto>(sample, healthDataType);
+                        if (dto is not null)
+                        {
+                            dtos.Add(dto);
+                        }
+                    }
+
+                    tcs.TrySetResult(dtos.ToArray());
+                }
+            );
+
+            using var store = new HKHealthStore();
+            using var ct = cancellationToken.Register(() =>
+            {
+                tcs.TrySetCanceled();
+                store.StopQuery(query);
+            });
+
+            store.ExecuteQuery(query);
+            return await tcs.Task;
+        }
+        catch (Exception)
+        {
+            return [];
+        }
+    }
+
+    private TDto? ConvertToDto<TDto>(HKQuantitySample sample, HealthDataType healthDataType) where TDto : HealthMetricBase
+    {
+        return typeof(TDto).Name switch
+        {
+            nameof(StepsDto) => ConvertStepsSample(sample) as TDto,
+            nameof(WeightDto) => ConvertWeightSample(sample) as TDto,
+            nameof(HeightDto) => ConvertHeightSample(sample) as TDto,
+            _ => null
+        };
+    }
+
+    private StepsDto ConvertStepsSample(HKQuantitySample sample)
+    {
+        var value = sample.Quantity.GetDoubleValue(HKUnit.Count);
+        var startTime = new DateTimeOffset(sample.StartDate.ToDateTime());
+        var endTime = new DateTimeOffset(sample.EndDate.ToDateTime());
+        
+        return new StepsDto
+        {
+            Id = sample.Uuid.ToString(),
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
+            Timestamp = startTime, // Use start time as the representative timestamp
+            Count = (long)value,
+            StartTime = startTime,
+            EndTime = endTime
+        };
+    }
+
+    private WeightDto ConvertWeightSample(HKQuantitySample sample)
+    {
+        var value = sample.Quantity.GetDoubleValue(HKUnit.Gram) / 1000.0; // Convert grams to kg
+        var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
+        
+        return new WeightDto
+        {
+            Id = sample.Uuid.ToString(),
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
+            Timestamp = timestamp,
+            Value = value,
+            Unit = "kg"
+        };
+    }
+
+    private HeightDto ConvertHeightSample(HKQuantitySample sample)
+    {
+        var valueInMeters = sample.Quantity.GetDoubleValue(HKUnit.Meter);
+        var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
+        
+        return new HeightDto
+        {
+            Id = sample.Uuid.ToString(),
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
+            Timestamp = timestamp,
+            Value = valueInMeters * 100, // Convert to cm
+            Unit = "cm"
+        };
+    }
 
     /// <summary>
     /// <param name="canRequestFullHistoryPermission">iOS has this by default as TRUE</param>
@@ -90,268 +223,4 @@ public partial class HealthService
         }
         return new();
     }
-
-    /// <summary>
-    /// </summary>
-    /// <returns>NULL == something didnt work correctly</returns>
-    public async partial Task<long?> GetStepsTodayAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            var healthPermission = new HealthPermissionDto
-            {
-                HealthDataType = HealthDataType.Steps,
-                PermissionType = PermissionType.Read
-            };
-
-            var permissionResult = await RequestPermissions([healthPermission], cancellationToken: cancellationToken);
-            if (!permissionResult.IsSuccess)
-            {
-                return null;
-            }
-
-            var now = (NSDate)DateTime.UtcNow;
-            var startOfDay = NSCalendar.CurrentCalendar.StartOfDayForDate(now);
-
-            var predicate = HKQuery.GetPredicateForSamples(
-                startOfDay,
-                now,
-                HKQueryOptions.StrictStartDate
-            );
-
-            var tcs = new TaskCompletionSource<long?>();
-            var stepsCountType = HKQuantityType.Create(HealthDataType.Steps.ToHKQuantityTypeIdentifier())!;
-            var sumOptions = HKStatisticsOptions.CumulativeSum;
-
-            var query = new HKStatisticsQuery(
-                stepsCountType,
-                predicate,
-                sumOptions,
-                (HKStatisticsQuery resultQuery, HKStatistics results, NSError error) =>
-                {
-                    if (error != null)
-                    {
-                        tcs.TrySetResult(null);
-                    }
-                    else
-                    {
-                        var totalSteps = (int)(results.SumQuantity()?.GetDoubleValue(HKUnit.Count) ?? 0);
-                        tcs.TrySetResult(totalSteps);
-                    }
-
-                });
-
-            using var store = new HKHealthStore();
-
-            using var ct = cancellationToken.Register(() =>
-            {
-                tcs.TrySetCanceled();
-                store.StopQuery(query);
-            });
-
-            store.ExecuteQuery(query);
-
-            var totalSteps = await tcs.Task;
-
-            return totalSteps;
-        }
-        catch (Exception e)
-        {
-            return null;
-        }
-    }
 }
-
-//var authorizatioNRequestStatus = await healthStore
-//    .GetRequestStatusForAuthorizationToShareAsync(nsTypesToWrite, nsTypesToRead);
-//if (authorizatioNRequestStatus != HKAuthorizationRequestStatus.ShouldRequest)
-//{
-//    //https://developer.apple.com/documentation/healthkit/hksampletype
-//}
-
-
-//public async partial Task<ReadRecordResult> ReadRecords(
-//    HealthDataType healthDataType,
-//    DateTime from,
-//    DateTime until,
-//    CancellationToken cancellationToken)
-//{
-//    var healthPermission = new HealthPermissionDto
-//    {
-//        HealthDataType = healthDataType,
-//        PermissionType = PermissionType.Read | PermissionType.Write
-//    };
-
-//    var permissionResult = await RequestPermissions([healthPermission], cancellationToken: cancellationToken);
-//    if (!permissionResult.IsSuccess)
-//    {
-//        return new()
-//        {
-//            Error = ReadRecordError.PermissionProblem
-//        };
-//    }
-
-//    var tcs = new TaskCompletionSource<ReadRecordResult>();
-//    var calendar = NSCalendar.CurrentCalendar;
-
-//    var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier())!;
-
-//    var now = (NSDate)DateTime.UtcNow;
-//    var startOfDay = NSCalendar.CurrentCalendar.StartOfDayForDate(now);
-
-//    var predicate = HKQuery.GetPredicateForSamples(
-//        startOfDay,
-//        now,
-//        HKQueryOptions.StrictStartDate
-//    );
-
-//    var query = new HKStatisticsQuery(
-//        quantityType,
-//        predicate,
-//        HKStatisticsOptions.CumulativeSum,
-//        new HKStatisticsQueryHandler((hkStatisticsQuery, hkStatistics, nsError) =>
-//        {
-//            if (nsError != null)
-//            {
-//                tcs.TrySetResult(new ReadRecordResult()
-//                {
-//                    ErrorException = new Exception(nsError.Description)
-//                });
-//            }
-//            else
-//            {
-//                var result = new ReadRecordResult();
-
-//                //var res = hkStatistics.
-
-//                //hkStatistics.EnumerateStatistics(
-//                //    (NSDate)start.LocalDateTime,
-//                //    (NSDate)end.LocalDateTime,
-//                //    (result, stop) =>
-//                //    {
-//                //        try
-//                //        {
-//                //            var value = transform(result);
-//                //            if (value != null)
-//                //                list.Add(value);
-//                //        }
-//                //        catch (Exception ex)
-//                //        {
-//                //            tcs.TrySetException(ex);
-//                //        }
-//                //    }
-//                //);
-//                tcs.TrySetResult(result);
-//            }
-//        })
-//    );
-
-//    using var store = new HKHealthStore();
-
-//    using var ct = cancellationToken.Register(() =>
-//    {
-//        tcs.TrySetCanceled();
-//        store.StopQuery(query);
-//    });
-
-//    store.ExecuteQuery(query);
-
-//    var result = await tcs.Task.ConfigureAwait(false);
-
-//    return result;
-
-//}
-
-
-
-
-
-//public async Task<List<StepRecord>> GetStepRecordsTodayAsync(CancellationToken cancellationToken)
-//{
-//    // First, request the HealthKit permission to read steps if needed.
-//    var healthPermission = new HealthPermissionDto
-//    {
-//        HealthDataType = HealthDataType.Steps,
-//        PermissionType = PermissionType.Read
-//    };
-
-//    var permissionResult = await RequestPermissions(
-//        new[] { healthPermission },
-//        cancellationToken: cancellationToken);
-
-//    if (!permissionResult.IsSuccess)
-//    {
-//        return null;
-//    }
-
-//    var now = (NSDate)DateTime.UtcNow;
-//    var startOfDay = NSCalendar.CurrentCalendar.StartOfDayForDate(now);
-
-//    var predicate = HKQuery.GetPredicateForSamples(
-//        startOfDay,
-//        now,
-//        HKQueryOptions.StrictStartDate);
-
-//    var tcs = new TaskCompletionSource<List<StepRecord>>();
-//    var stepsCountType = HKQuantityType.Create(HealthDataType.Steps.ToHKQuantityTypeIdentifier())!;
-
-//    // Define the query: HKSampleQuery will return individual sample records
-//    var query = new HKSampleQuery(
-//        stepsCountType,
-//        predicate,
-//        0,  // 0 means 'no limit' (i.e., return all matching samples)
-//        new[] { new NSSortDescriptor(HKSample.SortIdentifierStartDate, false) }, // sort descending if you want newest first
-//        (HKSampleQuery sampleQuery, HKSample[] results, NSError error) =>
-//        {
-//            if (error != null)
-//            {
-//                tcs.TrySetException(new Exception(error.LocalizedDescription));
-//                return;
-//            }
-
-//            var stepRecords = new List<StepRecord>();
-
-//            // Each result should be an HKQuantitySample for steps
-//            foreach (var sample in results.OfType<HKQuantitySample>())
-//            {
-//                var value = sample.Quantity.GetDoubleValue(HKUnit.Count);
-//                //var start = sample.StartDate.ToDateTimeUtc();
-//                //var end = sample.EndDate.ToDateTimeUtc();
-
-//                stepRecords.Add(new StepRecord
-//                {
-//                    //StartDate = start,
-//                    //EndDate = end,
-//                    Steps = (long)value
-//                });
-//            }
-
-//            tcs.TrySetResult(stepRecords);
-//        }
-//    );
-
-//    using var store = new HKHealthStore();
-
-//    // Cancellation token logic
-//    using var reg = cancellationToken.Register(() =>
-//    {
-//        tcs.TrySetCanceled();
-//        store.StopQuery(query);
-//    });
-
-//    store.ExecuteQuery(query);
-
-//    var res = await tcs.Task;
-
-//    return res;
-//}
-
-///// <summary>
-///// Simple model to hold step records.
-///// </summary>
-//public class StepRecord
-//{
-//    public DateTime StartDate { get; set; }
-//    public DateTime EndDate { get; set; }
-//    public long Steps { get; set; }
-//}
