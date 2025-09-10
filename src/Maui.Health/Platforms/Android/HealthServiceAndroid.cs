@@ -32,8 +32,8 @@ public partial class HealthService
 
     private IHealthConnectClient _healthConnectClient => HealthConnectClient.GetOrCreate(_activityContext);
 
-    public async partial Task<TDto[]> GetHealthDataAsync<TDto>(DateTime from, DateTime to, CancellationToken cancellationToken)
-        where TDto : HealthMetricBase
+    public async partial Task<TDto[]> GetHealthDataAsync<TDto>(DateTime from, DateTime to, CancellationToken cancellationToken) 
+        where TDto : BaseHealthMetricDto
     {
         try
         {
@@ -98,7 +98,7 @@ public partial class HealthService
         }
     }
 
-    private TDto? ConvertToDto<TDto>(Java.Lang.Object record) where TDto : HealthMetricBase
+    private TDto? ConvertToDto<TDto>(Java.Lang.Object record) where TDto : BaseHealthMetricDto
     {
         return typeof(TDto).Name switch
         {
@@ -135,9 +135,8 @@ public partial class HealthService
 
         var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(weightRecord.Time.ToEpochMilli());
 
-        // TODO: Fix Android Health Connect Mass property access
-        // The Weight property is of type Mass, but we need to find the correct way to extract the value
-        var weightValue = TryExtractMassValue(weightRecord.Weight);
+        // Try multiple approaches to extract the mass value
+        var weightValue = ExtractMassValue(weightRecord.Weight);
 
         return new WeightDto
         {
@@ -156,9 +155,8 @@ public partial class HealthService
 
         var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(heightRecord.Time.ToEpochMilli());
 
-        // TODO: Fix Android Health Connect Length property access
-        // The Height property is of type Length, but we need to find the correct way to extract the value
-        var heightValue = TryExtractLengthValue(heightRecord.Height);
+        // Try multiple approaches to extract the length value
+        var heightValue = ExtractLengthValue(heightRecord.Height);
 
         return new HeightDto
         {
@@ -170,29 +168,57 @@ public partial class HealthService
         };
     }
 
-    private double TryExtractMassValue(Java.Lang.Object mass)
+    private double ExtractMassValue(Java.Lang.Object mass)
     {
         try
         {
-            // Try reflection to find the actual value property
-            var massClass = mass.Class;
-            var valueField = massClass.GetDeclaredFields()?.FirstOrDefault(f => 
-                f.Name.Contains("value", StringComparison.OrdinalIgnoreCase) ||
-                f.Name.Contains("kilogram", StringComparison.OrdinalIgnoreCase));
+            Debug.WriteLine($"Mass object type: {mass.GetType().Name}");
+            Debug.WriteLine($"Mass object class: {mass.Class.Name}");
             
-            if (valueField != null)
+            // Approach 0: Try official Android Health Connect Units API
+            if (TryOfficialUnitsApi(mass, "KILOGRAMS", out double officialValue))
             {
-                valueField.Accessible = true;
-                var value = valueField.Get(mass);
-                if (value is Java.Lang.Double javaDouble)
-                {
-                    return javaDouble.DoubleValue();
-                }
-                if (value is Java.Lang.Float javaFloat)
-                {
-                    return javaFloat.DoubleValue();
-                }
+                Debug.WriteLine($"Found value via official Units API: {officialValue}");
+                return officialValue;
             }
+            
+            // Approach 1: Try common Kotlin/Java property patterns
+            if (TryGetPropertyValue(mass, "value", out double value1))
+            {
+                Debug.WriteLine($"Found value via 'value' property: {value1}");
+                return value1;
+            }
+            
+            if (TryGetPropertyValue(mass, "inKilograms", out double value2))
+            {
+                Debug.WriteLine($"Found value via 'inKilograms' property: {value2}");
+                return value2;
+            }
+            
+            // Approach 2: Try method calls
+            if (TryCallMethod(mass, "inKilograms", out double value3))
+            {
+                Debug.WriteLine($"Found value via 'inKilograms()' method: {value3}");
+                return value3;
+            }
+            
+            if (TryCallMethod(mass, "getValue", out double value4))
+            {
+                Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
+                return value4;
+            }
+            
+            // Approach 3: Try toString and parse (as last resort)
+            var stringValue = mass.ToString();
+            Debug.WriteLine($"Mass toString(): {stringValue}");
+            
+            if (TryParseFromString(stringValue, out double value5))
+            {
+                Debug.WriteLine($"Found value via string parsing: {value5}");
+                return value5;
+            }
+            
+            Debug.WriteLine("All approaches failed for Mass extraction");
         }
         catch (Exception ex)
         {
@@ -202,29 +228,57 @@ public partial class HealthService
         return 70.0; // Default fallback value
     }
 
-    private double TryExtractLengthValue(Java.Lang.Object length)
+    private double ExtractLengthValue(Java.Lang.Object length)
     {
         try
         {
-            // Try reflection to find the actual value property
-            var lengthClass = length.Class;
-            var valueField = lengthClass.GetDeclaredFields()?.FirstOrDefault(f => 
-                f.Name.Contains("value", StringComparison.OrdinalIgnoreCase) ||
-                f.Name.Contains("meter", StringComparison.OrdinalIgnoreCase));
+            Debug.WriteLine($"Length object type: {length.GetType().Name}");
+            Debug.WriteLine($"Length object class: {length.Class.Name}");
             
-            if (valueField != null)
+            // Approach 0: Try official Android Health Connect Units API
+            if (TryOfficialUnitsApi(length, "METERS", out double officialValue))
             {
-                valueField.Accessible = true;
-                var value = valueField.Get(length);
-                if (value is Java.Lang.Double javaDouble)
-                {
-                    return javaDouble.DoubleValue() * 100; // Convert meters to cm
-                }
-                if (value is Java.Lang.Float javaFloat)
-                {
-                    return javaFloat.DoubleValue() * 100; // Convert meters to cm
-                }
+                Debug.WriteLine($"Found value via official Units API: {officialValue}");
+                return officialValue * 100; // Convert meters to cm
             }
+            
+            // Approach 1: Try common Kotlin/Java property patterns
+            if (TryGetPropertyValue(length, "value", out double value1))
+            {
+                Debug.WriteLine($"Found value via 'value' property: {value1}");
+                return value1 * 100; // Convert meters to cm
+            }
+            
+            if (TryGetPropertyValue(length, "inMeters", out double value2))
+            {
+                Debug.WriteLine($"Found value via 'inMeters' property: {value2}");
+                return value2 * 100; // Convert meters to cm
+            }
+            
+            // Approach 2: Try method calls
+            if (TryCallMethod(length, "inMeters", out double value3))
+            {
+                Debug.WriteLine($"Found value via 'inMeters()' method: {value3}");
+                return value3 * 100; // Convert meters to cm
+            }
+            
+            if (TryCallMethod(length, "getValue", out double value4))
+            {
+                Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
+                return value4 * 100; // Convert meters to cm
+            }
+            
+            // Approach 3: Try toString and parse (as last resort)
+            var stringValue = length.ToString();
+            Debug.WriteLine($"Length toString(): {stringValue}");
+            
+            if (TryParseFromString(stringValue, out double value5))
+            {
+                Debug.WriteLine($"Found value via string parsing: {value5}");
+                return value5 * 100; // Convert meters to cm
+            }
+            
+            Debug.WriteLine("All approaches failed for Length extraction");
         }
         catch (Exception ex)
         {
@@ -232,6 +286,171 @@ public partial class HealthService
         }
         
         return 175.0; // Default fallback value in cm
+    }
+
+    private bool TryOfficialUnitsApi(Java.Lang.Object obj, string unitName, out double value)
+    {
+        value = 0;
+        try
+        {
+            // Try to use the official Android Health Connect Units API
+            // This might work if the object has methods like InUnit(Mass.KILOGRAMS) or similar
+            
+            var objClass = obj.Class;
+            
+            // Look for InUnit method
+            var inUnitMethod = objClass.GetDeclaredMethods()?.FirstOrDefault(m => 
+                m.Name.Equals("InUnit", StringComparison.OrdinalIgnoreCase) ||
+                m.Name.Equals("inUnit", StringComparison.OrdinalIgnoreCase));
+                
+            if (inUnitMethod != null)
+            {
+                Debug.WriteLine($"Found InUnit method: {inUnitMethod.Name}");
+                
+                // Try to get the unit constant
+                if (TryGetUnitConstant(unitName, out Java.Lang.Object? unitConstant))
+                {
+                    inUnitMethod.Accessible = true;
+                    var result = inUnitMethod.Invoke(obj, unitConstant);
+                    
+                    if (result is Java.Lang.Double javaDouble)
+                    {
+                        value = javaDouble.DoubleValue();
+                        return true;
+                    }
+                    if (result is Java.Lang.Float javaFloat)
+                    {
+                        value = javaFloat.DoubleValue();
+                        return true;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error trying official Units API: {ex.Message}");
+        }
+        return false;
+    }
+
+    private bool TryGetUnitConstant(string unitName, out Java.Lang.Object? unitConstant)
+    {
+        unitConstant = null;
+        try
+        {
+            // Try to get Mass.KILOGRAMS or Length.METERS constants
+            var unitsNamespace = "AndroidX.Health.Connect.Client.Units";
+            var className = unitName.Contains("KILOGRAM") ? "Mass" : "Length";
+            var fullClassName = $"{unitsNamespace}.{className}";
+            
+            var unitClass = Java.Lang.Class.ForName(fullClassName);
+            if (unitClass != null)
+            {
+                var field = unitClass.GetDeclaredField(unitName);
+                if (field != null)
+                {
+                    field.Accessible = true;
+                    unitConstant = field.Get(null); // Static field
+                    return unitConstant != null;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error getting unit constant '{unitName}': {ex.Message}");
+        }
+        return false;
+    }
+
+    private bool TryGetPropertyValue(Java.Lang.Object obj, string propertyName, out double value)
+    {
+        value = 0;
+        try
+        {
+            var objClass = obj.Class;
+            var field = objClass.GetDeclaredField(propertyName);
+            if (field != null)
+            {
+                field.Accessible = true;
+                var fieldValue = field.Get(obj);
+                
+                if (fieldValue is Java.Lang.Double javaDouble)
+                {
+                    value = javaDouble.DoubleValue();
+                    return true;
+                }
+                if (fieldValue is Java.Lang.Float javaFloat)
+                {
+                    value = javaFloat.DoubleValue();
+                    return true;
+                }
+                if (fieldValue is Java.Lang.Integer javaInt)
+                {
+                    value = javaInt.DoubleValue();
+                    return true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error getting property '{propertyName}': {ex.Message}");
+        }
+        return false;
+    }
+
+    private bool TryCallMethod(Java.Lang.Object obj, string methodName, out double value)
+    {
+        value = 0;
+        try
+        {
+            var objClass = obj.Class;
+            var method = objClass.GetDeclaredMethod(methodName);
+            if (method != null)
+            {
+                method.Accessible = true;
+                var result = method.Invoke(obj);
+                
+                if (result is Java.Lang.Double javaDouble)
+                {
+                    value = javaDouble.DoubleValue();
+                    return true;
+                }
+                if (result is Java.Lang.Float javaFloat)
+                {
+                    value = javaFloat.DoubleValue();
+                    return true;
+                }
+                if (result is Java.Lang.Integer javaInt)
+                {
+                    value = javaInt.DoubleValue();
+                    return true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error calling method '{methodName}': {ex.Message}");
+        }
+        return false;
+    }
+
+    private bool TryParseFromString(string stringValue, out double value)
+    {
+        value = 0;
+        
+        if (string.IsNullOrEmpty(stringValue))
+            return false;
+            
+        // Try to extract number from string representations like "70.5 kg" or "1.75 m" etc.
+        var numberPattern = @"(\d+\.?\d*)";
+        var match = System.Text.RegularExpressions.Regex.Match(stringValue, numberPattern);
+        
+        if (match.Success && double.TryParse(match.Groups[1].Value, out value))
+        {
+            return true;
+        }
+        
+        return false;
     }
 
     public async partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, CancellationToken cancellationToken)
