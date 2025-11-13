@@ -71,8 +71,8 @@
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
     </ItemGroup>
 
-    <ItemGroup >
-      <ProjectReference Include="..\..\..\src\Maui.Health\Maui.Health\Maui.Health.csproj" />
+    <ItemGroup>
+      <ProjectReference Include="..\..\..\src\Maui.Health\Maui.Health.csproj" />
     </ItemGroup>
 
 </Project>
