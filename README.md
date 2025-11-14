@@ -24,23 +24,21 @@ Feel free to contribute ❤️
 | **Steps** | ✅ StepsRecord | ✅ StepCount | ✅ [`StepsDto`](src/Maui.Health/Models/Metrics/StepsDto.cs) |
 | **Weight** | ✅ WeightRecord | ✅ BodyMass | ✅ [`WeightDto`](src/Maui.Health/Models/Metrics/WeightDto.cs) |
 | **Height** | ✅ HeightRecord | ✅ Height | ✅ [`HeightDto`](src/Maui.Health/Models/Metrics/HeightDto.cs) |
-| **Heart Rate** | ✅ HeartRateRecord | ✅ HeartRate | ❌ N/A |
+| **Heart Rate** | ✅ HeartRateRecord | ✅ HeartRate | ✅ [`HeartRateDto`](src/Maui.Health/Models/Metrics/HeartRateDto.cs) |
+| **Active Calories** | ✅ ActiveCaloriesBurnedRecord | ✅ ActiveEnergyBurned | ✅ [`ActiveCaloriesBurnedDto`](src/Maui.Health/Models/Metrics/ActiveCaloriesBurnedDto.cs) |
+| **Exercise Session** | ✅ ExerciseSessionRecord | ✅ Workout | ✅ [`WorkoutDto`](src/Maui.Health/Models/Metrics/WorkoutDto.cs) |
 | **Blood Glucose** | ✅ BloodGlucoseRecord | ✅ BloodGlucose | ❌ N/A |
 | **Body Temperature** | ✅ BodyTemperatureRecord | ✅ BodyTemperature | ❌ N/A |
 | **Oxygen Saturation** | ✅ OxygenSaturationRecord | ✅ OxygenSaturation | ❌ N/A |
 | **Respiratory Rate** | ✅ RespiratoryRateRecord | ✅ RespiratoryRate | ❌ N/A |
-| **Active Calories** | ✅ ActiveCaloriesBurnedRecord | ✅ ActiveEnergyBurned | ❌ N/A |
 | **Basal Metabolic Rate** | ✅ BasalMetabolicRateRecord | ✅ BasalEnergyBurned | ❌ N/A |
-| **Body Fat** | ✅ BodyFatRecord | ✅ BodyFatPercentage | ❌ N/A |
+| **Body Fat** | ✅ BodyFatRecord | ✅ BodyFatPercentage | 🚧 WIP (commented out) |
 | **Lean Body Mass** | ✅ LeanBodyMassRecord | ✅ LeanBodyMass | ❌ N/A |
 | **Hydration** | ✅ HydrationRecord | ✅ DietaryWater | ❌ N/A |
-| **VO2 Max** | ✅ Vo2MaxRecord | ✅ VO2Max | ❌ N/A |
-| **Exercise Session** | ✅ ExerciseSessionRecord | ✅ AppleExerciseTime | ❌ N/A |
+| **VO2 Max** | ✅ Vo2MaxRecord | ✅ VO2Max | 🚧 WIP (commented out) |
 | **Resting Heart Rate** | ✅ RestingHeartRateRecord | ✅ RestingHeartRate | ❌ N/A |
 | **Heart Rate Variability** | ✅ HeartRateVariabilityRmssdRecord | ✅ HeartRateVariabilitySdnn | ❌ N/A |
-| **Blood Pressure** | ❌ N/A* | ❌ Split into Systolic/Diastolic | ❌ N/A |
-
-*Blood Pressure on Android is split into separate systolic and diastolic records
+| **Blood Pressure** | ✅ BloodPressureRecord | ✅ Split into Systolic/Diastolic | 🚧 WIP (commented out) |
 
 ## Usage
 
