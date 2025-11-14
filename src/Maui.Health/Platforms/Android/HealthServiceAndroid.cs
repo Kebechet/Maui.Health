@@ -133,9 +133,9 @@ public partial class HealthService
             nameof(ActiveCaloriesBurnedDto) => ConvertActiveCaloriesBurnedRecord(record) as TDto,
             nameof(HeartRateDto) => ConvertHeartRateRecord(record) as TDto,
             nameof(WorkoutDto) => ConvertExerciseSessionRecord(record) as TDto,
-            nameof(BodyFatDto) => ConvertBodyFatRecord(record) as TDto,
-            nameof(Vo2MaxDto) => ConvertVo2MaxRecord(record) as TDto,
-            nameof(BloodPressureDto) => ConvertBloodPressureRecord(record) as TDto,
+            //nameof(BodyFatDto) => ConvertBodyFatRecord(record) as TDto,
+            //nameof(Vo2MaxDto) => ConvertVo2MaxRecord(record) as TDto,
+            //nameof(BloodPressureDto) => ConvertBloodPressureRecord(record) as TDto,
             _ => null
         };
     }
@@ -276,61 +276,61 @@ public partial class HealthService
         };
     }
 
-    private BodyFatDto? ConvertBodyFatRecord(Java.Lang.Object record)
-    {
-        if (record is not BodyFatRecord bodyFatRecord)
-            return null;
+    //private BodyFatDto? ConvertBodyFatRecord(Java.Lang.Object record)
+    //{
+    //    if (record is not BodyFatRecord bodyFatRecord)
+    //        return null;
 
-        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(bodyFatRecord.Time.ToEpochMilli());
-        var percentage = ExtractPercentageValue(bodyFatRecord.Percentage);
+    //    var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(bodyFatRecord.Time.ToEpochMilli());
+    //    var percentage = ExtractPercentageValue(bodyFatRecord.Percentage);
 
-        return new BodyFatDto
-        {
-            Id = bodyFatRecord.Metadata.Id,
-            DataOrigin = bodyFatRecord.Metadata.DataOrigin.PackageName,
-            Timestamp = timestamp,
-            Percentage = percentage,
-            Unit = "%"
-        };
-    }
+    //    return new BodyFatDto
+    //    {
+    //        Id = bodyFatRecord.Metadata.Id,
+    //        DataOrigin = bodyFatRecord.Metadata.DataOrigin.PackageName,
+    //        Timestamp = timestamp,
+    //        Percentage = percentage,
+    //        Unit = "%"
+    //    };
+    //}
 
-    private Vo2MaxDto? ConvertVo2MaxRecord(Java.Lang.Object record)
-    {
-        if (record is not Vo2MaxRecord vo2MaxRecord)
-            return null;
+    //private Vo2MaxDto? ConvertVo2MaxRecord(Java.Lang.Object record)
+    //{
+    //    if (record is not Vo2MaxRecord vo2MaxRecord)
+    //        return null;
 
-        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(vo2MaxRecord.Time.ToEpochMilli());
-        var value = ExtractVo2MaxValue(vo2MaxRecord.Vo2MillilitersPerMinuteKilogram);
+    //    var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(vo2MaxRecord.Time.ToEpochMilli());
+    //    var value = ExtractVo2MaxValue(vo2MaxRecord.Vo2MillilitersPerMinuteKilogram);
 
-        return new Vo2MaxDto
-        {
-            Id = vo2MaxRecord.Metadata.Id,
-            DataOrigin = vo2MaxRecord.Metadata.DataOrigin.PackageName,
-            Timestamp = timestamp,
-            Value = value,
-            Unit = "ml/kg/min"
-        };
-    }
+    //    return new Vo2MaxDto
+    //    {
+    //        Id = vo2MaxRecord.Metadata.Id,
+    //        DataOrigin = vo2MaxRecord.Metadata.DataOrigin.PackageName,
+    //        Timestamp = timestamp,
+    //        Value = value,
+    //        Unit = "ml/kg/min"
+    //    };
+    //}
 
-    private BloodPressureDto? ConvertBloodPressureRecord(Java.Lang.Object record)
-    {
-        if (record is not BloodPressureRecord bpRecord)
-            return null;
+    //private BloodPressureDto? ConvertBloodPressureRecord(Java.Lang.Object record)
+    //{
+    //    if (record is not BloodPressureRecord bpRecord)
+    //        return null;
 
-        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(bpRecord.Time.ToEpochMilli());
-        var systolic = ExtractPressureValue(bpRecord.Systolic);
-        var diastolic = ExtractPressureValue(bpRecord.Diastolic);
+    //    var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(bpRecord.Time.ToEpochMilli());
+    //    var systolic = ExtractPressureValue(bpRecord.Systolic);
+    //    var diastolic = ExtractPressureValue(bpRecord.Diastolic);
 
-        return new BloodPressureDto
-        {
-            Id = bpRecord.Metadata.Id,
-            DataOrigin = bpRecord.Metadata.DataOrigin.PackageName,
-            Timestamp = timestamp,
-            Systolic = systolic,
-            Diastolic = diastolic,
-            Unit = "mmHg"
-        };
-    }
+    //    return new BloodPressureDto
+    //    {
+    //        Id = bpRecord.Metadata.Id,
+    //        DataOrigin = bpRecord.Metadata.DataOrigin.PackageName,
+    //        Timestamp = timestamp,
+    //        Systolic = systolic,
+    //        Diastolic = diastolic,
+    //        Unit = "mmHg"
+    //    };
+    //}
 
     private async Task<WorkoutDto> ConvertExerciseSessionRecordAsync(ExerciseSessionRecord exerciseRecord, CancellationToken cancellationToken)
     {

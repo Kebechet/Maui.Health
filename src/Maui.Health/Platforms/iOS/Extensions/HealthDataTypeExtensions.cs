@@ -13,8 +13,8 @@ internal static class HealthDataTypeExtensions
             HealthDataType.BasalBodyTemperature => HKQuantityTypeIdentifier.BasalBodyTemperature,
             HealthDataType.BasalMetabolicRate => HKQuantityTypeIdentifier.BasalEnergyBurned,
             HealthDataType.BloodGlucose => HKQuantityTypeIdentifier.BloodGlucose,
-            HealthDataType.BloodPressure => HKQuantityTypeIdentifier.BloodPressureSystolic, // Also need Diastolic - handled separately
-            HealthDataType.BodyFat => HKQuantityTypeIdentifier.BodyFatPercentage,
+            //HealthDataType.BloodPressure => HKQuantityTypeIdentifier.BloodPressureSystolic, // Also need Diastolic - handled separately
+            //HealthDataType.BodyFat => HKQuantityTypeIdentifier.BodyFatPercentage,
             HealthDataType.BodyTemperature => HKQuantityTypeIdentifier.BodyTemperature,
             //HealthDataType.BodyWaterMass => HKQuantityTypeIdentifier.wate,//not on iOS
             //HealthDataType.BoneMass => HKQuantityTypeIdentifier.bone,//not on iOS
@@ -46,7 +46,7 @@ internal static class HealthDataTypeExtensions
             //HealthDataType.StepsCadence => HKQuantityTypeIdentifier.cade,//not on iOS
             HealthDataType.Steps => HKQuantityTypeIdentifier.StepCount,
             //HealthDataType.TotalCaloriesBurned => HKQuantityTypeIdentifier.burn,//not on iOS
-            HealthDataType.Vo2Max => HKQuantityTypeIdentifier.VO2Max,
+            //HealthDataType.Vo2Max => HKQuantityTypeIdentifier.VO2Max,
             HealthDataType.Weight => HKQuantityTypeIdentifier.BodyMass,
             //HealthDataType.WheelchairPushes => HKQuantityTypeIdentifier.Dis,//not on iOS
             _ => throw new ArgumentOutOfRangeException(nameof(healthDataType), healthDataType, null)
