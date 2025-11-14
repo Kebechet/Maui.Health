@@ -2,3 +2,59 @@
 
 <h1>Number of steps:</h1>
 @_steps
+
+<h1>Weight (kg):</h1>
+@_weight
+
+<h1>Active Calories Burned (kcal):</h1>
+@_calories
+
+<h1>Average Heart Rate during Exercise (14:00-17:00):</h1>
+@if (_heartRateCount > 0)
+{
+    <p>@_averageHeartRate.ToString("F1") BPM (based on @_heartRateCount measurements)</p>
+}
+else
+{
+    <p>No heart rate data available for this time period</p>
+}
+
+<hr style="margin: 20px 0;" />
+
+<h1>Today's Workouts:</h1>
+@if (_workouts.Length > 0)
+{
+    <ul>
+        @foreach (var workout in _workouts)
+        {
+            var distanceKm = workout.Distance.HasValue ? (workout.Distance.Value / 1000.0).ToString("F2") : null;
+            var calories = workout.EnergyBurned.HasValue ? workout.EnergyBurned.Value.ToString("F0") : null;
+            var avgHR = workout.AverageHeartRate.HasValue ? workout.AverageHeartRate.Value.ToString("F0") : null;
+
+            <li>
+                <strong>@workout.ActivityType</strong> -
+                @workout.StartTime.ToLocalTime().ToString("HH:mm") to @workout.EndTime.ToLocalTime().ToString("HH:mm")
+                (@((int)workout.DurationSeconds / 60) minutes)
+                @if (distanceKm != null)
+                {
+                    <span> - @distanceKm km</span>
+                }
+                @if (calories != null)
+                {
+                    <span> - @calories kcal</span>
+                }
+                @if (avgHR != null)
+                {
+                    <span> - Avg HR: @avgHR BPM</span>
+                }
+
+                <br/>
+                <small>Source: @workout.DataOrigin</small>
+            </li>
+        }
+    </ul>
+}
+else
+{
+    <p>No workouts found for today</p>
+}

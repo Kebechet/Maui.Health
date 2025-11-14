@@ -14,7 +14,7 @@ internal static class HealthDataTypeExtensions
             HealthDataType.BasalBodyTemperature => typeof(BasalBodyTemperatureRecord),
             HealthDataType.BasalMetabolicRate => typeof(BasalMetabolicRateRecord),
             HealthDataType.BloodGlucose => typeof(BloodGlucoseRecord),
-            //HealthDataType.BloodPressure => typeof(BloodPressureRecord),
+            HealthDataType.BloodPressure => typeof(BloodPressureRecord),
             HealthDataType.BodyFat => typeof(BodyFatRecord),
             HealthDataType.BodyTemperature => typeof(BodyTemperatureRecord),
             //HealthDataType.BodyWaterMass => typeof(BodyWaterMassRecord),

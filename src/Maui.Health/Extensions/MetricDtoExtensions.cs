@@ -16,6 +16,12 @@ internal static class MetricDtoExtensions
             nameof(StepsDto) => HealthDataType.Steps,
             nameof(WeightDto) => HealthDataType.Weight,
             nameof(HeightDto) => HealthDataType.Height,
+            nameof(ActiveCaloriesBurnedDto) => HealthDataType.ActiveCaloriesBurned,
+            nameof(HeartRateDto) => HealthDataType.HeartRate,
+            nameof(WorkoutDto) => HealthDataType.ExerciseSession,
+            nameof(BodyFatDto) => HealthDataType.BodyFat,
+            nameof(Vo2MaxDto) => HealthDataType.Vo2Max,
+            nameof(BloodPressureDto) => HealthDataType.BloodPressure,
             _ => throw new NotSupportedException($"DTO type {typeof(TDto).Name} is not supported")
         };
     }

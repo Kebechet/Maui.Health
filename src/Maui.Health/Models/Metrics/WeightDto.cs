@@ -9,7 +9,7 @@ public class WeightDto : HealthMetricBase
     /// Weight value
     /// </summary>
     public required double Value { get; init; }
-    
+
     /// <summary>
     /// Unit of measurement (kg, lbs, etc.)
     /// </summary>
