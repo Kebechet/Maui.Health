@@ -76,19 +76,17 @@ public class HealthExampleService
 
     public async Task<List<StepsDto>> GetTodaysStepsAsync()
     {
-        var today = DateTime.Today;
-        var now = DateTime.Now;
-        
-        var steps = await _healthService.GetHealthDataAsync<StepsDto>(today, now);
+        var timeRange = HealthTimeRange.FromDateTime(DateTime.Today, DateTime.Now);
+
+        var steps = await _healthService.GetHealthDataAsync<StepsDto>(timeRange);
         return steps.ToList();
     }
 
     public async Task<List<WeightDto>> GetRecentWeightAsync()
     {
-        var lastWeek = DateTime.Now.AddDays(-7);
-        var now = DateTime.Now;
-        
-        var weights = await _healthService.GetHealthDataAsync<WeightDto>(lastWeek, now);
+        var timeRange = HealthTimeRange.FromDateTime(DateTime.Now.AddDays(-7), DateTime.Now);
+
+        var weights = await _healthService.GetHealthDataAsync<WeightDto>(timeRange);
         return weights.ToList();
     }
 }
@@ -101,7 +99,8 @@ Duration-based metrics implement `IHealthTimeRange`:
 ```csharp
 public async Task AnalyzeStepsData()
 {
-    var steps = await _healthService.GetHealthDataAsync<StepsDto>(DateTime.Today, DateTime.Now);
+    var timeRange = HealthTimeRange.FromDateTime(DateTime.Today, DateTime.Now);
+    var steps = await _healthService.GetHealthDataAsync<StepsDto>(timeRange);
     
     foreach (var stepRecord in steps)
     {
@@ -127,7 +126,8 @@ public async Task AnalyzeStepsData()
 
 public async Task AnalyzeWeightData()
 {
-    var weights = await _healthService.GetHealthDataAsync<WeightDto>(DateTime.Today.AddDays(-30), DateTime.Now);
+    var timeRange = HealthTimeRange.FromDateTime(DateTime.Today.AddDays(-30), DateTime.Now);
+    var weights = await _healthService.GetHealthDataAsync<WeightDto>(timeRange);
     
     foreach (var weightRecord in weights)
     {

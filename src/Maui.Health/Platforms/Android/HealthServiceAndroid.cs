@@ -38,11 +38,15 @@ public partial class HealthService
 
     private IHealthConnectClient _healthConnectClient => HealthConnectClient.GetOrCreate(_activityContext);
 
-    public async partial Task<TDto[]> GetHealthDataAsync<TDto>(DateTime from, DateTime to, CancellationToken cancellationToken)
+    public async partial Task<TDto[]> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         try
         {
+            Debug.WriteLine($"Android GetHealthDataAsync<{typeof(TDto).Name}>:");
+            Debug.WriteLine($"  StartTime: {timeRange.StartTime}");
+            Debug.WriteLine($"  EndTime: {timeRange.EndTime}");
+
             var sdkCheckResult = IsSdkAvailable();
             if (!sdkCheckResult.IsSuccess)
             {
@@ -61,8 +65,8 @@ public partial class HealthService
             var recordClass = healthDataType.ToKotlinClass();
 
             var timeRangeFilter = TimeRangeFilter.Between(
-                Instant.OfEpochMilli(((DateTimeOffset)from).ToUnixTimeMilliseconds())!,
-                Instant.OfEpochMilli(((DateTimeOffset)to).ToUnixTimeMilliseconds())!
+                Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
+                Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
             );
 
             var request = new ReadRecordsRequest(
@@ -114,7 +118,9 @@ public partial class HealthService
                 }
             }
 
-            return results.ToArray();
+            var resultArray = results.ToArray();
+            Debug.WriteLine($"  Found {resultArray.Length} {typeof(TDto).Name} records");
+            return resultArray;
         }
         catch (Exception ex)
         {

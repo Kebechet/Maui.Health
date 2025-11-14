@@ -42,14 +42,14 @@ public partial class Home
         var today = DateTime.Today;
         var now = DateTime.Now;
 
-        // Fetch heart rate data for exercise time (14:00 - 17:00)
-        var exerciseStart = today.AddHours(14); // 14:00 (2:00 PM)
-        var exerciseEnd = today.AddHours(17);   // 17:00 (5:00 PM)
+        // Create time ranges
+        var todayRange = HealthTimeRange.FromDateTime(today, now);
+        var exerciseRange = HealthTimeRange.FromDateTime(today.AddHours(14), today.AddHours(17)); // 14:00 - 17:00
 
-        var stepsData = await _healthService.GetHealthDataAsync<StepsDto>(today, now);
-        var weightData = await _healthService.GetHealthDataAsync<WeightDto>(today, now);
-        var caloriesData = await _healthService.GetHealthDataAsync<ActiveCaloriesBurnedDto>(today, now);
-        var heartRateData = await _healthService.GetHealthDataAsync<HeartRateDto>(exerciseStart, exerciseEnd);
+        var stepsData = await _healthService.GetHealthDataAsync<StepsDto>(todayRange);
+        var weightData = await _healthService.GetHealthDataAsync<WeightDto>(todayRange);
+        var caloriesData = await _healthService.GetHealthDataAsync<ActiveCaloriesBurnedDto>(todayRange);
+        var heartRateData = await _healthService.GetHealthDataAsync<HeartRateDto>(exerciseRange);
 
         _steps = stepsData.Sum(s => s.Count);
         _weight = weightData.OrderByDescending(w => w.Timestamp).FirstOrDefault()?.Value ?? 0;
@@ -63,6 +63,6 @@ public partial class Home
         }
 
         // Fetch today's workouts
-        _workouts = await _healthService.GetHealthDataAsync<WorkoutDto>(today, now);
+        _workouts = await _healthService.GetHealthDataAsync<WorkoutDto>(todayRange);
     }
 }

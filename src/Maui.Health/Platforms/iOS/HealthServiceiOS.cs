@@ -13,7 +13,7 @@ public partial class HealthService
 {
     public partial bool IsSupported => HKHealthStore.IsHealthDataAvailable;
 
-    public async partial Task<TDto[]> GetHealthDataAsync<TDto>(DateTime from, DateTime to, CancellationToken cancellationToken)
+    public async partial Task<TDto[]> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (!IsSupported)
@@ -23,6 +23,10 @@ public partial class HealthService
 
         try
         {
+            System.Diagnostics.Debug.WriteLine($"iOS GetHealthDataAsync<{typeof(TDto).Name}>:");
+            System.Diagnostics.Debug.WriteLine($"  StartTime: {timeRange.StartTime} (Local: {timeRange.StartDateTime})");
+            System.Diagnostics.Debug.WriteLine($"  EndTime: {timeRange.EndTime} (Local: {timeRange.EndDateTime})");
+
             // Request permission for the specific metric
             var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
             var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
@@ -36,7 +40,7 @@ public partial class HealthService
             // Special handling for WorkoutDto - uses HKWorkout instead of HKQuantitySample
             if (typeof(TDto) == typeof(WorkoutDto))
             {
-                return await GetWorkoutsAsync<TDto>(from, to, cancellationToken);
+                return await GetWorkoutsAsync<TDto>(timeRange.StartDateTime, timeRange.EndDateTime, cancellationToken);
             }
 
             // Special handling for BloodPressureDto - split into systolic/diastolic on iOS
@@ -48,8 +52,8 @@ public partial class HealthService
             var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier())!;
 
             var predicate = HKQuery.GetPredicateForSamples(
-                (NSDate)from,
-                (NSDate)to,
+                (NSDate)timeRange.StartDateTime,
+                (NSDate)timeRange.EndDateTime,
                 HKQueryOptions.StrictStartDate
             );
 
@@ -91,7 +95,9 @@ public partial class HealthService
             });
 
             store.ExecuteQuery(query);
-            return await tcs.Task;
+            var results = await tcs.Task;
+            System.Diagnostics.Debug.WriteLine($"  Found {results.Length} {typeof(TDto).Name} records");
+            return results;
         }
         catch (Exception)
         {

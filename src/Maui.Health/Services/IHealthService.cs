@@ -9,11 +9,10 @@ public interface IHealthService
     /// Get health data for a specific metric type within a time range
     /// </summary>
     /// <typeparam name="TDto">The type of health metric DTO to retrieve</typeparam>
-    /// <param name="from">Start time for data retrieval</param>
-    /// <param name="to">End time for data retrieval</param>
+    /// <param name="timeRange">The time range for data retrieval</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Array of health metric DTOs</returns>
-    Task<TDto[]> GetHealthDataAsync<TDto>(DateTime from, DateTime to, CancellationToken cancellationToken = default)
+    Task<TDto[]> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     Task<RequestPermissionResult> RequestPermission(HealthPermissionDto healthPermission, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);

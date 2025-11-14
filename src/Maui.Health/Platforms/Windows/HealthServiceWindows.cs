@@ -12,7 +12,7 @@ public partial class HealthService
         return Task.FromResult(new RequestPermissionResult());
     }
 
-    public partial Task<TDto[]> GetHealthDataAsync<TDto>(DateTime from, DateTime to, CancellationToken cancellationToken = default)
+    public partial Task<TDto[]> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase
     {
         return Task.FromResult(Array.Empty<TDto>());
