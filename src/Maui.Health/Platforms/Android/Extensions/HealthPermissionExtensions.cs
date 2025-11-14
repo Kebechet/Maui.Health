@@ -13,6 +13,12 @@ internal static class HealthPermissionExtensions
 
         var permissionNameWithoutPrefix = healthPermission.HealthDataType.ToString().ToScreamingSnakeCase();
 
+        // Special case: ExerciseSession maps to EXERCISE in Android Health Connect
+        if (healthPermission.HealthDataType == HealthDataType.ExerciseSession)
+        {
+            permissionNameWithoutPrefix = "EXERCISE";
+        }
+
         if (healthPermission.PermissionType.HasFlag(PermissionType.Read))
         {
             partialPermissionNames.Add($"READ_{permissionNameWithoutPrefix}");

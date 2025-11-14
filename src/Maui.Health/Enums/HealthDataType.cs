@@ -10,7 +10,7 @@ public enum HealthDataType
     BasalBodyTemperature,
     BasalMetabolicRate,
     BloodGlucose,
-    //BloodPressure,//-it is split to 2 types: diastolic, systolic on iOS
+    BloodPressure, // Note: split to 2 types (diastolic, systolic) on iOS - handled in platform code
     BodyFat,
     BodyTemperature,
     //BodyWaterMass, //not on iOS
