@@ -30,8 +30,8 @@ internal static class HealthRecordExtensions
             nameof(ActiveCaloriesBurnedDto) => record.ToActiveCaloriesBurnedDto() as TDto,
             nameof(HeartRateDto) => record.ToHeartRateDto() as TDto,
             nameof(WorkoutDto) => record.ToWorkoutDto() as TDto,
-            //nameof(BodyFatDto) => record.ToBodyFatDto() as TDto,
-            //nameof(Vo2MaxDto) => record.ToVo2MaxDto() as TDto,
+            nameof(BodyFatDto) => record.ToBodyFatDto() as TDto,
+            nameof(Vo2MaxDto) => record.ToVo2MaxDto() as TDto,
             //nameof(BloodPressureDto) => record.ToBloodPressureDto() as TDto,
             _ => null
         };
@@ -216,41 +216,41 @@ internal static class HealthRecordExtensions
         };
     }
 
-    //public static BodyFatDto? ToBodyFatDto(this Java.Lang.Object record)
-    //{
-    //    if (record is not BodyFatRecord bodyFatRecord)
-    //        return null;
+    public static BodyFatDto? ToBodyFatDto(this Java.Lang.Object record)
+    {
+        if (record is not BodyFatRecord bodyFatRecord)
+            return null;
 
-    //    var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(bodyFatRecord.Time.ToEpochMilli());
-    //    var percentage = bodyFatRecord.Percentage.ExtractPercentageValue();
+        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(bodyFatRecord.Time.ToEpochMilli());
+        var percentage = bodyFatRecord.Percentage.ExtractPercentageValue();
 
-    //    return new BodyFatDto
-    //    {
-    //        Id = bodyFatRecord.Metadata.Id,
-    //        DataOrigin = bodyFatRecord.Metadata.DataOrigin.PackageName,
-    //        Timestamp = timestamp,
-    //        Percentage = percentage,
-    //        Unit = "%"
-    //    };
-    //}
+        return new BodyFatDto
+        {
+            Id = bodyFatRecord.Metadata.Id,
+            DataOrigin = bodyFatRecord.Metadata.DataOrigin.PackageName,
+            Timestamp = timestamp,
+            Percentage = percentage,
+            Unit = "%"
+        };
+    }
 
-    //public static Vo2MaxDto? ToVo2MaxDto(this Java.Lang.Object record)
-    //{
-    //    if (record is not Vo2MaxRecord vo2MaxRecord)
-    //        return null;
+    public static Vo2MaxDto? ToVo2MaxDto(this Java.Lang.Object record)
+    {
+        if (record is not Vo2MaxRecord vo2MaxRecord)
+            return null;
 
-    //    var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(vo2MaxRecord.Time.ToEpochMilli());
-    //    var value = vo2MaxRecord.Vo2MillilitersPerMinuteKilogram.ExtractVo2MaxValue();
+        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(vo2MaxRecord.Time.ToEpochMilli());
+        var value = vo2MaxRecord.ExtractVo2MaxValue();
 
-    //    return new Vo2MaxDto
-    //    {
-    //        Id = vo2MaxRecord.Metadata.Id,
-    //        DataOrigin = vo2MaxRecord.Metadata.DataOrigin.PackageName,
-    //        Timestamp = timestamp,
-    //        Value = value,
-    //        Unit = "ml/kg/min"
-    //    };
-    //}
+        return new Vo2MaxDto
+        {
+            Id = vo2MaxRecord.Metadata.Id,
+            DataOrigin = vo2MaxRecord.Metadata.DataOrigin.PackageName,
+            Timestamp = timestamp,
+            Value = value,
+            Unit = "ml/kg/min"
+        };
+    }
 
     //public static BloodPressureDto? ToBloodPressureDto(this Java.Lang.Object record)
     //{

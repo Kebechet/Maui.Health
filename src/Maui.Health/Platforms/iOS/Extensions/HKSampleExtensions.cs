@@ -17,8 +17,8 @@ internal static class HKSampleExtensions
             nameof(HeightDto) => sample.ToHeightDto() as TDto,
             nameof(ActiveCaloriesBurnedDto) => sample.ToActiveCaloriesBurnedDto() as TDto,
             nameof(HeartRateDto) => sample.ToHeartRateDto() as TDto,
-            //nameof(BodyFatDto) => sample.ToBodyFatDto() as TDto,
-            //nameof(Vo2MaxDto) => sample.ToVo2MaxDto() as TDto,
+            nameof(BodyFatDto) => sample.ToBodyFatDto() as TDto,
+            nameof(Vo2MaxDto) => sample.ToVo2MaxDto() as TDto,
             _ => null
         };
     }
@@ -103,35 +103,35 @@ internal static class HKSampleExtensions
         };
     }
 
-    //public static BodyFatDto ToBodyFatDto(this HKQuantitySample sample)
-    //{
-    //    var percentage = sample.Quantity.GetDoubleValue(HKUnit.Percent) * 100; // HKUnit.Percent is 0-1, convert to 0-100
-    //    var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
+    public static BodyFatDto ToBodyFatDto(this HKQuantitySample sample)
+    {
+        var percentage = sample.Quantity.GetDoubleValue(HKUnit.Percent) * 100; // HKUnit.Percent is 0-1, convert to 0-100
+        var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
 
-    //    return new BodyFatDto
-    //    {
-    //        Id = sample.Uuid.ToString(),
-    //        DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
-    //        Timestamp = timestamp,
-    //        Percentage = percentage,
-    //        Unit = "%"
-    //    };
-    //}
+        return new BodyFatDto
+        {
+            Id = sample.Uuid.ToString(),
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
+            Timestamp = timestamp,
+            Percentage = percentage,
+            Unit = "%"
+        };
+    }
 
-    //public static Vo2MaxDto ToVo2MaxDto(this HKQuantitySample sample)
-    //{
-    //    var value = sample.Quantity.GetDoubleValue(HKUnit.FromString("ml/kg*min"));
-    //    var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
+    public static Vo2MaxDto ToVo2MaxDto(this HKQuantitySample sample)
+    {
+        var value = sample.Quantity.GetDoubleValue(HKUnit.FromString("ml/kg*min"));
+        var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
 
-    //    return new Vo2MaxDto
-    //    {
-    //        Id = sample.Uuid.ToString(),
-    //        DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
-    //        Timestamp = timestamp,
-    //        Value = value,
-    //        Unit = "ml/kg/min"
-    //    };
-    //}
+        return new Vo2MaxDto
+        {
+            Id = sample.Uuid.ToString(),
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
+            Timestamp = timestamp,
+            Value = value,
+            Unit = "ml/kg/min"
+        };
+    }
 
     public static async Task<WorkoutDto> ToWorkoutDtoAsync(
         this HKWorkout workout,

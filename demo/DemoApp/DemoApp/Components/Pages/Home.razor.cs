@@ -16,6 +16,8 @@ public partial class Home
     private double _calories { get; set; } = 0;
     private double _averageHeartRate { get; set; } = 0;
     private int _heartRateCount { get; set; } = 0;
+    private double _bodyFat { get; set; } = 0;
+    private double _vo2Max { get; set; } = 0;
     private List<WorkoutDto> _workouts { get; set; } = [];
 
     protected override async Task OnInitializedAsync()
@@ -27,7 +29,9 @@ public partial class Home
             new() { HealthDataType = HealthDataType.Weight, PermissionType = PermissionType.Read },
             new() { HealthDataType = HealthDataType.ActiveCaloriesBurned, PermissionType = PermissionType.Read },
             new() { HealthDataType = HealthDataType.HeartRate, PermissionType = PermissionType.Read },
-            new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Read }
+            new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Read },
+            new() { HealthDataType = HealthDataType.BodyFat, PermissionType = PermissionType.Read },
+            new() { HealthDataType = HealthDataType.Vo2Max, PermissionType = PermissionType.Read }
         };
 
         var permissionResult = await _healthService.RequestPermissions(permissions);
@@ -50,10 +54,14 @@ public partial class Home
         var weightData = await _healthService.GetHealthDataAsync<WeightDto>(todayRange);
         var caloriesData = await _healthService.GetHealthDataAsync<ActiveCaloriesBurnedDto>(todayRange);
         var heartRateData = await _healthService.GetHealthDataAsync<HeartRateDto>(exerciseRange);
+        var bodyFatData = await _healthService.GetHealthDataAsync<BodyFatDto>(todayRange);
+        var vo2MaxData = await _healthService.GetHealthDataAsync<Vo2MaxDto>(todayRange);
 
         _steps = stepsData.Sum(s => s.Count);
         _weight = weightData.OrderByDescending(w => w.Timestamp).FirstOrDefault()?.Value ?? 0;
         _calories = caloriesData.Sum(c => c.Energy);
+        _bodyFat = bodyFatData.OrderByDescending(b => b.Timestamp).FirstOrDefault()?.Percentage ?? 0;
+        _vo2Max = vo2MaxData.OrderByDescending(v => v.Timestamp).FirstOrDefault()?.Value ?? 0;
 
         // Calculate average heart rate during exercise time (14:00 - 17:00)
         if (heartRateData.Count > 0)
