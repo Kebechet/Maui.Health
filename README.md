@@ -32,10 +32,10 @@ Feel free to contribute ❤️
 | **Oxygen Saturation** | ✅ OxygenSaturationRecord | ✅ OxygenSaturation | ❌ N/A |
 | **Respiratory Rate** | ✅ RespiratoryRateRecord | ✅ RespiratoryRate | ❌ N/A |
 | **Basal Metabolic Rate** | ✅ BasalMetabolicRateRecord | ✅ BasalEnergyBurned | ❌ N/A |
-| **Body Fat** | ✅ BodyFatRecord | ✅ BodyFatPercentage | 🚧 WIP (commented out) |
+| **Body Fat** | ✅ BodyFatRecord | ✅ BodyFatPercentage | ✅ [`BodyFatDto`](src/Maui.Health/Models/Metrics/BodyFatDto.cs) |
 | **Lean Body Mass** | ✅ LeanBodyMassRecord | ✅ LeanBodyMass | ❌ N/A |
 | **Hydration** | ✅ HydrationRecord | ✅ DietaryWater | ❌ N/A |
-| **VO2 Max** | ✅ Vo2MaxRecord | ✅ VO2Max | 🚧 WIP (commented out) |
+| **VO2 Max** | ✅ Vo2MaxRecord | ✅ VO2Max | ✅ [`Vo2MaxDto`](src/Maui.Health/Models/Metrics/Vo2MaxDto.cs) |
 | **Resting Heart Rate** | ✅ RestingHeartRateRecord | ✅ RestingHeartRate | ❌ N/A |
 | **Heart Rate Variability** | ✅ HeartRateVariabilityRmssdRecord | ✅ HeartRateVariabilitySdnn | ❌ N/A |
 | **Blood Pressure** | ✅ BloodPressureRecord | ✅ Split into Systolic/Diastolic | 🚧 WIP (commented out) |
@@ -48,21 +48,23 @@ Register the health service in your `MauiProgram.cs`:
 builder.Services.AddHealth();
 ```
 
-### 2. Platform Setup
-Follow the [platform setup guide](https://github.com/Kebechet/Maui.Health/commit/139e69fade83f9133044910e47ad530f040b8021):
+Then setup all [Android and iOS necessities](https://github.com/Kebechet/Maui.Health/commit/139e69fade83f9133044910e47ad530f040b8021).
+- Android (4) [docs](https://developer.android.com/jetpack/androidx/releases/health-connect), [docs2](https://learn.microsoft.com/en-us/dotnet/api/healthkit?view=xamarin-ios-sdk-12)
+    - in Google Play console give [Health permissions to the app](https://support.google.com/googleplay/android-developer/answer/14738291?hl=en)
+    - for successful app approval your Policy page must contain `Health data collection and use`, `Data retention policy`
+    - change of `AndroidManifest.xml` + new activity showing [privacy policy](https://developer.android.com/health-and-fitness/guides/health-connect/develop/get-started#show-privacy-policy)
+    - change of min. Android version to v26
+- iOS (3)  [docs](https://learn.microsoft.com/en-us/previous-versions/xamarin/ios/platform/healthkit), [docs2](https://developer.apple.com/documentation/healthkit)
+    - generating new provisioning profile containing HealthKit permissions. These permissions are changed in [Identifiers](https://developer.apple.com/account/resources/identifiers/list)
+    - adding `Entitlements.plist`
+    - adjustment of `Info.plist`
+      -  ⚠️ Beware, if your app already exists and targets various devices adding `UIRequiredDeviceCapabilities` with `healthkit` can get your [release rejected](https://developer.apple.com/library/archive/qa/qa1623/_index.html). For that reason I ommited adding this requirement and I just make sure that I check if the device is capable of using `healthkit`.
 
-**Android (4 steps):**
-- Google Play console Health permissions
-- Privacy policy requirements  
-- AndroidManifest.xml changes
-- Minimum Android API 26
 
-**iOS (3 steps):**
-- Provisioning profile with HealthKit
-- Entitlements.plist
-- Info.plist adjustments
+After you have everything setup correctly you can use `IHealthService` from DI container and call it's methods.
+If you want an example there is a DemoApp project showing number of steps for Current day
 
-### 3. Basic Usage
+### 2. Basic Usage
 
 ```csharp
 public class HealthExampleService
@@ -92,7 +94,7 @@ public class HealthExampleService
 }
 ```
 
-### 4. Working with Time Ranges
+### 3. Working with Time Ranges
 
 Duration-based metrics implement `IHealthTimeRange`:
 
@@ -139,7 +141,7 @@ public async Task AnalyzeWeightData()
 }
 ```
 
-### 5. Permission Handling
+### 4. Permission Handling
 
 ```csharp
 public async Task RequestPermissions()
@@ -163,47 +165,6 @@ public async Task RequestPermissions()
     }
 }
 ```
-
-## DTO Architecture
-
-### Base Classes and Interfaces
-
-All health metric DTOs inherit from [`BaseHealthMetricDto`](src/Maui.Health/Models/Metrics/BaseHealthMetricDto.cs):
-
-```csharp
-public abstract class BaseHealthMetricDto
-{
-    public required string Id { get; init; }
-    public required string DataOrigin { get; init; }
-    public required DateTimeOffset Timestamp { get; init; }
-    public string? RecordingMethod { get; init; }
-    public Dictionary<string, object>? Metadata { get; init; }
-}
-```
-
-Duration-based metrics also implement [`IHealthTimeRange`](src/Maui.Health/Models/Metrics/IHealthTimeRange.cs):
-
-```csharp
-public interface IHealthTimeRange
-{
-    DateTimeOffset StartTime { get; }
-    DateTimeOffset EndTime { get; }
-    TimeSpan Duration => EndTime - StartTime;
-}
-```
-
-### Metric Categories
-
-**Duration-Based Metrics** (implement `IHealthTimeRange`):
-- Steps - counted over time periods
-- Exercise sessions - have start/end times
-- Sleep sessions - duration-based
-
-**Instant Metrics** (timestamp only):
-- Weight - measured at specific moment
-- Height - measured at specific moment  
-- Blood pressure - instant reading
-- Heart rate - point-in-time measurement
 
 ## Testing Tips
 
