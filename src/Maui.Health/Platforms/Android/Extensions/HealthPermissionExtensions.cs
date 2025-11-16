@@ -6,6 +6,7 @@ namespace Maui.Health.Platforms.Android.Extensions;
 internal static class HealthPermissionExtensions
 {
     private static readonly string _permissionsPrefix = "android.permission.health.";
+    private const string _exercisePermissionName = "EXERCISE";
 
     internal static List<string> ToStrings(this HealthPermissionDto healthPermission)
     {
@@ -16,7 +17,7 @@ internal static class HealthPermissionExtensions
         // Special case: ExerciseSession maps to EXERCISE in Android Health Connect
         if (healthPermission.HealthDataType == HealthDataType.ExerciseSession)
         {
-            permissionNameWithoutPrefix = "EXERCISE";
+            permissionNameWithoutPrefix = _exercisePermissionName;
         }
 
         if (healthPermission.PermissionType.HasFlag(PermissionType.Read))

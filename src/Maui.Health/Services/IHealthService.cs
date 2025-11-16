@@ -12,7 +12,7 @@ public interface IHealthService
     /// <param name="timeRange">The time range for data retrieval</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Array of health metric DTOs</returns>
-    Task<TDto[]> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+    Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     Task<RequestPermissionResult> RequestPermission(HealthPermissionDto healthPermission, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);

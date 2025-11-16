@@ -4,7 +4,8 @@
       "Bash(cat:*)",
       "Bash(dotnet build:*)",
       "Bash(where:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git -C \"D:\\Coding\\C#\\Maui.Health\" checkout src/Maui.Health/Platforms/Android/HealthServiceAndroid.cs)"
     ],
     "deny": [],
     "ask": []

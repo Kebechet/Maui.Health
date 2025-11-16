@@ -22,7 +22,7 @@ else
 <hr style="margin: 20px 0;" />
 
 <h1>Today's Workouts:</h1>
-@if (_workouts.Length > 0)
+@if (_workouts.Any())
 {
     <ul>
         @foreach (var workout in _workouts)
