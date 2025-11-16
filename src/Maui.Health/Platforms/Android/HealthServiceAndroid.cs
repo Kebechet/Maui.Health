@@ -85,37 +85,26 @@ public partial class HealthService
             }
 
             var results = new List<TDto>();
-
             // Special handling for WorkoutDto to add heart rate data
-            if (typeof(TDto) == typeof(WorkoutDto))
+            for (int i = 0; i < response.Records.Count; i++)
             {
-                for (int i = 0; i < response.Records.Count; i++)
+                var record = response.Records[i];
+                if (record is not Java.Lang.Object javaObject)
+                    continue;
+
+                TDto? dto;
+                // Special WorkoutDto handling
+                if (typeof(TDto) == typeof(WorkoutDto) && record is ExerciseSessionRecord exerciseRecord)
                 {
-                    var record = response.Records[i];
-                    if (record is Java.Lang.Object javaObject && record is ExerciseSessionRecord exerciseRecord)
-                    {
-                        var dto = await exerciseRecord.ToWorkoutDtoAsync(QueryHeartRateRecordsAsync, cancellationToken) as TDto;
-                        if (dto is not null)
-                        {
-                            results.Add(dto);
-                        }
-                    }
+                    dto = await exerciseRecord.ToWorkoutDtoAsync(QueryHeartRateRecordsAsync, cancellationToken) as TDto;
                 }
-            }
-            else
-            {
-                for (int i = 0; i < response.Records.Count; i++)
+                else
                 {
-                    var record = response.Records[i];
-                    if (record is Java.Lang.Object javaObject)
-                    {
-                        var dto = javaObject.ConvertToDto<TDto>();
-                        if (dto is not null)
-                        {
-                            results.Add(dto);
-                        }
-                    }
+                    dto = javaObject.ConvertToDto<TDto>();
                 }
+
+                if (dto is not null)
+                    results.Add(dto);
             }
 
             Debug.WriteLine($"  Found {results.Count} {typeof(TDto).Name} records");
