@@ -10,13 +10,13 @@ using AndroidX.Activity.Result;
 using Java.Util;
 using Maui.Health.Platforms.Android.Extensions;
 using AndroidX.Health.Connect.Client.Response;
-using System.Diagnostics;
 using Maui.Health.Platforms.Android.Callbacks;
 using Maui.Health.Models;
 using Maui.Health.Enums.Errors;
 using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Extensions;
+using Microsoft.Extensions.Logging;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
 using WeightRecord = AndroidX.Health.Connect.Client.Records.WeightRecord;
 using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;
@@ -43,9 +43,8 @@ public partial class HealthService
     {
         try
         {
-            Debug.WriteLine($"Android GetHealthDataAsync<{typeof(TDto).Name}>:");
-            Debug.WriteLine($"  StartTime: {timeRange.StartTime}");
-            Debug.WriteLine($"  EndTime: {timeRange.EndTime}");
+            _logger.LogInformation("Android GetHealthDataAsync<{DtoName}>: StartTime: {StartTime}, EndTime: {EndTime}",
+                typeof(TDto).Name, timeRange.StartTime, timeRange.EndTime);
 
             var sdkCheckResult = IsSdkAvailable();
             if (!sdkCheckResult.IsSuccess)
@@ -107,12 +106,12 @@ public partial class HealthService
                     results.Add(dto);
             }
 
-            Debug.WriteLine($"  Found {results.Count} {typeof(TDto).Name} records");
+            _logger.LogInformation("Found {Count} {DtoName} records", results.Count, typeof(TDto).Name);
             return results;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error fetching health data: {ex}");
+            _logger.LogError(ex, "Error fetching health data for {DtoName}", typeof(TDto).Name);
             return [];
         }
     }
@@ -161,7 +160,7 @@ public partial class HealthService
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error querying heart rate records: {ex}");
+            _logger.LogError(ex, "Error querying heart rate records");
             return [];
         }
     }

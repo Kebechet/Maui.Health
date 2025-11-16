@@ -6,6 +6,7 @@ using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Extensions;
 using Maui.Health.Platforms.iOS.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Maui.Health.Services;
 
@@ -24,9 +25,8 @@ public partial class HealthService
 
         try
         {
-            System.Diagnostics.Debug.WriteLine($"iOS GetHealthDataAsync<{typeof(TDto).Name}>:");
-            System.Diagnostics.Debug.WriteLine($"  StartTime: {timeRange.StartTime} (Local: {timeRange.StartDateTime})");
-            System.Diagnostics.Debug.WriteLine($"  EndTime: {timeRange.EndTime} (Local: {timeRange.EndDateTime})");
+            _logger.LogInformation("iOS GetHealthDataAsync<{DtoName}>: StartTime: {StartTime} (Local: {StartDateTime}), EndTime: {EndTime} (Local: {EndDateTime})",
+                typeof(TDto).Name, timeRange.StartTime, timeRange.StartDateTime, timeRange.EndTime, timeRange.EndDateTime);
 
             // Request permission for the specific metric
             var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
@@ -97,11 +97,12 @@ public partial class HealthService
 
             store.ExecuteQuery(query);
             var results = await tcs.Task;
-            System.Diagnostics.Debug.WriteLine($"  Found {results.Length} {typeof(TDto).Name} records");
+            _logger.LogInformation("Found {Count} {DtoName} records", results.Length, typeof(TDto).Name);
             return results.ToList();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Error fetching health data for {DtoName}", typeof(TDto).Name);
             return [];
         }
     }
