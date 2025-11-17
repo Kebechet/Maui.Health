@@ -2,13 +2,13 @@
 using HealthKit;
 using Maui.Health.Enums;
 using Maui.Health.Enums.Errors;
+using Maui.Health.Extensions;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
-using Maui.Health.Extensions;
 using Maui.Health.Platforms.iOS.Extensions;
 using Microsoft.Extensions.Logging;
-using Maui.Health.Platforms.iOS.Enums;
 using Microsoft.Maui.Platform;
+using System.Collections.Generic;
 
 namespace Maui.Health.Services;
 
@@ -113,7 +113,7 @@ public partial class HealthService
         return new();
     }
 
-    public async partial Task<TDto[]> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public async partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (!IsSupported)
@@ -196,7 +196,8 @@ public partial class HealthService
             store.ExecuteQuery(query);
             var results = await tcs.Task;
             _logger.LogInformation("Found {Count} {DtoName} records", results.Length, typeof(TDto).Name);
-            return results;
+
+            return results.ToList();
         }
         catch (Exception ex)
         {
@@ -205,7 +206,7 @@ public partial class HealthService
         }
     }
 
-    private async Task<TDto[]> GetWorkoutsAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    private async Task<List<TDto>> GetWorkoutsAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         var predicate = HKQuery.GetPredicateForSamples(
@@ -256,7 +257,7 @@ public partial class HealthService
             }
         }
 
-        return dtos.ToArray();
+        return dtos;
     }
 
     private async Task<HeartRateDto[]> QueryHeartRateSamplesAsync(HealthTimeRange timeRange, CancellationToken cancellationToken)

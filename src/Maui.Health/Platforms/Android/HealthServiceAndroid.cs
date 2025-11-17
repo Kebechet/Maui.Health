@@ -119,7 +119,7 @@ public partial class HealthService
         }
     }
 
-    public async partial Task<TDto[]> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public async partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         try
@@ -190,12 +190,12 @@ public partial class HealthService
             }
 
             _logger.LogInformation("Found {Count} {DtoName} records", results.Count, typeof(TDto).Name);
-            return results.ToArray();
+            return results;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching health data for {DtoName}", typeof(TDto).Name);
-            return [];
+            return new List<TDto>();
         }
     }
 

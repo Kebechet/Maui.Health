@@ -16,7 +16,7 @@ public partial class Home
     private double _calories { get; set; } = 0;
     private double _averageHeartRate { get; set; } = 0;
     private int _heartRateCount { get; set; } = 0;
-    private WorkoutDto[] _workouts { get; set; } = [];
+    private List<WorkoutDto> _workouts { get; set; } = [];
     private string _demoDataMessage { get; set; } = string.Empty;
     private bool _demoDataSuccess { get; set; } = false;
     private bool _isAndroid { get; set; } = false;
@@ -187,10 +187,10 @@ public partial class Home
         _calories = caloriesData.Sum(c => c.Energy);
 
         // Calculate average heart rate during exercise time (14:00 - 17:00)
-        if (heartRateData.Length > 0)
+        if (heartRateData.Count > 0)
         {
             _averageHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
-            _heartRateCount = heartRateData.Length;
+            _heartRateCount = heartRateData.Count;
         }
         else
         {
