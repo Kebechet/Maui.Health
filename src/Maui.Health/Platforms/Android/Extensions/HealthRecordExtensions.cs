@@ -1,11 +1,4 @@
 using AndroidX.Health.Connect.Client.Records;
-using AndroidX.Health.Connect.Client.Request;
-using AndroidX.Health.Connect.Client.Time;
-using AndroidX.Health.Connect.Client.Response;
-using AndroidX.Health.Connect.Client;
-using Java.Time;
-using Kotlin.Jvm;
-using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
 using System.Diagnostics;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
@@ -14,6 +7,7 @@ using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;
 using ActiveCaloriesBurnedRecord = AndroidX.Health.Connect.Client.Records.ActiveCaloriesBurnedRecord;
 using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
+using Maui.Health.Platforms.Android.Enums;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
@@ -40,10 +34,12 @@ internal static class HealthRecordExtensions
     public static StepsDto? ToStepsDto(this Java.Lang.Object record)
     {
         if (record is not StepsRecord stepsRecord)
+        {
             return null;
+        }
 
-        var startTime = DateTimeOffset.FromUnixTimeMilliseconds(stepsRecord.StartTime.ToEpochMilli());
-        var endTime = DateTimeOffset.FromUnixTimeMilliseconds(stepsRecord.EndTime.ToEpochMilli());
+        var startTime = stepsRecord.StartTime.ToDateTimeOffset();
+        var endTime = stepsRecord.EndTime.ToDateTimeOffset();
 
         return new StepsDto
         {
@@ -59,9 +55,11 @@ internal static class HealthRecordExtensions
     public static WeightDto? ToWeightDto(this Java.Lang.Object record)
     {
         if (record is not WeightRecord weightRecord)
+        {
             return null;
+        }
 
-        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(weightRecord.Time.ToEpochMilli());
+        var timestamp = weightRecord.Time.ToDateTimeOffset();
         var weightValue = weightRecord.Weight.ExtractMassValue();
 
         return new WeightDto
@@ -77,9 +75,11 @@ internal static class HealthRecordExtensions
     public static HeightDto? ToHeightDto(this Java.Lang.Object record)
     {
         if (record is not HeightRecord heightRecord)
+        {
             return null;
+        }
 
-        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(heightRecord.Time.ToEpochMilli());
+        var timestamp = heightRecord.Time.ToDateTimeOffset();
         var heightValue = heightRecord.Height.ExtractLengthValue();
 
         return new HeightDto
@@ -95,10 +95,12 @@ internal static class HealthRecordExtensions
     public static ActiveCaloriesBurnedDto? ToActiveCaloriesBurnedDto(this Java.Lang.Object record)
     {
         if (record is not ActiveCaloriesBurnedRecord caloriesRecord)
+        {
             return null;
+        }
 
-        var startTime = DateTimeOffset.FromUnixTimeMilliseconds(caloriesRecord.StartTime.ToEpochMilli());
-        var endTime = DateTimeOffset.FromUnixTimeMilliseconds(caloriesRecord.EndTime.ToEpochMilli());
+        var startTime = caloriesRecord.StartTime.ToDateTimeOffset();
+        var endTime = caloriesRecord.EndTime.ToDateTimeOffset();
         var energyValue = caloriesRecord.Energy.ExtractEnergyValue();
 
         return new ActiveCaloriesBurnedDto
@@ -116,9 +118,11 @@ internal static class HealthRecordExtensions
     public static HeartRateDto? ToHeartRateDto(this Java.Lang.Object record)
     {
         if (record is not HeartRateRecord heartRateRecord)
+        {
             return null;
+        }
 
-        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(heartRateRecord.StartTime.ToEpochMilli());
+        var timestamp = heartRateRecord.StartTime.ToDateTimeOffset();
 
         var beatsPerMinute = 0.0;
         if (heartRateRecord.Samples.Count > 0)
@@ -143,11 +147,13 @@ internal static class HealthRecordExtensions
     public static WorkoutDto? ToWorkoutDto(this Java.Lang.Object record)
     {
         if (record is not ExerciseSessionRecord exerciseRecord)
+        {
             return null;
+        }
 
-        var startTime = DateTimeOffset.FromUnixTimeMilliseconds(exerciseRecord.StartTime.ToEpochMilli());
-        var endTime = DateTimeOffset.FromUnixTimeMilliseconds(exerciseRecord.EndTime.ToEpochMilli());
-        var activityType = exerciseRecord.ExerciseType.ToActivityType();
+        var startTime = exerciseRecord.StartTime.ToDateTimeOffset();
+        var endTime = exerciseRecord.EndTime.ToDateTimeOffset();
+        var activityType = ((ExerciseType)exerciseRecord.ExerciseType).ToActivityType();
         string? title = exerciseRecord.Title;
 
         return new WorkoutDto
@@ -167,9 +173,9 @@ internal static class HealthRecordExtensions
         Func<HealthTimeRange, CancellationToken, Task<HeartRateDto[]>> queryHeartRateFunc,
         CancellationToken cancellationToken)
     {
-        var startTime = DateTimeOffset.FromUnixTimeMilliseconds(exerciseRecord.StartTime.ToEpochMilli());
-        var endTime = DateTimeOffset.FromUnixTimeMilliseconds(exerciseRecord.EndTime.ToEpochMilli());
-        var activityType = exerciseRecord.ExerciseType.ToActivityType();
+        var startTime = exerciseRecord.StartTime.ToDateTimeOffset();
+        var endTime = exerciseRecord.EndTime.ToDateTimeOffset();
+        var activityType = ((ExerciseType)exerciseRecord.ExerciseType).ToActivityType();
         string? title = exerciseRecord.Title;
 
         double? avgHeartRate = null;
@@ -219,9 +225,11 @@ internal static class HealthRecordExtensions
     public static BodyFatDto? ToBodyFatDto(this Java.Lang.Object record)
     {
         if (record is not BodyFatRecord bodyFatRecord)
+        {
             return null;
+        }
 
-        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(bodyFatRecord.Time.ToEpochMilli());
+        var timestamp = bodyFatRecord.Time.ToDateTimeOffset();
         var percentage = bodyFatRecord.Percentage.ExtractPercentageValue();
 
         return new BodyFatDto
@@ -237,9 +245,11 @@ internal static class HealthRecordExtensions
     public static Vo2MaxDto? ToVo2MaxDto(this Java.Lang.Object record)
     {
         if (record is not Vo2MaxRecord vo2MaxRecord)
+        {
             return null;
+        }
 
-        var timestamp = DateTimeOffset.FromUnixTimeMilliseconds(vo2MaxRecord.Time.ToEpochMilli());
+        var timestamp = vo2MaxRecord.Time.ToDateTimeOffset();
         var value = vo2MaxRecord.ExtractVo2MaxValue();
 
         return new Vo2MaxDto
@@ -271,51 +281,6 @@ internal static class HealthRecordExtensions
     //        Unit = "mmHg"
     //    };
     //}
-
-    public static ActivityType ToActivityType(this int exerciseType)
-    {
-        return exerciseType switch
-        {
-            7 => ActivityType.Running,
-            8 => ActivityType.Cycling,
-            79 => ActivityType.Walking,
-            68 => ActivityType.Swimming,
-            36 => ActivityType.Hiking,
-            81 => ActivityType.Yoga,
-            28 => ActivityType.FunctionalStrengthTraining,
-            71 => ActivityType.TraditionalStrengthTraining,
-            25 => ActivityType.Elliptical,
-            61 => ActivityType.Rowing,
-            54 => ActivityType.Pilates,
-            19 => ActivityType.Dancing,
-            62 => ActivityType.Soccer,
-            9 => ActivityType.Basketball,
-            5 => ActivityType.Baseball,
-            73 => ActivityType.Tennis,
-            32 => ActivityType.Golf,
-            3 => ActivityType.Badminton,
-            72 => ActivityType.TableTennis,
-            78 => ActivityType.Volleyball,
-            18 => ActivityType.Cricket,
-            63 => ActivityType.Rugby,
-            1 => ActivityType.AmericanFootball,
-            64 => ActivityType.Skiing,
-            66 => ActivityType.Snowboarding,
-            40 => ActivityType.IceSkating,
-            67 => ActivityType.Surfing,
-            53 => ActivityType.Paddling,
-            65 => ActivityType.Sailing,
-            47 => ActivityType.MartialArts,
-            11 => ActivityType.Boxing,
-            82 => ActivityType.Wrestling,
-            59 => ActivityType.Climbing,
-            20 => ActivityType.CrossTraining,
-            70 => ActivityType.StairClimbing,
-            44 => ActivityType.JumpRope,
-            0 => ActivityType.Other,
-            _ => ActivityType.Unknown
-        };
-    }
 
     #region Value Extraction Helpers
 
@@ -622,7 +587,7 @@ internal static class HealthRecordExtensions
                 if (TryGetUnitConstant(unitName, out Java.Lang.Object? unitConstant))
                 {
                     inUnitMethod.Accessible = true;
-                    var result = inUnitMethod.Invoke(obj, unitConstant);
+                    var result = inUnitMethod.Invoke(obj, unitConstant!);
 
                     if (result is Java.Lang.Double javaDouble)
                     {
@@ -749,7 +714,9 @@ internal static class HealthRecordExtensions
         value = 0;
 
         if (string.IsNullOrEmpty(stringValue))
+        {
             return false;
+        }
 
         var numberPattern = @"(\d+\.?\d*)";
         var match = System.Text.RegularExpressions.Regex.Match(stringValue, numberPattern);

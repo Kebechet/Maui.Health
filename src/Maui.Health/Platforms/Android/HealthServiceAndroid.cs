@@ -2,7 +2,6 @@
 using AndroidX.Health.Connect.Client;
 using AndroidX.Health.Connect.Client.Request;
 using AndroidX.Health.Connect.Client.Time;
-using AndroidX.Health.Connect.Client.Units;
 using Kotlin.Jvm;
 using Java.Time;
 using AndroidX.Activity;
@@ -13,157 +12,24 @@ using AndroidX.Health.Connect.Client.Response;
 using Maui.Health.Platforms.Android.Callbacks;
 using Maui.Health.Models;
 using Maui.Health.Enums.Errors;
-using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Extensions;
 using Microsoft.Extensions.Logging;
-using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
-using WeightRecord = AndroidX.Health.Connect.Client.Records.WeightRecord;
-using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;
-using ActiveCaloriesBurnedRecord = AndroidX.Health.Connect.Client.Records.ActiveCaloriesBurnedRecord;
 using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
-using BodyFatRecord = AndroidX.Health.Connect.Client.Records.BodyFatRecord;
-using Vo2MaxRecord = AndroidX.Health.Connect.Client.Records.Vo2MaxRecord;
-using BloodPressureRecord = AndroidX.Health.Connect.Client.Records.BloodPressureRecord;
 
 namespace Maui.Health.Services;
 
 public partial class HealthService
 {
+    private const int _minimalApiVersionRequired = 26; // Android 8.0
+
     public partial bool IsSupported => IsSdkAvailable().IsSuccess;
 
     private Context _activityContext => Platform.CurrentActivity ??
         throw new Exception("Current activity is null");
 
     private IHealthConnectClient _healthConnectClient => HealthConnectClient.GetOrCreate(_activityContext);
-
-    public async partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
-        where TDto : HealthMetricBase
-    {
-        try
-        {
-            _logger.LogInformation("Android GetHealthDataAsync<{DtoName}>: StartTime: {StartTime}, EndTime: {EndTime}",
-                typeof(TDto).Name, timeRange.StartTime, timeRange.EndTime);
-
-            var sdkCheckResult = IsSdkAvailable();
-            if (!sdkCheckResult.IsSuccess)
-            {
-                return [];
-            }
-
-            // Request permission for the specific metric
-            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
-            if (requestPermissionResult.IsError)
-            {
-                return [];
-            }
-
-            var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
-            var recordClass = healthDataType.ToKotlinClass();
-
-            var timeRangeFilter = TimeRangeFilter.Between(
-                Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
-                Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
-            );
-
-            var request = new ReadRecordsRequest(
-                recordClass,
-                timeRangeFilter,
-                [],
-                true,
-                1000,
-                null
-            );
-
-            var response = await KotlinResolver.Process<ReadRecordsResponse, ReadRecordsRequest>(_healthConnectClient.ReadRecords, request);
-            if (response is null)
-            {
-                return [];
-            }
-
-            var results = new List<TDto>();
-            // Special handling for WorkoutDto to add heart rate data
-            for (int i = 0; i < response.Records.Count; i++)
-            {
-                var record = response.Records[i];
-                if (record is not Java.Lang.Object javaObject)
-                    continue;
-
-                TDto? dto;
-                // Special WorkoutDto handling
-                if (typeof(TDto) == typeof(WorkoutDto) && record is ExerciseSessionRecord exerciseRecord)
-                {
-                    dto = await exerciseRecord.ToWorkoutDtoAsync(QueryHeartRateRecordsAsync, cancellationToken) as TDto;
-                }
-                else
-                {
-                    dto = javaObject.ConvertToDto<TDto>();
-                }
-
-                if (dto is not null)
-                    results.Add(dto);
-            }
-
-            _logger.LogInformation("Found {Count} {DtoName} records", results.Count, typeof(TDto).Name);
-            return results;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching health data for {DtoName}", typeof(TDto).Name);
-            return [];
-        }
-    }
-
-    private async Task<HeartRateDto[]> QueryHeartRateRecordsAsync(HealthTimeRange timeRange, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var timeRangeFilter = TimeRangeFilter.Between(
-                Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
-                Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
-            );
-
-            var recordClass = JvmClassMappingKt.GetKotlinClass(Java.Lang.Class.FromType(typeof(HeartRateRecord)));
-
-            var request = new ReadRecordsRequest(
-                recordClass,
-                timeRangeFilter,
-                [],
-                true,
-                1000,
-                null
-            );
-
-            var response = await KotlinResolver.Process<ReadRecordsResponse, ReadRecordsRequest>(_healthConnectClient.ReadRecords, request);
-            if (response is null)
-            {
-                return [];
-            }
-
-            var results = new List<HeartRateDto>();
-            for (int i = 0; i < response.Records.Count; i++)
-            {
-                var record = response.Records[i];
-                if (record is Java.Lang.Object javaObject)
-                {
-                    var dto = javaObject.ToHeartRateDto();
-                    if (dto != null)
-                    {
-                        results.Add(dto);
-                    }
-                }
-            }
-
-            return results.ToArray();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error querying heart rate records");
-            return [];
-        }
-    }
 
     public async partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, CancellationToken cancellationToken)
     {
@@ -252,6 +118,137 @@ public partial class HealthService
         }
     }
 
+    public async partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        try
+        {
+            _logger.LogInformation("Android GetHealthDataAsync<{DtoName}>: StartTime: {StartTime}, EndTime: {EndTime}",
+                typeof(TDto).Name, timeRange.StartTime, timeRange.EndTime);
+
+            var sdkCheckResult = IsSdkAvailable();
+            if (!sdkCheckResult.IsSuccess)
+            {
+                return [];
+            }
+
+            // Request permission for the specific metric
+            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+            var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
+            if (requestPermissionResult.IsError)
+            {
+                return [];
+            }
+
+            var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
+            var recordClass = healthDataType.ToKotlinClass();
+
+#pragma warning disable CA1416
+            var timeRangeFilter = TimeRangeFilter.Between(
+                Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
+                Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
+            );
+#pragma warning restore CA1416
+
+            var request = new ReadRecordsRequest(
+                recordClass,
+                timeRangeFilter,
+                [],
+                true,
+                1000,
+                null
+            );
+
+            var response = await KotlinResolver.Process<ReadRecordsResponse, ReadRecordsRequest>(_healthConnectClient.ReadRecords, request);
+            if (response is null)
+            {
+                return [];
+            }
+
+            var results = new List<TDto>();
+            // Special handling for WorkoutDto to add heart rate data
+            for (int i = 0; i < response.Records.Count; i++)
+            {
+                var record = response.Records[i];
+                if (record is not Java.Lang.Object javaObject)
+                    continue;
+
+                TDto? dto;
+                // Special WorkoutDto handling
+                if (typeof(TDto) == typeof(WorkoutDto) && record is ExerciseSessionRecord exerciseRecord)
+                {
+                    dto = await exerciseRecord.ToWorkoutDtoAsync(QueryHeartRateRecordsAsync, cancellationToken) as TDto;
+                }
+                else
+                {
+                    dto = javaObject.ConvertToDto<TDto>();
+                }
+
+                if (dto is not null)
+                    results.Add(dto);
+            }
+
+            _logger.LogInformation("Found {Count} {DtoName} records", results.Count, typeof(TDto).Name);
+            return results;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching health data for {DtoName}", typeof(TDto).Name);
+            return [];
+        }
+    }
+
+    private async Task<HeartRateDto[]> QueryHeartRateRecordsAsync(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    {
+        try
+        {
+#pragma warning disable CA1416
+            var timeRangeFilter = TimeRangeFilter.Between(
+                Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
+                Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
+            );
+#pragma warning restore CA1416
+
+            var recordClass = JvmClassMappingKt.GetKotlinClass(Java.Lang.Class.FromType(typeof(HeartRateRecord)));
+
+            var request = new ReadRecordsRequest(
+                recordClass,
+                timeRangeFilter,
+                [],
+                true,
+                1000,
+                null
+            );
+
+            var response = await KotlinResolver.Process<ReadRecordsResponse, ReadRecordsRequest>(_healthConnectClient.ReadRecords, request);
+            if (response is null)
+            {
+                return [];
+            }
+
+            var results = new List<HeartRateDto>();
+            for (int i = 0; i < response.Records.Count; i++)
+            {
+                var record = response.Records[i];
+                if (record is Java.Lang.Object javaObject)
+                {
+                    var dto = javaObject.ToHeartRateDto();
+                    if (dto != null)
+                    {
+                        results.Add(dto);
+                    }
+                }
+            }
+
+            return results.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error querying heart rate records");
+            return [];
+        }
+    }
+
     private Result<SdkCheckError> IsSdkAvailable()
     {
         try
@@ -288,7 +285,7 @@ public partial class HealthService
             //The Health Connect SDK supports Android 8(API level 26) or higher, while the Health Connect app is only compatible with Android 9(API level 28) or higher.
             //This means that third-party apps can support users with Android 8, but only users with Android 9 or higher can use Health Connect.
             //https://developer.android.com/health-and-fitness/guides/health-connect/develop/get-started#:~:text=the%20latest%20version.-,Note,-%3A%20The%20Health
-            if (!OperatingSystem.IsAndroidVersionAtLeast(26))
+            if (!OperatingSystem.IsAndroidVersionAtLeast(_minimalApiVersionRequired))
             {
                 return new()
                 {

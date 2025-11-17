@@ -10,7 +10,7 @@ internal static class ISetExtensions
     {
         if (javaSet is null)
         {
-            return new List<T?>();
+            return [];
         }
 
         var listOfStrings = new List<T?>();

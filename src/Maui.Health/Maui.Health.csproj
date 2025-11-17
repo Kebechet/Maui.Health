@@ -49,7 +49,7 @@
 
     <!--underlying libraries have different versions than MAUI itself-->
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core" VersionOverride="2.8.7.3" NoWarn="NU1608" />
-    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" VersionOverride="2.8.7.3" NoWarn="NU1608"/>
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" VersionOverride="2.8.7.3" NoWarn="NU1608" />
 	</ItemGroup>
 
 

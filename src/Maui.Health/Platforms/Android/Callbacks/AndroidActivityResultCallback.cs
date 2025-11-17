@@ -3,7 +3,7 @@ using AndroidX.Activity.Result;
 
 namespace Maui.Health.Platforms.Android.Callbacks;
 
-internal class AndroidActivityResultCallback<TResult> : ResultOnlyCallbackBase<TResult>, IActivityResultCallback
+internal sealed class AndroidActivityResultCallback<TResult> : ResultOnlyCallbackBase<TResult>, IActivityResultCallback
     where TResult : IJavaObject?
 {
     public AndroidActivityResultCallback(CancellationToken cancellationToken) : base(cancellationToken)

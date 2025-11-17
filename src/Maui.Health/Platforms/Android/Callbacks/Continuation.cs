@@ -23,7 +23,7 @@ internal class Continuation : Java.Lang.Object, IContinuation
         if (exceptionField != null)
         {
             var exception = exceptionField.Get(result).JavaCast<Throwable>();
-            _taskCompletionSource.TrySetException(new System.Exception(exception.Message));
+            _taskCompletionSource.TrySetException(new System.Exception(exception?.Message));
             return;
         }
         else
