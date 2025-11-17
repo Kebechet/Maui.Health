@@ -13,7 +13,7 @@ internal static class HealthDataTypeExtensions
             HealthDataType.BasalBodyTemperature => HKQuantityTypeIdentifier.BasalBodyTemperature,
             HealthDataType.BasalMetabolicRate => HKQuantityTypeIdentifier.BasalEnergyBurned,
             HealthDataType.BloodGlucose => HKQuantityTypeIdentifier.BloodGlucose,
-            //HealthDataType.BloodPressure => HKQuantityTypeIdentifier.pres, //-it is split to 2 types: diastolic, systolic
+            //HealthDataType.BloodPressure => HKQuantityTypeIdentifier.BloodPressureSystolic, // Also need Diastolic - handled separately
             HealthDataType.BodyFat => HKQuantityTypeIdentifier.BodyFatPercentage,
             HealthDataType.BodyTemperature => HKQuantityTypeIdentifier.BodyTemperature,
             //HealthDataType.BodyWaterMass => HKQuantityTypeIdentifier.wate,//not on iOS
