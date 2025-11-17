@@ -36,8 +36,8 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>1.0.0-preview4</Version>
-    <PackageReleaseNotes>Fixed mac build</PackageReleaseNotes>
+    <Version>2.0.0-preview1</Version>
+    <PackageReleaseNotes>Extended support for new health metrics and complete refactor</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
