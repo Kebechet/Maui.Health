@@ -96,4 +96,6 @@ internal static class HKWorkoutActivityTypeExtensions
             _ => ActivityType.Unknown
         };
     }
+
+
 }

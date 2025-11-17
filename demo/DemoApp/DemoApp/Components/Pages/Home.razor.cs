@@ -204,7 +204,6 @@ public partial class Home
 
     private async Task CreateIOSStrengthTraining()
     {
-
         var today = DateTime.Today;
         var now = DateTime.Now;
         var localOffset = DateTimeOffset.Now.Offset;
