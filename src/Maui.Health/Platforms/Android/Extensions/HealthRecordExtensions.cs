@@ -599,25 +599,27 @@ internal static class HealthRecordExtensions
                 m.Name.Equals("InUnit", StringComparison.OrdinalIgnoreCase) ||
                 m.Name.Equals("inUnit", StringComparison.OrdinalIgnoreCase));
 
-            if (inUnitMethod != null)
+            if(inUnitMethod is null)
             {
-                Debug.WriteLine($"Found InUnit method: {inUnitMethod.Name}");
+                return false;
+            }
 
-                if (TryGetUnitConstant(unitName, out Java.Lang.Object? unitConstant))
+            Debug.WriteLine($"Found InUnit method: {inUnitMethod.Name}");
+
+            if (TryGetUnitConstant(unitName, out Java.Lang.Object? unitConstant))
+            {
+                inUnitMethod.Accessible = true;
+                var result = inUnitMethod.Invoke(obj, unitConstant!);
+
+                if (result is Java.Lang.Double javaDouble)
                 {
-                    inUnitMethod.Accessible = true;
-                    var result = inUnitMethod.Invoke(obj, unitConstant!);
-
-                    if (result is Java.Lang.Double javaDouble)
-                    {
-                        value = javaDouble.DoubleValue();
-                        return true;
-                    }
-                    if (result is Java.Lang.Float javaFloat)
-                    {
-                        value = javaFloat.DoubleValue();
-                        return true;
-                    }
+                    value = javaDouble.DoubleValue();
+                    return true;
+                }
+                if (result is Java.Lang.Float javaFloat)
+                {
+                    value = javaFloat.DoubleValue();
+                    return true;
                 }
             }
         }
@@ -625,6 +627,7 @@ internal static class HealthRecordExtensions
         {
             Debug.WriteLine($"Error trying official Units API: {ex.Message}");
         }
+
         return false;
     }
 

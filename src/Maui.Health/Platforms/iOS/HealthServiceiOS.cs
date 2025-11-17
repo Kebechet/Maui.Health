@@ -7,6 +7,8 @@ using Maui.Health.Models.Metrics;
 using Maui.Health.Extensions;
 using Maui.Health.Platforms.iOS.Extensions;
 using Microsoft.Extensions.Logging;
+using Maui.Health.Platforms.iOS.Enums;
+using Microsoft.Maui.Platform;
 
 namespace Maui.Health.Services;
 
@@ -149,8 +151,8 @@ public partial class HealthService
             var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier())!;
 
             var predicate = HKQuery.GetPredicateForSamples(
-                (NSDate)timeRange.StartDateTime,
-                (NSDate)timeRange.EndDateTime,
+                timeRange.StartTime.ToNSDate(),
+                timeRange.EndTime.ToNSDate(),
                 HKQueryOptions.StrictStartDate
             );
 
@@ -207,8 +209,8 @@ public partial class HealthService
         where TDto : HealthMetricBase
     {
         var predicate = HKQuery.GetPredicateForSamples(
-            (NSDate)timeRange.StartDateTime,
-            (NSDate)timeRange.EndDateTime,
+            timeRange.StartDateTime.ToNSDate(),
+            timeRange.EndDateTime.ToNSDate(),
             HKQueryOptions.StrictStartDate
         );
 

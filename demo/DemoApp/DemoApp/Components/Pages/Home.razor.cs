@@ -204,6 +204,21 @@ public partial class Home
 
     private async Task CreateIOSStrengthTraining()
     {
+
+        var today = DateTime.Today;
+        var now = DateTime.Now;
+        var localOffset = DateTimeOffset.Now.Offset;
+        // Write Weight data
+        var weightData = new WeightDto
+        {
+            Id = "",
+            DataOrigin = "DemoApp",
+            Value = 75.5,
+            Timestamp = new DateTimeOffset(today.AddHours(7), localOffset),
+            Unit = "kg"
+        };
+        await _healthService.WriteHealthDataAsync(weightData);
+
         try
         {
             _iosStrengthTrainingMessage = "Creating strength training workout...";
@@ -224,9 +239,6 @@ public partial class Home
                 StateHasChanged();
                 return;
             }
-
-            var now = DateTime.Now;
-            var localOffset = DateTimeOffset.Now.Offset;
             var workoutStart = now.AddHours(-1); // 1 hour ago
             var workoutEnd = now; // Now
 
