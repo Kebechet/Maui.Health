@@ -17,6 +17,7 @@ using Maui.Health.Extensions;
 using Microsoft.Extensions.Logging;
 using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
+using Maui.Health.Enums;
 
 namespace Maui.Health.Services;
 
@@ -118,7 +119,7 @@ public partial class HealthService
         }
     }
 
-    public async partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public async partial Task<TDto[]> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         try
@@ -189,7 +190,7 @@ public partial class HealthService
             }
 
             _logger.LogInformation("Found {Count} {DtoName} records", results.Count, typeof(TDto).Name);
-            return results;
+            return results.ToArray();
         }
         catch (Exception ex)
         {
@@ -249,6 +250,93 @@ public partial class HealthService
         }
     }
 
+    public async partial Task<bool> WriteHealthDataAsync<TDto>(TDto data, CancellationToken cancellationToken) where TDto : HealthMetricBase
+    {
+        try
+        {
+            var sdkCheckResult = IsSdkAvailable();
+            if (!sdkCheckResult.IsSuccess)
+            {
+                return false;
+            }
+
+            // Request write permission for the specific metric
+            var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+            var writePermission = new HealthPermissionDto
+            {
+                HealthDataType = readPermission.HealthDataType,
+                PermissionType = PermissionType.Write
+            };
+            var requestPermissionResult = await RequestPermissions([writePermission], false, cancellationToken);
+            if (requestPermissionResult.IsError)
+            {
+                return false;
+            }
+
+            var record = data.ToAndroidRecord();
+            if (record == null)
+            {
+                _logger.LogWarning("Failed to convert {DtoName} to Android record", typeof(TDto).Name);
+                return false;
+            }
+
+            // Create a Java ArrayList with the record
+            var recordsList = new Java.Util.ArrayList();
+            recordsList.Add(record);
+
+            // Call InsertRecords - it's a suspend function
+            // Use reflection to get the Java class from the interface implementation
+            var clientType = _healthConnectClient.GetType();
+            var handleField = clientType.GetField("handle", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            if (handleField != null)
+            {
+                var handle = handleField.GetValue(_healthConnectClient);
+                if (handle is IntPtr jniHandle && jniHandle != IntPtr.Zero)
+                {
+                    // Get the Java class
+                    var classHandle = Android.Runtime.JNIEnv.GetObjectClass(jniHandle);
+                    var clientClass = Java.Lang.Object.GetObject<Java.Lang.Class>(classHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
+
+                    // Get the client as a Java.Lang.Object for method invocation
+                    var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(jniHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
+
+                    var insertMethod = clientClass?.GetDeclaredMethod("insertRecords",
+                        Java.Lang.Class.FromType(typeof(Java.Util.IList)),
+                        Java.Lang.Class.FromType(typeof(Kotlin.Coroutines.IContinuation)));
+
+                    if (insertMethod != null && clientObject != null)
+                    {
+                        var taskCompletionSource = new TaskCompletionSource<Java.Lang.Object>();
+                        var continuation = new Continuation(taskCompletionSource, default);
+
+                        insertMethod.Accessible = true;
+                        var result = insertMethod.Invoke(clientObject, recordsList, continuation);
+
+                        if (result is Java.Lang.Enum javaEnum)
+                        {
+                            var currentState = Enum.Parse<CoroutineState>(javaEnum.ToString());
+                            if (currentState == CoroutineState.COROUTINE_SUSPENDED)
+                            {
+                                await taskCompletionSource.Task;
+                            }
+                        }
+
+                        _logger.LogInformation("Successfully wrote {DtoName} record", typeof(TDto).Name);
+                        return true;
+                    }
+                }
+            }
+
+            _logger.LogWarning("Could not find InsertRecords method via reflection");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error writing health data for {DtoName}", typeof(TDto).Name);
+            return false;
+        }
+    }
     private Result<SdkCheckError> IsSdkAvailable()
     {
         try

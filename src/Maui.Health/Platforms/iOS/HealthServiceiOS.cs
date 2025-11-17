@@ -111,7 +111,7 @@ public partial class HealthService
         return new();
     }
 
-    public async partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public async partial Task<TDto[]> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (!IsSupported)
@@ -194,7 +194,7 @@ public partial class HealthService
             store.ExecuteQuery(query);
             var results = await tcs.Task;
             _logger.LogInformation("Found {Count} {DtoName} records", results.Length, typeof(TDto).Name);
-            return results.ToList();
+            return results;
         }
         catch (Exception ex)
         {
@@ -203,7 +203,7 @@ public partial class HealthService
         }
     }
 
-    private async Task<List<TDto>> GetWorkoutsAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    private async Task<TDto[]> GetWorkoutsAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         var predicate = HKQuery.GetPredicateForSamples(
@@ -254,7 +254,7 @@ public partial class HealthService
             }
         }
 
-        return dtos;
+        return dtos.ToArray();
     }
 
     private async Task<HeartRateDto[]> QueryHeartRateSamplesAsync(HealthTimeRange timeRange, CancellationToken cancellationToken)
@@ -301,4 +301,66 @@ public partial class HealthService
         store.ExecuteQuery(query);
         return await tcs.Task;
     }
+
+    public async partial Task<bool> WriteHealthDataAsync<TDto>(TDto data, CancellationToken cancellationToken) where TDto : HealthMetricBase
+    {
+        if (!IsSupported)
+        {
+            return false;
+        }
+
+        try
+        {
+            _logger.LogInformation("iOS WriteHealthDataAsync<{DtoName}>", typeof(TDto).Name);
+
+            // Request write permission for the specific metric
+            var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+            var writePermission = new HealthPermissionDto
+            {
+                HealthDataType = readPermission.HealthDataType,
+                PermissionType = PermissionType.Write
+            };
+            var permissionResult = await RequestPermissions([writePermission], cancellationToken: cancellationToken);
+            if (!permissionResult.IsSuccess)
+            {
+                _logger.LogWarning("iOS Write: Permission denied for {DtoName}", typeof(TDto).Name);
+                return false;
+            }
+
+            // Convert DTO to HKObject (HKQuantitySample or HKWorkout)
+            HKObject? sample = data.ToHKObject();
+            if (sample == null)
+            {
+                _logger.LogWarning("iOS Write: Failed to convert {DtoName} to HKObject", typeof(TDto).Name);
+                return false;
+            }
+
+            // Save to HealthKit
+            using var healthStore = new HKHealthStore();
+            var tcs = new TaskCompletionSource<bool>();
+
+            healthStore.SaveObject(sample, (success, error) =>
+            {
+                if (error != null)
+                {
+                    _logger.LogError("iOS Write Error: {Error}", error.LocalizedDescription);
+                    tcs.TrySetResult(false);
+                }
+                else
+                {
+                    _logger.LogInformation("iOS Write: Successfully wrote {DtoName}", typeof(TDto).Name);
+                    tcs.TrySetResult(success);
+                }
+            });
+
+            using var ct = cancellationToken.Register(() => tcs.TrySetCanceled());
+            return await tcs.Task;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "iOS Write Exception for {DtoName}", typeof(TDto).Name);
+            return false;
+        }
+    }
+
 }

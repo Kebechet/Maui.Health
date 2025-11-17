@@ -1,5 +1,11 @@
+using Android.Runtime;
 using AndroidX.Health.Connect.Client.Records;
+using AndroidX.Health.Connect.Client.Records.Metadata;
+using AndroidX.Health.Connect.Client.Units;
+using Java.Time;
+using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
+using Maui.Health.Platforms.Android.Enums;
 using System.Diagnostics;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
 using WeightRecord = AndroidX.Health.Connect.Client.Records.WeightRecord;
@@ -7,7 +13,6 @@ using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;
 using ActiveCaloriesBurnedRecord = AndroidX.Health.Connect.Client.Records.ActiveCaloriesBurnedRecord;
 using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
-using Maui.Health.Platforms.Android.Enums;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
@@ -297,37 +302,44 @@ internal static class HealthRecordExtensions
                 return officialValue;
             }
 
-            if (mass.TryGetPropertyValue("value", out double value1))
+            if (mass.TryGetPropertyValue("inKilograms", out double value1))
             {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
+                Debug.WriteLine($"Found value via 'inKilograms' property: {value1}");
                 return value1;
             }
 
-            if (mass.TryGetPropertyValue("inKilograms", out double value2))
+            if (mass.TryCallMethod("inKilograms", out double value2))
             {
-                Debug.WriteLine($"Found value via 'inKilograms' property: {value2}");
+                Debug.WriteLine($"Found value via 'inKilograms()' method: {value2}");
                 return value2;
             }
 
-            if (mass.TryCallMethod("inKilograms", out double value3))
+            if (mass.TryCallMethod("getInKilograms", out double value3))
             {
-                Debug.WriteLine($"Found value via 'inKilograms()' method: {value3}");
+                Debug.WriteLine($"Found value via 'getInKilograms()' method: {value3}");
                 return value3;
             }
 
-            if (mass.TryCallMethod("getValue", out double value4))
+            // Try generic accessors last - these might return base units (grams)
+            if (mass.TryGetPropertyValue("value", out double value4))
             {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
-                return value4;
+                Debug.WriteLine($"Found value via 'value' property (possibly grams, dividing by 1000): {value4}");
+                return value4 / 1000.0; // Assume grams, convert to kg
+            }
+
+            if (mass.TryCallMethod("getValue", out double value5))
+            {
+                Debug.WriteLine($"Found value via 'getValue()' method (possibly grams, dividing by 1000): {value5}");
+                return value5 / 1000.0; // Assume grams, convert to kg
             }
 
             var stringValue = mass.ToString();
             Debug.WriteLine($"Mass toString(): {stringValue}");
 
-            if (stringValue.TryParseFromString(out double value5))
+            if (stringValue.TryParseFromString(out double value6))
             {
-                Debug.WriteLine($"Found value via string parsing: {value5}");
-                return value5;
+                Debug.WriteLine($"Found value via string parsing (possibly grams, dividing by 1000): {value6}");
+                return value6 / 1000.0; // Assume grams, convert to kg
             }
 
             Debug.WriteLine("All approaches failed for Mass extraction");
@@ -409,37 +421,44 @@ internal static class HealthRecordExtensions
                 return officialValue;
             }
 
-            if (energy.TryGetPropertyValue("value", out double value1))
+            if (energy.TryGetPropertyValue("inKilocalories", out double value1))
             {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
+                Debug.WriteLine($"Found value via 'inKilocalories' property: {value1}");
                 return value1;
             }
 
-            if (energy.TryGetPropertyValue("inKilocalories", out double value2))
+            if (energy.TryCallMethod("inKilocalories", out double value2))
             {
-                Debug.WriteLine($"Found value via 'inKilocalories' property: {value2}");
+                Debug.WriteLine($"Found value via 'inKilocalories()' method: {value2}");
                 return value2;
             }
 
-            if (energy.TryCallMethod("inKilocalories", out double value3))
+            if (energy.TryCallMethod("getInKilocalories", out double value3))
             {
-                Debug.WriteLine($"Found value via 'inKilocalories()' method: {value3}");
+                Debug.WriteLine($"Found value via 'getInKilocalories()' method: {value3}");
                 return value3;
             }
 
-            if (energy.TryCallMethod("getValue", out double value4))
+            // Try generic accessors last - these might return base units (calories)
+            if (energy.TryGetPropertyValue("value", out double value4))
             {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
-                return value4;
+                Debug.WriteLine($"Found value via 'value' property (possibly calories, dividing by 1000): {value4}");
+                return value4 / 1000.0; // Assume calories, convert to kcal
+            }
+
+            if (energy.TryCallMethod("getValue", out double value5))
+            {
+                Debug.WriteLine($"Found value via 'getValue()' method (possibly calories, dividing by 1000): {value5}");
+                return value5 / 1000.0; // Assume calories, convert to kcal
             }
 
             var stringValue = energy.ToString();
             Debug.WriteLine($"Energy toString(): {stringValue}");
 
-            if (stringValue.TryParseFromString(out double value5))
+            if (stringValue.TryParseFromString(out double value6))
             {
-                Debug.WriteLine($"Found value via string parsing: {value5}");
-                return value5;
+                Debug.WriteLine($"Found value via string parsing (possibly calories, dividing by 1000): {value6}");
+                return value6 / 1000.0; // Assume calories, convert to kcal
             }
 
             Debug.WriteLine("All approaches failed for Energy extraction");
@@ -615,7 +634,9 @@ internal static class HealthRecordExtensions
         try
         {
             var unitsNamespace = "AndroidX.Health.Connect.Client.Units";
-            var className = unitName.Contains("KILOGRAM") ? "Mass" : "Length";
+            var className = unitName.Contains("KILOGRAM") ? "Mass"
+                : unitName.Contains("KILOCALORIE") || unitName.Contains("CALORIE") ? "Energy"
+                : "Length";
             var fullClassName = $"{unitsNamespace}.{className}";
 
             var unitClass = Java.Lang.Class.ForName(fullClassName);
@@ -727,6 +748,234 @@ internal static class HealthRecordExtensions
         }
 
         return false;
+    }
+
+    #endregion
+
+    #region Write Methods
+
+    public static Java.Lang.Object? ToAndroidRecord(this HealthMetricBase dto)
+    {
+        return dto switch
+        {
+            StepsDto stepsDto => stepsDto.ToStepsRecord(),
+            WeightDto weightDto => weightDto.ToWeightRecord(),
+            HeightDto heightDto => heightDto.ToHeightRecord(),
+            ActiveCaloriesBurnedDto caloriesDto => caloriesDto.ToActiveCaloriesBurnedRecord(),
+            HeartRateDto heartRateDto => heartRateDto.ToHeartRateRecord(),
+            WorkoutDto workoutDto => workoutDto.ToExerciseSessionRecord(),
+            _ => null
+        };
+    }
+
+    public static StepsRecord ToStepsRecord(this StepsDto dto)
+    {
+#pragma warning disable CA1416
+        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+#pragma warning restore CA1416
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        var record = new StepsRecord(
+            startTime!,
+            offset,
+            endTime!,
+            offset,
+            dto.Count,
+            metadata
+        );
+
+        return record;
+    }
+
+    public static WeightRecord ToWeightRecord(this WeightDto dto)
+    {
+#pragma warning disable CA1416
+        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+#pragma warning restore CA1416
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        // Create Mass from kilograms using Companion factory method via reflection
+        var massClass = Java.Lang.Class.ForName("androidx.health.connect.client.units.Mass");
+        var companionField = massClass!.GetDeclaredField("Companion");
+        companionField!.Accessible = true;
+        var companion = companionField.Get(null);
+
+        var kilogramsMethod = companion!.Class!.GetDeclaredMethod("kilograms", Java.Lang.Double.Type);
+        kilogramsMethod!.Accessible = true;
+        var massObj = kilogramsMethod.Invoke(companion, new Java.Lang.Double(dto.Value));
+        var mass = Java.Lang.Object.GetObject<Mass>(massObj!.Handle, JniHandleOwnership.DoNotTransfer);
+
+        var record = new WeightRecord(
+            time!,
+            offset,
+            mass!,
+            metadata
+        );
+
+        return record;
+    }
+
+    public static HeightRecord ToHeightRecord(this HeightDto dto)
+    {
+#pragma warning disable CA1416
+        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+#pragma warning restore CA1416
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        // Create Length from meters using Companion factory method via reflection
+        var lengthClass = Java.Lang.Class.ForName("androidx.health.connect.client.units.Length");
+        var companionField = lengthClass!.GetDeclaredField("Companion");
+        companionField!.Accessible = true;
+        var companion = companionField.Get(null);
+
+        var metersMethod = companion!.Class!.GetDeclaredMethod("meters", Java.Lang.Double.Type);
+        metersMethod!.Accessible = true;
+        var lengthObj = metersMethod.Invoke(companion, new Java.Lang.Double(dto.Value / 100.0)); // Convert cm to meters
+        var length = Java.Lang.Object.GetObject<Length>(lengthObj!.Handle, JniHandleOwnership.DoNotTransfer);
+
+        var record = new HeightRecord(
+            time!,
+            offset,
+            length!,
+            metadata
+        );
+
+        return record;
+    }
+
+    public static ActiveCaloriesBurnedRecord ToActiveCaloriesBurnedRecord(this ActiveCaloriesBurnedDto dto)
+    {
+#pragma warning disable CA1416
+        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+#pragma warning restore CA1416
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        // Create Energy from kilocalories using Companion factory method via reflection
+        var energyClass = Java.Lang.Class.ForName("androidx.health.connect.client.units.Energy");
+        var companionField = energyClass!.GetDeclaredField("Companion");
+        companionField!.Accessible = true;
+        var companion = companionField.Get(null);
+
+        var kilocaloriesMethod = companion!.Class!.GetDeclaredMethod("kilocalories", Java.Lang.Double.Type);
+        kilocaloriesMethod!.Accessible = true;
+        var energyObj = kilocaloriesMethod.Invoke(companion, new Java.Lang.Double(dto.Energy));
+        var energy = Java.Lang.Object.GetObject<Energy>(energyObj!.Handle, JniHandleOwnership.DoNotTransfer);
+
+        var record = new ActiveCaloriesBurnedRecord(
+            startTime!,
+            offset,
+            endTime!,
+            offset,
+            energy!,
+            metadata
+        );
+
+        return record;
+    }
+
+    public static HeartRateRecord ToHeartRateRecord(this HeartRateDto dto)
+    {
+#pragma warning disable CA1416
+        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+#pragma warning restore CA1416
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        var sample = new HeartRateRecord.Sample(time!, (long)dto.BeatsPerMinute);
+        var samplesList = new List<HeartRateRecord.Sample> { sample };
+
+        var record = new HeartRateRecord(
+            time!,
+            offset,
+            time!,
+            offset,
+            samplesList,
+            metadata
+        );
+
+        return record;
+    }
+
+    public static ExerciseSessionRecord ToExerciseSessionRecord(this WorkoutDto dto)
+    {
+#pragma warning disable CA1416
+        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+#pragma warning restore CA1416
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        var exerciseType = dto.ActivityType.ToAndroidExerciseType();
+
+        var record = new ExerciseSessionRecord(
+            startTime!,
+            offset,
+            endTime!,
+            offset,
+            exerciseType,
+            !string.IsNullOrEmpty(dto.Title) ? dto.Title : null,
+            null,
+            metadata
+        );
+
+        return record;
+    }
+
+    public static int ToAndroidExerciseType(this ActivityType activityType)
+    {
+        return activityType switch
+        {
+            ActivityType.Running => 7,
+            ActivityType.Cycling => 8,
+            ActivityType.Walking => 79,
+            ActivityType.Swimming => 68,
+            ActivityType.Hiking => 36,
+            ActivityType.Yoga => 81,
+            ActivityType.Calisthenics => 28,
+            ActivityType.StrengthTraining => 71,
+            ActivityType.Elliptical => 25,
+            ActivityType.Rowing => 61,
+            ActivityType.Pilates => 54,
+            ActivityType.Dance => 19,
+            ActivityType.Soccer => 62,
+            ActivityType.Basketball => 9,
+            ActivityType.Baseball => 5,
+            ActivityType.Tennis => 73,
+            ActivityType.Golf => 32,
+            ActivityType.Badminton => 3,
+            ActivityType.TableTennis => 72,
+            ActivityType.Volleyball => 78,
+            ActivityType.Cricket => 18,
+            ActivityType.Rugby => 63,
+            ActivityType.AmericanFootball => 1,
+            ActivityType.Skiing => 64,
+            ActivityType.Snowboarding => 66,
+            ActivityType.SkatingSports => 40,
+            ActivityType.SurfingSports => 67,
+            ActivityType.PaddleSports => 53,
+            ActivityType.Sailing => 65,
+            ActivityType.MartialArts => 47,
+            ActivityType.Boxing => 11,
+            ActivityType.Wrestling => 82,
+            ActivityType.Climbing => 59,
+            ActivityType.CrossTraining => 20,
+            ActivityType.StairClimbing => 70,
+            ActivityType.JumpRope => 44,
+            ActivityType.Unknown => 0,
+            _ => 0
+        };
     }
 
     #endregion
