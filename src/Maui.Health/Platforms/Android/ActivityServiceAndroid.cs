@@ -92,38 +92,12 @@ public partial class ActivityService
         {
             // Return from memory if available
             if (_activeWorkoutDto is not null)
-            {
                 return Task.FromResult(_activeWorkoutDto);
-            }
 
             // Try to reconstruct from preferences (for app restarts)
-            var activeSessionId = Preferences.Default.Get(SessionPreferenceKeys.ActiveSessionId, string.Empty);
-            if (string.IsNullOrEmpty(activeSessionId))
-            {
-                return Task.FromResult<WorkoutDto>(null!);
-            }
+            _activeWorkoutDto = LoadActiveWorkoutFromPreferences();
 
-            var activityTypeStr = Preferences.Default.Get(SessionPreferenceKeys.ActivityType, string.Empty);
-            var title = Preferences.Default.Get(SessionPreferenceKeys.Title, string.Empty);
-            var startTimeMs = Preferences.Default.Get(SessionPreferenceKeys.StartTime, 0L);
-            var dataOrigin = Preferences.Default.Get(SessionPreferenceKeys.DataOrigin, string.Empty);
-
-            if (Enum.TryParse<ActivityType>(activityTypeStr, out var activityType) && startTimeMs > 0)
-            {
-                _activeWorkoutDto = new WorkoutDto
-                {
-                    Id = activeSessionId,
-                    DataOrigin = dataOrigin,
-                    ActivityType = activityType,
-                    Title = string.IsNullOrEmpty(title) ? null : title,
-                    StartTime = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs),
-                    EndTime = null, // Active session - no end time yet
-                    Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs)
-                };
-                return Task.FromResult(_activeWorkoutDto);
-            }
-
-            return Task.FromResult<WorkoutDto>(null!);
+            return Task.FromResult(_activeWorkoutDto!);
         }
         catch (Exception ex)
         {
@@ -344,11 +318,7 @@ public partial class ActivityService
             _activeSession = null; // Mark as active but not yet persisted
 
             // Persist to Preferences so session survives app restart
-            Preferences.Default.Set(SessionPreferenceKeys.ActiveSessionId, workoutDto.Id);
-            Preferences.Default.Set(SessionPreferenceKeys.ActivityType, workoutDto.ActivityType.ToString());
-            Preferences.Default.Set(SessionPreferenceKeys.Title, workoutDto.Title ?? "");
-            Preferences.Default.Set(SessionPreferenceKeys.StartTime, workoutDto.StartTime.ToUnixTimeMilliseconds());
-            Preferences.Default.Set(SessionPreferenceKeys.DataOrigin, workoutDto.DataOrigin);
+            SaveActiveWorkoutToPreferences(workoutDto);
 
             return Task.CompletedTask;
         }
@@ -406,44 +376,5 @@ public partial class ActivityService
             // Always clear preferences even if there was an error
             ClearSessionPreferences();
         }
-    }
-
-    private WorkoutDto? LoadActiveWorkoutFromPreferences()
-    {
-        var activeSessionId = Preferences.Default.Get(SessionPreferenceKeys.ActiveSessionId, string.Empty);
-        if (string.IsNullOrEmpty(activeSessionId))
-        {
-            return null;
-        }
-
-        var activityTypeStr = Preferences.Default.Get(SessionPreferenceKeys.ActivityType, string.Empty);
-        var title = Preferences.Default.Get(SessionPreferenceKeys.Title, string.Empty);
-        var startTimeMs = Preferences.Default.Get(SessionPreferenceKeys.StartTime, 0L);
-        var dataOrigin = Preferences.Default.Get(SessionPreferenceKeys.DataOrigin, string.Empty);
-
-        if (!Enum.TryParse<ActivityType>(activityTypeStr, out var activityType) || startTimeMs <= 0)
-        {
-            return null;
-        }
-
-        return new WorkoutDto
-        {
-            Id = activeSessionId,
-            DataOrigin = dataOrigin,
-            ActivityType = activityType,
-            Title = string.IsNullOrEmpty(title) ? null : title,
-            StartTime = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs),
-            EndTime = null,
-            Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs)
-        };
-    }
-
-    private void ClearSessionPreferences()
-    {
-        Preferences.Default.Remove(SessionPreferenceKeys.ActiveSessionId);
-        Preferences.Default.Remove(SessionPreferenceKeys.ActivityType);
-        Preferences.Default.Remove(SessionPreferenceKeys.Title);
-        Preferences.Default.Remove(SessionPreferenceKeys.StartTime);
-        Preferences.Default.Remove(SessionPreferenceKeys.DataOrigin);
     }
 }

@@ -1,7 +1,6 @@
 using Foundation;
 using HealthKit;
 using Maui.Health.Constants;
-using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.iOS.Extensions;
 using Microsoft.Extensions.Logging;
@@ -92,36 +91,12 @@ public partial class ActivityService
         {
             // Return from memory if available
             if (_activeWorkoutDto is not null)
-            {
                 return Task.FromResult(_activeWorkoutDto);
-            }
 
             // Try to reconstruct from preferences (for app restarts)
-            var activeSessionId = Preferences.Default.Get(SessionPreferenceKeys.ActiveSessionId, string.Empty);
-            if (!string.IsNullOrEmpty(activeSessionId))
-            {
-                var activityTypeStr = Preferences.Default.Get(SessionPreferenceKeys.ActivityType, string.Empty);
-                var title = Preferences.Default.Get(SessionPreferenceKeys.Title, string.Empty);
-                var startTimeMs = Preferences.Default.Get(SessionPreferenceKeys.StartTime, 0L);
-                var dataOrigin = Preferences.Default.Get(SessionPreferenceKeys.DataOrigin, string.Empty);
+            _activeWorkoutDto = LoadActiveWorkoutFromPreferences();
 
-                if (Enum.TryParse<ActivityType>(activityTypeStr, out var activityType) && startTimeMs > 0)
-                {
-                    _activeWorkoutDto = new WorkoutDto
-                    {
-                        Id = activeSessionId,
-                        DataOrigin = dataOrigin,
-                        ActivityType = activityType,
-                        Title = string.IsNullOrEmpty(title) ? null : title,
-                        StartTime = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs),
-                        EndTime = null, // Active session - no end time yet
-                        Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs)
-                    };
-                    return Task.FromResult(_activeWorkoutDto);
-                }
-            }
-
-            return Task.FromResult<WorkoutDto>(null!);
+            return Task.FromResult(_activeWorkoutDto!);
         }
         catch (Exception ex)
         {
@@ -157,12 +132,11 @@ public partial class ActivityService
                 {
                     _logger?.LogError("iOS ActivityService Write Error: {Error}", error.LocalizedDescription);
                     tcs.TrySetResult(false);
+                    return;
                 }
-                else
-                {
-                    _logger?.LogInformation("iOS ActivityService: Successfully wrote workout");
-                    tcs.TrySetResult(success);
-                }
+
+                _logger?.LogInformation("iOS ActivityService: Successfully wrote workout");
+                tcs.TrySetResult(success);
             });
 
             await tcs.Task;
@@ -173,7 +147,7 @@ public partial class ActivityService
         }
     }
 
-    public partial async Task Delete(WorkoutDto workout)
+    public async partial Task Delete(WorkoutDto workout)
     {
         try
         {
@@ -233,12 +207,11 @@ public partial class ActivityService
                 {
                     _logger?.LogError("iOS ActivityService Delete error: {Error}", error.LocalizedDescription);
                     deleteTcs.TrySetResult(false);
+                    return;
                 }
-                else
-                {
-                    _logger?.LogInformation("iOS ActivityService: Successfully deleted workout");
-                    deleteTcs.TrySetResult(success);
-                }
+
+                _logger?.LogInformation("iOS ActivityService: Successfully deleted workout");
+                deleteTcs.TrySetResult(success);
             });
 
             await deleteTcs.Task;
@@ -256,7 +229,9 @@ public partial class ActivityService
         {
             // Check memory first, then check preferences (for app restarts)
             if (_activeWorkoutDto is not null)
+            {
                 return Task.FromResult(true);
+            }
 
             // Check if there's a persisted active session
             var activeSessionId = Preferences.Default.Get(SessionPreferenceKeys.ActiveSessionId, string.Empty);
@@ -285,11 +260,7 @@ public partial class ActivityService
             _activeWorkoutDto = workoutDto;
 
             // Persist to Preferences so session survives app restart
-            Preferences.Default.Set(SessionPreferenceKeys.ActiveSessionId, workoutDto.Id);
-            Preferences.Default.Set(SessionPreferenceKeys.ActivityType, workoutDto.ActivityType.ToString());
-            Preferences.Default.Set(SessionPreferenceKeys.Title, workoutDto.Title ?? "");
-            Preferences.Default.Set(SessionPreferenceKeys.StartTime, workoutDto.StartTime.ToUnixTimeMilliseconds());
-            Preferences.Default.Set(SessionPreferenceKeys.DataOrigin, workoutDto.DataOrigin);
+            SaveActiveWorkoutToPreferences(workoutDto);
 
             return Task.CompletedTask;
         }
@@ -300,37 +271,12 @@ public partial class ActivityService
         }
     }
 
-    public partial async Task EndActiveSession()
+    public async partial Task EndActiveSession()
     {
         try
         {
             // Check memory first, then reconstruct from preferences if needed
-            if (_activeWorkoutDto is null)
-            {
-                // Try to load from preferences
-                var activeSessionId = Preferences.Default.Get(SessionPreferenceKeys.ActiveSessionId, string.Empty);
-                if (!string.IsNullOrEmpty(activeSessionId))
-                {
-                    var activityTypeStr = Preferences.Default.Get(SessionPreferenceKeys.ActivityType, string.Empty);
-                    var title = Preferences.Default.Get(SessionPreferenceKeys.Title, string.Empty);
-                    var startTimeMs = Preferences.Default.Get(SessionPreferenceKeys.StartTime, 0L);
-                    var dataOrigin = Preferences.Default.Get(SessionPreferenceKeys.DataOrigin, string.Empty);
-
-                    if (Enum.TryParse<ActivityType>(activityTypeStr, out var activityType) && startTimeMs > 0)
-                    {
-                        _activeWorkoutDto = new WorkoutDto
-                        {
-                            Id = activeSessionId,
-                            DataOrigin = dataOrigin,
-                            ActivityType = activityType,
-                            Title = string.IsNullOrEmpty(title) ? null : title,
-                            StartTime = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs),
-                            EndTime = null,
-                            Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs)
-                        };
-                    }
-                }
-            }
+            _activeWorkoutDto ??= LoadActiveWorkoutFromPreferences();
 
             if (_activeWorkoutDto is null)
             {
@@ -372,15 +318,6 @@ public partial class ActivityService
             // Always clear preferences even if there was an error
             ClearSessionPreferences();
         }
-    }
-
-    private void ClearSessionPreferences()
-    {
-        Preferences.Default.Remove(SessionPreferenceKeys.ActiveSessionId);
-        Preferences.Default.Remove(SessionPreferenceKeys.ActivityType);
-        Preferences.Default.Remove(SessionPreferenceKeys.Title);
-        Preferences.Default.Remove(SessionPreferenceKeys.StartTime);
-        Preferences.Default.Remove(SessionPreferenceKeys.DataOrigin);
     }
 
     private async Task<HeartRateDto[]> QueryHeartRateSamplesAsync(HealthTimeRange timeRange, CancellationToken cancellationToken)
