@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Components;
-
 using Maui.Health.Services;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Models;
@@ -40,30 +39,11 @@ public partial class Home
         _isAndroid = DeviceInfo.Platform == DevicePlatform.Android;
         _isIOS = DeviceInfo.Platform == DevicePlatform.iOS;
 
-        // Clear any stale session data from previous runs
-        ClearAllSessionPreferences();
-
         // Load health data - permissions will be requested automatically if needed
         await LoadHealthDataAsync();
 
-        // Check for active sessions on page load
+        // Check for active sessions on page load (will restore from preferences if available)
         await CheckSessionStatus();
-    }
-
-    private void ClearAllSessionPreferences()
-    {
-        try
-        {
-            Preferences.Default.Remove("ActiveSessionId");
-            Preferences.Default.Remove("ActiveSessionActivityType");
-            Preferences.Default.Remove("ActiveSessionTitle");
-            Preferences.Default.Remove("ActiveSessionStartTime");
-            Preferences.Default.Remove("ActiveSessionDataOrigin");
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error clearing session preferences: {ex.Message}");
-        }
     }
 
     private async Task PopulateDemoData()
