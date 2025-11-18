@@ -28,7 +28,6 @@ internal static class HealthRecordExtensions
             nameof(HeightDto) => record.ToHeightDto() as TDto,
             nameof(ActiveCaloriesBurnedDto) => record.ToActiveCaloriesBurnedDto() as TDto,
             nameof(HeartRateDto) => record.ToHeartRateDto() as TDto,
-            nameof(WorkoutDto) => record.ToWorkoutDto() as TDto,
             nameof(BodyFatDto) => record.ToBodyFatDto() as TDto,
             nameof(Vo2MaxDto) => record.ToVo2MaxDto() as TDto,
             //nameof(BloodPressureDto) => record.ToBloodPressureDto() as TDto,
@@ -149,83 +148,6 @@ internal static class HealthRecordExtensions
         };
     }
 
-    public static WorkoutDto? ToWorkoutDto(this Java.Lang.Object record)
-    {
-        if (record is not ExerciseSessionRecord exerciseRecord)
-        {
-            return null;
-        }
-
-        var startTime = exerciseRecord.StartTime.ToDateTimeOffset();
-        var endTime = exerciseRecord.EndTime.ToDateTimeOffset();
-        var activityType = ((ExerciseType)exerciseRecord.ExerciseType).ToActivityType();
-        string? title = exerciseRecord.Title;
-
-        return new WorkoutDto
-        {
-            Id = exerciseRecord.Metadata.Id,
-            DataOrigin = exerciseRecord.Metadata.DataOrigin.PackageName,
-            Timestamp = startTime,
-            ActivityType = activityType,
-            Title = title,
-            StartTime = startTime,
-            EndTime = endTime
-        };
-    }
-
-    public static async Task<WorkoutDto> ToWorkoutDtoAsync(
-        this ExerciseSessionRecord exerciseRecord,
-        Func<HealthTimeRange, CancellationToken, Task<HeartRateDto[]>> queryHeartRateFunc,
-        CancellationToken cancellationToken)
-    {
-        var startTime = exerciseRecord.StartTime.ToDateTimeOffset();
-        var endTime = exerciseRecord.EndTime.ToDateTimeOffset();
-        var activityType = ((ExerciseType)exerciseRecord.ExerciseType).ToActivityType();
-        string? title = exerciseRecord.Title;
-
-        double? avgHeartRate = null;
-        double? minHeartRate = null;
-        double? maxHeartRate = null;
-
-        try
-        {
-            Debug.WriteLine($"Android: Querying HR for workout {startTime:HH:mm} to {endTime:HH:mm}");
-            var workoutTimeRange = HealthTimeRange.FromDateTimeOffset(startTime, endTime);
-            var heartRateData = await queryHeartRateFunc(workoutTimeRange, cancellationToken);
-            Debug.WriteLine($"Android: Found {heartRateData.Length} HR samples for workout");
-
-            if (heartRateData.Any())
-            {
-                avgHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
-                minHeartRate = heartRateData.Min(hr => hr.BeatsPerMinute);
-                maxHeartRate = heartRateData.Max(hr => hr.BeatsPerMinute);
-                Debug.WriteLine($"Android: Workout HR - Avg: {avgHeartRate:F0}, Min: {minHeartRate:F0}, Max: {maxHeartRate:F0}");
-            }
-            else
-            {
-                Debug.WriteLine($"Android: No HR data found for workout period");
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Android: Error fetching heart rate for workout: {ex.Message}");
-            Debug.WriteLine($"Android: Stack trace: {ex.StackTrace}");
-        }
-
-        return new WorkoutDto
-        {
-            Id = exerciseRecord.Metadata.Id,
-            DataOrigin = exerciseRecord.Metadata.DataOrigin.PackageName,
-            Timestamp = startTime,
-            ActivityType = activityType,
-            Title = title,
-            StartTime = startTime,
-            EndTime = endTime,
-            AverageHeartRate = avgHeartRate,
-            MinHeartRate = minHeartRate,
-            MaxHeartRate = maxHeartRate
-        };
-    }
 
     public static BodyFatDto? ToBodyFatDto(this Java.Lang.Object record)
     {
@@ -766,7 +688,6 @@ internal static class HealthRecordExtensions
             HeightDto heightDto => heightDto.ToHeightRecord(),
             ActiveCaloriesBurnedDto caloriesDto => caloriesDto.ToActiveCaloriesBurnedRecord(),
             HeartRateDto heartRateDto => heartRateDto.ToHeartRateRecord(),
-            WorkoutDto workoutDto => workoutDto.ToExerciseSessionRecord(),
             _ => null
         };
     }
@@ -910,76 +831,6 @@ internal static class HealthRecordExtensions
         return record;
     }
 
-    public static ExerciseSessionRecord ToExerciseSessionRecord(this WorkoutDto dto)
-    {
-#pragma warning disable CA1416
-        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
-        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
-#pragma warning restore CA1416
-
-        var metadata = new Metadata();
-        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
-
-        var exerciseType = dto.ActivityType.ToAndroidExerciseType();
-
-        var record = new ExerciseSessionRecord(
-            startTime!,
-            offset,
-            endTime!,
-            offset,
-            exerciseType,
-            !string.IsNullOrEmpty(dto.Title) ? dto.Title : null,
-            null,
-            metadata
-        );
-
-        return record;
-    }
-
-    public static int ToAndroidExerciseType(this ActivityType activityType)
-    {
-        return activityType switch
-        {
-            ActivityType.Running => 7,
-            ActivityType.Cycling => 8,
-            ActivityType.Walking => 79,
-            ActivityType.Swimming => 68,
-            ActivityType.Hiking => 36,
-            ActivityType.Yoga => 81,
-            ActivityType.Calisthenics => 28,
-            ActivityType.StrengthTraining => 71,
-            ActivityType.Elliptical => 25,
-            ActivityType.Rowing => 61,
-            ActivityType.Pilates => 54,
-            ActivityType.Dance => 19,
-            ActivityType.Soccer => 62,
-            ActivityType.Basketball => 9,
-            ActivityType.Baseball => 5,
-            ActivityType.Tennis => 73,
-            ActivityType.Golf => 32,
-            ActivityType.Badminton => 3,
-            ActivityType.TableTennis => 72,
-            ActivityType.Volleyball => 78,
-            ActivityType.Cricket => 18,
-            ActivityType.Rugby => 63,
-            ActivityType.AmericanFootball => 1,
-            ActivityType.Skiing => 64,
-            ActivityType.Snowboarding => 66,
-            ActivityType.SkatingSports => 40,
-            ActivityType.SurfingSports => 67,
-            ActivityType.PaddleSports => 53,
-            ActivityType.Sailing => 65,
-            ActivityType.MartialArts => 47,
-            ActivityType.Boxing => 11,
-            ActivityType.Wrestling => 82,
-            ActivityType.Climbing => 59,
-            ActivityType.CrossTraining => 20,
-            ActivityType.StairClimbing => 70,
-            ActivityType.JumpRope => 44,
-            ActivityType.Unknown => 0,
-            _ => 0
-        };
-    }
 
     #endregion
 }

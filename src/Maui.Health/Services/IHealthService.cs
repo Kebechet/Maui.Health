@@ -6,6 +6,11 @@ namespace Maui.Health.Services;
 public interface IHealthService
 {
     /// <summary>
+    /// Access to workout/activity tracking service
+    /// </summary>
+    ActivityService Activity { get; }
+
+    /// <summary>
     /// Get health data for a specific metric type within a time range
     /// </summary>
     /// <typeparam name="TDto">The type of health metric DTO to retrieve</typeparam>

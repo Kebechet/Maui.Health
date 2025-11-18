@@ -1,0 +1,94 @@
+using Maui.Health.Models;
+using Maui.Health.Models.Metrics;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+namespace Maui.Health.Services;
+
+public partial class ActivityService
+{
+    public partial Task<List<WorkoutDto>> Read(HealthTimeRange activityTime)
+    {
+        try
+        {
+            return Task.FromResult(new List<WorkoutDto>());
+        }
+        catch (Exception)
+        {
+            return Task.FromResult(new List<WorkoutDto>());
+        }
+    }
+
+    public partial Task<WorkoutDto> ReadActive(HealthTimeRange activityTime)
+    {
+        try
+        {
+            return Task.FromResult<WorkoutDto>(null!);
+        }
+        catch (Exception)
+        {
+            return Task.FromResult<WorkoutDto>(null!);
+        }
+    }
+
+    public partial Task Write(WorkoutDto workout)
+    {
+        try
+        {
+            return Task.CompletedTask;
+        }
+        catch (Exception)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    public partial Task Delete(WorkoutDto workout)
+    {
+        try
+        {
+            return Task.CompletedTask;
+        }
+        catch (Exception)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    public partial Task<bool> IsSessionRunning()
+    {
+        try
+        {
+            return Task.FromResult(false);
+        }
+        catch (Exception)
+        {
+            return Task.FromResult(false);
+        }
+    }
+
+    public partial Task StartNewSession(WorkoutDto workoutDto)
+    {
+        try
+        {
+            return Task.CompletedTask;
+        }
+        catch (Exception)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    public partial Task EndActiveSession()
+    {
+        try
+        {
+            return Task.CompletedTask;
+        }
+        catch (Exception)
+        {
+            return Task.CompletedTask;
+        }
+    }
+}

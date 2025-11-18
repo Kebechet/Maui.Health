@@ -1,89 +1,170 @@
-﻿@page "/"
+@page "/"
 
-<div style="margin-bottom: 20px;">
-    <button @onclick="PopulateDemoData" disabled="@(!_isAndroid)" style="padding: 10px 20px; background-color: @(_isAndroid ? "#007bff" : "#6c757d"); color: white; border: none; border-radius: 4px; cursor: @(_isAndroid ? "pointer" : "not-allowed");">
-        Populate Demo Data
-    </button>
-    @if (!_isAndroid)
-    {
-        <p style="color: #6c757d; margin-top: 10px; font-style: italic;">Writing demo data is available only for Android.</p>
-    }
-    @if (!string.IsNullOrEmpty(_demoDataMessage))
-    {
-        <p style="color: @(_demoDataSuccess ? "green" : "red"); margin-top: 10px;">@_demoDataMessage</p>
-    }
+<!-- Tab Navigation -->
+<div style="border-bottom: 2px solid #dee2e6; margin-bottom: 20px;">
+    <div style="display: flex; gap: 10px;">
+        <button @onclick="() => _activeTab = 0"
+                style="padding: 10px 20px; background-color: @(_activeTab == 0 ? "#007bff" : "transparent"); color: @(_activeTab == 0 ? "white" : "#007bff"); border: none; border-bottom: 3px solid @(_activeTab == 0 ? "#007bff" : "transparent"); cursor: pointer; font-weight: @(_activeTab == 0 ? "bold" : "normal");">
+            📊 Measurements
+        </button>
+        <button @onclick="() => _activeTab = 1"
+                style="padding: 10px 20px; background-color: @(_activeTab == 1 ? "#007bff" : "transparent"); color: @(_activeTab == 1 ? "white" : "#007bff"); border: none; border-bottom: 3px solid @(_activeTab == 1 ? "#007bff" : "transparent"); cursor: pointer; font-weight: @(_activeTab == 1 ? "bold" : "normal");">
+            🏃 Sessions
+        </button>
+    </div>
 </div>
 
-@if (_isIOS)
+@if (_activeTab == 0)
 {
+    <!-- Measurements Tab -->
     <div style="margin-bottom: 20px;">
-        <button @onclick="CreateIOSStrengthTraining" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
-            Create Strength Training (iOS)
+        <button @onclick="PopulateDemoData" disabled="@(!_isAndroid)" style="padding: 10px 20px; background-color: @(_isAndroid ? "#007bff" : "#6c757d"); color: white; border: none; border-radius: 4px; cursor: @(_isAndroid ? "pointer" : "not-allowed");">
+            Populate Demo Data
         </button>
-        @if (!string.IsNullOrEmpty(_iosStrengthTrainingMessage))
+        @if (!_isAndroid)
         {
-            <p style="color: @(_iosStrengthTrainingSuccess ? "green" : "red"); margin-top: 10px;">@_iosStrengthTrainingMessage</p>
+            <p style="color: #6c757d; margin-top: 10px; font-style: italic;">Writing demo data is available only for Android.</p>
+        }
+        @if (!string.IsNullOrEmpty(_demoDataMessage))
+        {
+            <p style="color: @(_demoDataSuccess ? "green" : "red"); margin-top: 10px;">@_demoDataMessage</p>
         }
     </div>
+
+    @if (_isIOS)
+    {
+        <div style="margin-bottom: 20px;">
+            <button @onclick="CreateIOSStrengthTraining" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                Create Strength Training (iOS)
+            </button>
+            @if (!string.IsNullOrEmpty(_iosStrengthTrainingMessage))
+            {
+                <p style="color: @(_iosStrengthTrainingSuccess ? "green" : "red"); margin-top: 10px;">@_iosStrengthTrainingMessage</p>
+            }
+        </div>
+    }
+
+    <hr style="margin: 20px 0;" />
+
+    <h1>Number of steps:</h1>
+    @_steps
+
+    <h1>Weight (kg):</h1>
+    @_weight
+
+    <h1>Active Calories Burned (kcal):</h1>
+    @_calories
+
+    <h1>Average Heart Rate during Exercise (14:00-17:00):</h1>
+    @if (_heartRateCount > 0)
+    {
+        <p>@_averageHeartRate.ToString("F1") BPM (based on @_heartRateCount measurements)</p>
+    }
+    else
+    {
+        <p>No heart rate data available for this time period</p>
+    }
 }
-
-<hr style="margin: 20px 0;" />
-
-<h1>Number of steps:</h1>
-@_steps
-
-<h1>Weight (kg):</h1>
-@_weight
-
-<h1>Active Calories Burned (kcal):</h1>
-@_calories
-
-<h1>Average Heart Rate during Exercise (14:00-17:00):</h1>
-@if (_heartRateCount > 0)
+else if (_activeTab == 1)
 {
-    <p>@_averageHeartRate.ToString("F1") BPM (based on @_heartRateCount measurements)</p>
-}
-else
-{
-    <p>No heart rate data available for this time period</p>
-}
+    <!-- Sessions Tab -->
+    <h1>Workout Session Management:</h1>
+    <div style="margin-bottom: 20px;">
+        <!-- Session Status Display -->
+        <div style="padding: 10px; background-color: #e9ecef; border: 1px solid #dee2e6; border-radius: 4px; margin-bottom: 15px;">
+            <strong>Session Status:</strong>
+            <span style="color: @(_isSessionRunning ? "#28a745" : "#6c757d"); font-weight: bold;">
+                @(_isSessionRunning ? "🟢 ACTIVE" : "⚪ INACTIVE")
+            </span>
+            <button @onclick="CheckSessionStatus" style="margin-left: 10px; padding: 5px 15px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
+                🔄 Refresh Status
+            </button>
+            @if (!string.IsNullOrEmpty(_sessionStatusMessage))
+            {
+                <div style="margin-top: 5px; font-size: 0.9em; color: #6c757d;">
+                    @_sessionStatusMessage
+                </div>
+            }
+        </div>
 
-<hr style="margin: 20px 0;" />
-
-<h1>Today's Workouts:</h1>
-@if (_workouts.Any())
-{
-    <ul>
-        @foreach (var workout in _workouts)
+        <!-- Active Session Display -->
+        @if (_isSessionRunning)
         {
-            var distanceKm = workout.Distance.HasValue ? (workout.Distance.Value / 1000.0).ToString("F2") : null;
-            var calories = workout.EnergyBurned.HasValue ? workout.EnergyBurned.Value.ToString("F0") : null;
-            var avgHR = workout.AverageHeartRate.HasValue ? workout.AverageHeartRate.Value.ToString("F0") : null;
-
-            <li>
-                <strong>@workout.ActivityType</strong> -
-                @workout.StartTime.ToLocalTime().ToString("HH:mm") to @workout.EndTime.ToLocalTime().ToString("HH:mm")
-                (@((int)workout.DurationSeconds / 60) minutes)
-                @if (distanceKm != null)
+            <div style="padding: 15px; background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 4px; margin-bottom: 15px;">
+                <strong style="color: #155724;">🏃 Active Session Running</strong>
+                @if (_activeWorkout != null)
                 {
-                    <span> - @distanceKm km</span>
+                    <div style="margin-top: 10px;">
+                        <p style="margin: 5px 0;"><strong>Activity:</strong> @_activeWorkout.ActivityType</p>
+                        <p style="margin: 5px 0;"><strong>Started:</strong> @_activeWorkout.StartTime.ToLocalTime().ToString("HH:mm:ss")</p>
+                        <p style="margin: 5px 0;"><strong>Duration:</strong> @((int)(DateTimeOffset.Now - _activeWorkout.StartTime).TotalMinutes) minutes</p>
+                        <p style="margin: 5px 0; font-size: 0.9em; color: #666;">ID: @_activeWorkout.Id</p>
+                    </div>
                 }
-                @if (calories != null)
-                {
-                    <span> - @calories kcal</span>
-                }
-                @if (avgHR != null)
-                {
-                    <span> - Avg HR: @avgHR BPM</span>
-                }
-
-                <br/>
-                <small>Source: @workout.DataOrigin</small>
-            </li>
+            </div>
+            <button @onclick="StopWorkoutSession" style="padding: 10px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                ⏹ Stop Session
+            </button>
         }
-    </ul>
-}
-else
-{
-    <p>No workouts found for today</p>
+        else
+        {
+            <button @onclick="StartWorkoutSession" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                ▶ Start New Session
+            </button>
+        }
+
+        <button @onclick="WriteManualWorkout" style="padding: 10px 20px; background-color: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            ✍ Write Manual Workout
+        </button>
+
+        @if (!string.IsNullOrEmpty(_sessionMessage))
+        {
+            <p style="color: @(_sessionSuccess ? "green" : "red"); margin-top: 10px;">@_sessionMessage</p>
+        }
+    </div>
+
+    <hr style="margin: 20px 0;" />
+
+    <h1>Today's Workouts:</h1>
+    @if (_workouts.Any())
+    {
+        <ul>
+            @foreach (var workout in _workouts)
+            {
+                var distanceKm = workout.Distance.HasValue ? (workout.Distance.Value / 1000.0).ToString("F2") : null;
+                var calories = workout.EnergyBurned.HasValue ? workout.EnergyBurned.Value.ToString("F0") : null;
+                var avgHR = workout.AverageHeartRate.HasValue ? workout.AverageHeartRate.Value.ToString("F0") : null;
+
+                <li style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div>
+                        <strong>@workout.ActivityType</strong> -
+                        @workout.StartTime.ToLocalTime().ToString("HH:mm") to @(workout.EndTime.HasValue ? workout.EndTime.Value.ToLocalTime().ToString("HH:mm") : "ACTIVE")
+                        (@((int)workout.DurationSeconds / 60) minutes)
+                        @if (distanceKm != null)
+                        {
+                            <span> - @distanceKm km</span>
+                        }
+                        @if (calories != null)
+                        {
+                            <span> - @calories kcal</span>
+                        }
+                        @if (avgHR != null)
+                        {
+                            <span> - Avg HR: @avgHR BPM</span>
+                        }
+
+                        <br/>
+                        <small>Source: @workout.DataOrigin</small>
+                    </div>
+                    <button @onclick="() => DeleteWorkout(workout)" style="padding: 5px 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-left: 10px;">
+                        🗑️ Delete
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>No workouts found for today</p>
+    }
 }

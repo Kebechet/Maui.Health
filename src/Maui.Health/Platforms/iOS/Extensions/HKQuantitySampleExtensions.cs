@@ -144,7 +144,6 @@ internal static class HKQuantitySampleExtensions
             HeightDto heightDto => heightDto.ToHKQuantitySample(),
             ActiveCaloriesBurnedDto caloriesDto => caloriesDto.ToHKQuantitySample(),
             HeartRateDto heartRateDto => heartRateDto.ToHKQuantitySample(),
-            WorkoutDto workoutDto => workoutDto.ToHKWorkout(),
             _ => throw new NotImplementedException($"DTO type {dto.GetType().Name} is not implemented for write operation")
         };
     }
@@ -197,79 +196,6 @@ internal static class HKQuantitySampleExtensions
         var date = (NSDate)dto.Timestamp.UtcDateTime;
 
         return HKQuantitySample.FromType(quantityType, quantity, date, date);
-    }
-
-    public static HKWorkout ToHKWorkout(this WorkoutDto dto)
-    {
-        var activityType = dto.ActivityType.ToHKWorkoutActivityType();
-        var startDate = (NSDate)dto.StartTime.UtcDateTime;
-        var endDate = (NSDate)dto.EndTime.UtcDateTime;
-        var duration = (dto.EndTime - dto.StartTime).TotalSeconds;
-
-        HKQuantity? totalEnergyBurned = null;
-        if (dto.EnergyBurned.HasValue)
-        {
-            totalEnergyBurned = HKQuantity.FromQuantity(HKUnit.Kilocalorie, dto.EnergyBurned.Value);
-        }
-
-        HKQuantity? totalDistance = null;
-        if (dto.Distance.HasValue)
-        {
-            totalDistance = HKQuantity.FromQuantity(HKUnit.Meter, dto.Distance.Value);
-        }
-
-        return HKWorkout.Create(
-            activityType,
-            startDate,
-            endDate,
-            duration,
-            totalEnergyBurned,
-            totalDistance,
-            (NSDictionary?)null
-        );
-    }
-
-    public static HKWorkoutActivityType ToHKWorkoutActivityType(this ActivityType activityType)
-    {
-        return activityType switch
-        {
-            ActivityType.Running => HKWorkoutActivityType.Running,
-            ActivityType.Cycling => HKWorkoutActivityType.Cycling,
-            ActivityType.Walking => HKWorkoutActivityType.Walking,
-            ActivityType.Swimming => HKWorkoutActivityType.Swimming,
-            ActivityType.Hiking => HKWorkoutActivityType.Hiking,
-            ActivityType.Yoga => HKWorkoutActivityType.Yoga,
-            ActivityType.StrengthTraining => HKWorkoutActivityType.TraditionalStrengthTraining,
-            ActivityType.Calisthenics => HKWorkoutActivityType.FunctionalStrengthTraining,
-            ActivityType.Elliptical => HKWorkoutActivityType.Elliptical,
-            ActivityType.Rowing => HKWorkoutActivityType.Rowing,
-            ActivityType.Pilates => HKWorkoutActivityType.Pilates,
-            ActivityType.Dance => HKWorkoutActivityType.Dance,
-            ActivityType.Soccer => HKWorkoutActivityType.Soccer,
-            ActivityType.Basketball => HKWorkoutActivityType.Basketball,
-            ActivityType.Baseball => HKWorkoutActivityType.Baseball,
-            ActivityType.Tennis => HKWorkoutActivityType.Tennis,
-            ActivityType.Golf => HKWorkoutActivityType.Golf,
-            ActivityType.Badminton => HKWorkoutActivityType.Badminton,
-            ActivityType.TableTennis => HKWorkoutActivityType.TableTennis,
-            ActivityType.Volleyball => HKWorkoutActivityType.Volleyball,
-            ActivityType.Cricket => HKWorkoutActivityType.Cricket,
-            ActivityType.Rugby => HKWorkoutActivityType.Rugby,
-            ActivityType.AmericanFootball => HKWorkoutActivityType.AmericanFootball,
-            ActivityType.Skiing => HKWorkoutActivityType.DownhillSkiing,
-            ActivityType.Snowboarding => HKWorkoutActivityType.Snowboarding,
-            ActivityType.SurfingSports => HKWorkoutActivityType.SurfingSports,
-            ActivityType.Sailing => HKWorkoutActivityType.Sailing,
-            ActivityType.MartialArts => HKWorkoutActivityType.MartialArts,
-            ActivityType.Boxing => HKWorkoutActivityType.Boxing,
-            ActivityType.Wrestling => HKWorkoutActivityType.Wrestling,
-            ActivityType.Climbing => HKWorkoutActivityType.Climbing,
-            ActivityType.CrossTraining => HKWorkoutActivityType.CrossTraining,
-            ActivityType.StairClimbing => HKWorkoutActivityType.StairClimbing,
-            ActivityType.JumpRope => HKWorkoutActivityType.JumpRope,
-            ActivityType.Unknown => HKWorkoutActivityType.Other,
-            _ => HKWorkoutActivityType.Other
-        };
     }
 
     #endregion

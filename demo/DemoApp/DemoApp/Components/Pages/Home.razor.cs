@@ -24,32 +24,46 @@ public partial class Home
     private string _iosStrengthTrainingMessage { get; set; } = string.Empty;
     private bool _iosStrengthTrainingSuccess { get; set; } = false;
 
+    // Tab tracking
+    private int _activeTab { get; set; } = 0;
+
+    // Session tracking
+    private bool _isSessionRunning { get; set; } = false;
+    private WorkoutDto? _activeWorkout { get; set; } = null;
+    private string _sessionMessage { get; set; } = string.Empty;
+    private bool _sessionSuccess { get; set; } = false;
+    private string _sessionStatusMessage { get; set; } = string.Empty;
+
     protected override async Task OnInitializedAsync()
     {
         // Check if running on Android or iOS
         _isAndroid = DeviceInfo.Platform == DevicePlatform.Android;
         _isIOS = DeviceInfo.Platform == DevicePlatform.iOS;
 
-        // Request all permissions upfront in a single dialog
-        var permissions = new List<HealthPermissionDto>
-        {
-            new() { HealthDataType = HealthDataType.Steps, PermissionType = PermissionType.Read },
-            new() { HealthDataType = HealthDataType.Weight, PermissionType = PermissionType.Read },
-            new() { HealthDataType = HealthDataType.ActiveCaloriesBurned, PermissionType = PermissionType.Read },
-            new() { HealthDataType = HealthDataType.HeartRate, PermissionType = PermissionType.Read },
-            new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Read }
-        };
+        // Clear any stale session data from previous runs
+        ClearAllSessionPreferences();
 
-        var permissionResult = await _healthService.RequestPermissions(permissions);
-
-        if (!permissionResult.IsSuccess)
-        {
-            // Handle permission denial if needed
-            return;
-        }
-
-        // Load health data
+        // Load health data - permissions will be requested automatically if needed
         await LoadHealthDataAsync();
+
+        // Check for active sessions on page load
+        await CheckSessionStatus();
+    }
+
+    private void ClearAllSessionPreferences()
+    {
+        try
+        {
+            Preferences.Default.Remove("ActiveSessionId");
+            Preferences.Default.Remove("ActiveSessionActivityType");
+            Preferences.Default.Remove("ActiveSessionTitle");
+            Preferences.Default.Remove("ActiveSessionStartTime");
+            Preferences.Default.Remove("ActiveSessionDataOrigin");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error clearing session preferences: {ex.Message}");
+        }
     }
 
     private async Task PopulateDemoData()
@@ -59,24 +73,6 @@ public partial class Home
             _demoDataMessage = "Writing demo data...";
             _demoDataSuccess = false;
             StateHasChanged();
-
-            // Request write permissions
-            var writePermissions = new List<HealthPermissionDto>
-            {
-                new() { HealthDataType = HealthDataType.Steps, PermissionType = PermissionType.Write },
-                new() { HealthDataType = HealthDataType.Weight, PermissionType = PermissionType.Write },
-                new() { HealthDataType = HealthDataType.ActiveCaloriesBurned, PermissionType = PermissionType.Write },
-                new() { HealthDataType = HealthDataType.HeartRate, PermissionType = PermissionType.Write },
-                new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Write }
-            };
-
-            var permissionResult = await _healthService.RequestPermissions(writePermissions);
-            if (!permissionResult.IsSuccess)
-            {
-                _demoDataMessage = "Failed to get write permissions";
-                StateHasChanged();
-                return;
-            }
 
             var today = DateTime.Today;
             var now = DateTime.Now;
@@ -134,19 +130,6 @@ public partial class Home
                 await _healthService.WriteHealthDataAsync(heartRate);
             }
 
-            // Write Workout data - Strength Training Session
-            var workoutData = new WorkoutDto
-            {
-                Id = "",
-                DataOrigin = "DemoApp",
-                ActivityType = ActivityType.StrengthTraining,
-                Title = "Strength Training",
-                StartTime = new DateTimeOffset(today.AddHours(9), localOffset),
-                EndTime = new DateTimeOffset(today.AddHours(10), localOffset),
-                Timestamp = new DateTimeOffset(today.AddHours(9), localOffset)
-            };
-            await _healthService.WriteHealthDataAsync(workoutData);
-
             _demoDataMessage = "Demo data written successfully! Refreshing...";
             _demoDataSuccess = true;
             StateHasChanged();
@@ -170,36 +153,101 @@ public partial class Home
 
     private async Task LoadHealthDataAsync()
     {
-        var today = DateTime.Today;
-        var now = DateTime.Now;
-
-        // Create time ranges
-        var todayRange = HealthTimeRange.FromDateTime(today, now);
-        var exerciseRange = HealthTimeRange.FromDateTime(today.AddHours(14), today.AddHours(17)); // 14:00 - 17:00
-
-        var stepsData = await _healthService.GetHealthDataAsync<StepsDto>(todayRange);
-        var weightData = await _healthService.GetHealthDataAsync<WeightDto>(todayRange);
-        var caloriesData = await _healthService.GetHealthDataAsync<ActiveCaloriesBurnedDto>(todayRange);
-        var heartRateData = await _healthService.GetHealthDataAsync<HeartRateDto>(exerciseRange);
-
-        _steps = stepsData.Sum(s => s.Count);
-        _weight = weightData.OrderByDescending(w => w.Timestamp).FirstOrDefault()?.Value ?? 0;
-        _calories = caloriesData.Sum(c => c.Energy);
-
-        // Calculate average heart rate during exercise time (14:00 - 17:00)
-        if (heartRateData.Count > 0)
+        try
         {
-            _averageHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
-            _heartRateCount = heartRateData.Count;
-        }
-        else
-        {
-            _averageHeartRate = 0;
-            _heartRateCount = 0;
-        }
+            var today = DateTime.Today;
+            var now = DateTime.Now;
 
-        // Fetch today's workouts
-        _workouts = await _healthService.GetHealthDataAsync<WorkoutDto>(todayRange);
+            // Create time ranges
+            var todayRange = HealthTimeRange.FromDateTime(today, now);
+            var exerciseRange = HealthTimeRange.FromDateTime(today.AddHours(14), today.AddHours(17)); // 14:00 - 17:00
+
+            // Load data with individual try-catch to continue on permission errors
+            try
+            {
+                var stepsData = await _healthService.GetHealthDataAsync<StepsDto>(todayRange);
+                _steps = stepsData.Sum(s => s.Count);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading steps: {ex.Message}");
+                _steps = 0;
+            }
+
+            try
+            {
+                var weightData = await _healthService.GetHealthDataAsync<WeightDto>(todayRange);
+                _weight = weightData.OrderByDescending(w => w.Timestamp).FirstOrDefault()?.Value ?? 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading weight: {ex.Message}");
+                _weight = 0;
+            }
+
+            try
+            {
+                var caloriesData = await _healthService.GetHealthDataAsync<ActiveCaloriesBurnedDto>(todayRange);
+                _calories = caloriesData.Sum(c => c.Energy);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading calories: {ex.Message}");
+                _calories = 0;
+            }
+
+            try
+            {
+                var heartRateData = await _healthService.GetHealthDataAsync<HeartRateDto>(exerciseRange);
+                if (heartRateData.Count > 0)
+                {
+                    _averageHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
+                    _heartRateCount = heartRateData.Count;
+                }
+                else
+                {
+                    _averageHeartRate = 0;
+                    _heartRateCount = 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading heart rate: {ex.Message}");
+                _averageHeartRate = 0;
+                _heartRateCount = 0;
+            }
+
+            // Fetch today's workouts using ActivityService
+            try
+            {
+                _workouts = await _healthService.Activity.Read(todayRange);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading workouts: {ex.Message}");
+                _workouts = [];
+            }
+
+            // Check if there's an active session
+            try
+            {
+                _isSessionRunning = await _healthService.Activity.IsSessionRunning();
+                if (_isSessionRunning)
+                {
+                    _activeWorkout = await _healthService.Activity.ReadActive(todayRange);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error checking session status: {ex.Message}");
+                _isSessionRunning = false;
+                _activeWorkout = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in LoadHealthDataAsync: {ex.Message}");
+        }
     }
 
     private async Task CreateIOSStrengthTraining()
@@ -224,20 +272,6 @@ public partial class Home
             _iosStrengthTrainingSuccess = false;
             StateHasChanged();
 
-            // Request write permission for workouts
-            var writePermission = new HealthPermissionDto
-            {
-                HealthDataType = HealthDataType.ExerciseSession,
-                PermissionType = PermissionType.Write
-            };
-
-            var permissionResult = await _healthService.RequestPermissions([writePermission]);
-            if (!permissionResult.IsSuccess)
-            {
-                _iosStrengthTrainingMessage = "Failed to get write permission for workouts";
-                StateHasChanged();
-                return;
-            }
             var workoutStart = now.AddHours(-1); // 1 hour ago
             var workoutEnd = now; // Now
 
@@ -255,34 +289,219 @@ public partial class Home
                 Distance = null // No distance for strength training
             };
 
-            var result = await _healthService.WriteHealthDataAsync(strengthTrainingWorkout);
+            // Use ActivityService.Write instead
+            await _healthService.Activity.Write(strengthTrainingWorkout);
 
-            if (result)
-            {
-                _iosStrengthTrainingMessage = "Strength training workout created successfully! Refreshing...";
-                _iosStrengthTrainingSuccess = true;
-                StateHasChanged();
+            _iosStrengthTrainingMessage = "Strength training workout created successfully! Refreshing...";
+            _iosStrengthTrainingSuccess = true;
+            StateHasChanged();
 
-                // Wait a moment for HealthKit to process
-                await Task.Delay(500);
+            // Wait a moment for HealthKit to process
+            await Task.Delay(500);
 
-                // Reload the data
-                await LoadHealthDataAsync();
+            // Reload the data
+            await LoadHealthDataAsync();
 
-                _iosStrengthTrainingMessage = "Strength training workout created and loaded successfully!";
-                StateHasChanged();
-            }
-            else
-            {
-                _iosStrengthTrainingMessage = "Failed to create strength training workout";
-                _iosStrengthTrainingSuccess = false;
-                StateHasChanged();
-            }
+            _iosStrengthTrainingMessage = "Strength training workout created and loaded successfully!";
+            StateHasChanged();
         }
         catch (Exception ex)
         {
             _iosStrengthTrainingMessage = $"Error: {ex.Message}";
             _iosStrengthTrainingSuccess = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CheckSessionStatus()
+    {
+        try
+        {
+            _sessionStatusMessage = "Checking session status...";
+            StateHasChanged();
+
+            var todayRange = HealthTimeRange.FromDateTime(DateTime.Today, DateTime.Now);
+
+            // Check if there's an active session
+            _isSessionRunning = await _healthService.Activity.IsSessionRunning();
+
+            if (_isSessionRunning)
+            {
+                _activeWorkout = await _healthService.Activity.ReadActive(todayRange);
+                if (_activeWorkout != null)
+                {
+                    var duration = (int)(DateTimeOffset.Now - _activeWorkout.StartTime).TotalMinutes;
+                    _sessionStatusMessage = $"Active session detected: {_activeWorkout.ActivityType} running for {duration} minutes";
+                }
+                else
+                {
+                    _sessionStatusMessage = "Active session detected but no workout details available";
+                }
+            }
+            else
+            {
+                _activeWorkout = null;
+                _sessionStatusMessage = "No active session detected";
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _sessionStatusMessage = $"Error checking status: {ex.Message}";
+            StateHasChanged();
+        }
+    }
+
+    private async Task StartWorkoutSession()
+    {
+        try
+        {
+            _sessionMessage = "Starting workout session...";
+            _sessionSuccess = false;
+            StateHasChanged();
+
+            var now = DateTimeOffset.UtcNow;
+            var localOffset = DateTimeOffset.Now.Offset;
+
+            // Create a new workout session (EndTime is null for active sessions)
+            var newWorkout = new WorkoutDto
+            {
+                Id = Guid.NewGuid().ToString(),
+                DataOrigin = "DemoApp",
+                ActivityType = ActivityType.Running, // Default to running
+                Title = "Manual Workout Session",
+                StartTime = now,
+                EndTime = null, // Active session - no end time yet
+                Timestamp = now
+            };
+
+            await _healthService.Activity.StartNewSession(newWorkout);
+
+            // Update session status
+            await CheckSessionStatus();
+
+            _sessionMessage = $"✓ Workout session started at {now.ToLocalTime():HH:mm:ss}";
+            _sessionSuccess = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _sessionMessage = $"Error starting session: {ex.Message}";
+            _sessionSuccess = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task StopWorkoutSession()
+    {
+        try
+        {
+            _sessionMessage = "Stopping workout session and saving to Health Connect...";
+            _sessionSuccess = false;
+            StateHasChanged();
+
+            await _healthService.Activity.EndActiveSession();
+
+            // Update session status
+            await CheckSessionStatus();
+
+            _sessionMessage = $"✓ Workout saved to Health Connect! Ended at {DateTimeOffset.Now:HH:mm:ss}. Refreshing...";
+            _sessionSuccess = true;
+            StateHasChanged();
+
+            // Wait a moment for the health platform to process
+            await Task.Delay(1000);
+
+            // Reload the data
+            await LoadHealthDataAsync();
+
+            _sessionMessage = "✓ Workout session saved to Health Connect and loaded successfully! Check Health Connect app to verify.";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _sessionMessage = $"✗ Error saving to Health Connect: {ex.Message}. Check permissions in Health Connect app.";
+            _sessionSuccess = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task WriteManualWorkout()
+    {
+        try
+        {
+            _sessionMessage = "Writing manual workout to Health Connect...";
+            _sessionSuccess = false;
+            StateHasChanged();
+
+            var now = DateTimeOffset.UtcNow;
+            var localOffset = DateTimeOffset.Now.Offset;
+
+            // Create a completed workout (30 minutes ago to 5 minutes ago)
+            var workout = new WorkoutDto
+            {
+                Id = Guid.NewGuid().ToString(),
+                DataOrigin = "DemoApp",
+                ActivityType = ActivityType.Cycling,
+                Title = "Manual Cycling Session",
+                StartTime = now.AddMinutes(-30),
+                EndTime = now.AddMinutes(-5),
+                Timestamp = now.AddMinutes(-30),
+                EnergyBurned = 180,
+                Distance = 8500 // 8.5 km in meters
+            };
+
+            await _healthService.Activity.Write(workout);
+
+            _sessionMessage = "✓ Manual workout saved to Health Connect! Refreshing...";
+            _sessionSuccess = true;
+            StateHasChanged();
+
+            // Wait a moment for the health platform to process
+            await Task.Delay(1000);
+
+            // Reload the data
+            await LoadHealthDataAsync();
+
+            _sessionMessage = "✓ Manual workout saved to Health Connect successfully! Check Health Connect app to verify.";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _sessionMessage = $"✗ Error saving to Health Connect: {ex.Message}. Check permissions.";
+            _sessionSuccess = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteWorkout(WorkoutDto workout)
+    {
+        try
+        {
+            _sessionMessage = "Deleting workout...";
+            _sessionSuccess = false;
+            StateHasChanged();
+
+            await _healthService.Activity.Delete(workout);
+
+            _sessionMessage = "✓ Workout deleted! Refreshing...";
+            _sessionSuccess = true;
+            StateHasChanged();
+
+            // Wait a moment for the health platform to process
+            await Task.Delay(500);
+
+            // Reload the data
+            await LoadHealthDataAsync();
+
+            _sessionMessage = "✓ Workout deleted successfully!";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _sessionMessage = $"✗ Error deleting workout: {ex.Message}";
+            _sessionSuccess = false;
             StateHasChanged();
         }
     }

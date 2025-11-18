@@ -6,10 +6,12 @@ namespace Maui.Health.Services;
 
 public partial class HealthService : IHealthService
 {
-    private readonly ILogger<HealthService> _logger;
+    public ActivityService Activity { get; }
+    protected readonly ILogger<HealthService> _logger;
 
-    public HealthService(ILogger<HealthService> logger)
+    public HealthService(ActivityService activityService, ILogger<HealthService> logger)
     {
+        Activity = activityService;
         _logger = logger;
     }
 

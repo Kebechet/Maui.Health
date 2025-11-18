@@ -9,7 +9,7 @@ internal static class MetricDtoExtensions
     /// <summary>
     /// Maps a DTO type to its corresponding HealthDataType enum value
     /// </summary>
-    internal static HealthDataType GetHealthDataType<TDto>() where TDto : HealthMetricBase
+    internal static HealthDataType GetHealthDataType<TDto>()
     {
         return typeof(TDto).Name switch
         {
@@ -25,11 +25,11 @@ internal static class MetricDtoExtensions
             _ => throw new NotSupportedException($"DTO type {typeof(TDto).Name} is not supported")
         };
     }
-    
+
     /// <summary>
     /// Gets the permission required for a specific DTO type
     /// </summary>
-    internal static HealthPermissionDto GetRequiredPermission<TDto>() where TDto : HealthMetricBase
+    internal static HealthPermissionDto GetRequiredPermission<TDto>()
     {
         return new HealthPermissionDto
         {
