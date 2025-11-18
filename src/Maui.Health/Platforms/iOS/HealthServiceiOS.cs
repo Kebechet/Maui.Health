@@ -113,7 +113,7 @@ public partial class HealthService
         return new();
     }
 
-    public async partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public async partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (!IsSupported)
@@ -305,7 +305,7 @@ public partial class HealthService
         return await tcs.Task;
     }
 
-    public async partial Task<bool> WriteHealthDataAsync<TDto>(TDto data, CancellationToken cancellationToken) where TDto : HealthMetricBase
+    public async partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken) where TDto : HealthMetricBase
     {
         if (!IsSupported)
         {

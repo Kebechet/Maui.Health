@@ -91,7 +91,7 @@ public partial class Home
 
             foreach (var step in stepsData)
             {
-                await _healthService.WriteHealthDataAsync(step);
+                await _healthService.WriteHealthData(step);
             }
 
             // Write Weight data
@@ -103,7 +103,7 @@ public partial class Home
                 Timestamp = new DateTimeOffset(today.AddHours(7), localOffset),
                 Unit = "kg"
             };
-            await _healthService.WriteHealthDataAsync(weightData);
+            await _healthService.WriteHealthData(weightData);
 
             // Write Active Calories Burned data (multiple sessions)
             var caloriesData = new[]
@@ -113,7 +113,7 @@ public partial class Home
 
             foreach (var calories in caloriesData)
             {
-                await _healthService.WriteHealthDataAsync(calories);
+                await _healthService.WriteHealthData(calories);
             }
 
             // Write Heart Rate data during exercise time (14:00-17:00)
@@ -129,7 +129,7 @@ public partial class Home
 
             foreach (var heartRate in heartRateData)
             {
-                await _healthService.WriteHealthDataAsync(heartRate);
+                await _healthService.WriteHealthData(heartRate);
             }
 
             _demoDataMessage = "Demo data written successfully! Refreshing...";
@@ -180,7 +180,7 @@ public partial class Home
             // Load data with individual try-catch to continue on permission errors
             try
             {
-                var stepsData = await _healthService.GetHealthDataAsync<StepsDto>(todayRange);
+                var stepsData = await _healthService.GetHealthData<StepsDto>(todayRange);
                 _steps = stepsData.Sum(s => s.Count);
             }
             catch (Exception ex)
@@ -191,7 +191,7 @@ public partial class Home
 
             try
             {
-                var weightData = await _healthService.GetHealthDataAsync<WeightDto>(todayRange);
+                var weightData = await _healthService.GetHealthData<WeightDto>(todayRange);
                 _weight = weightData.OrderByDescending(w => w.Timestamp).FirstOrDefault()?.Value ?? 0;
             }
             catch (Exception ex)
@@ -202,7 +202,7 @@ public partial class Home
 
             try
             {
-                var caloriesData = await _healthService.GetHealthDataAsync<ActiveCaloriesBurnedDto>(todayRange);
+                var caloriesData = await _healthService.GetHealthData<ActiveCaloriesBurnedDto>(todayRange);
                 _calories = caloriesData.Sum(c => c.Energy);
             }
             catch (Exception ex)
@@ -213,7 +213,7 @@ public partial class Home
 
             try
             {
-                var heartRateData = await _healthService.GetHealthDataAsync<HeartRateDto>(exerciseRange);
+                var heartRateData = await _healthService.GetHealthData<HeartRateDto>(exerciseRange);
                 if (heartRateData.Count > 0)
                 {
                     _averageHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
@@ -279,7 +279,7 @@ public partial class Home
             Timestamp = new DateTimeOffset(today.AddHours(7), localOffset),
             Unit = "kg"
         };
-        await _healthService.WriteHealthDataAsync(weightData);
+        await _healthService.WriteHealthData(weightData);
 
         try
         {

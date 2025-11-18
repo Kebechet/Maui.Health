@@ -12,13 +12,13 @@ public partial class HealthService
         return Task.FromResult(new RequestPermissionResult());
     }
 
-    public partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult(new List<TDto>());
     }
 
-    public partial Task<bool> WriteHealthDataAsync<TDto>(TDto data, CancellationToken cancellationToken)
+    public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult(false);

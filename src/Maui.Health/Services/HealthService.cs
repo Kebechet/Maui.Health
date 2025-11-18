@@ -24,9 +24,9 @@ public partial class HealthService : IHealthService
 
     public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
 
-    public partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
-    public partial Task<bool> WriteHealthDataAsync<TDto>(TDto data, CancellationToken cancellationToken = default)
+    public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 }
