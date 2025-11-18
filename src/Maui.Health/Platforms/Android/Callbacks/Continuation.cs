@@ -18,17 +18,38 @@ internal class Continuation : Java.Lang.Object, IContinuation
 
     public void ResumeWith(Java.Lang.Object result)
     {
-        //Check if there are any exception. We don't have access to the class Kotlin.Result.Failure. But we can extraxt the exception (Throwable) from the field in the class.
-        var exceptionField = result.Class.GetDeclaredFields().FirstOrDefault(x => x.Name.Contains("exception", StringComparison.OrdinalIgnoreCase));
-        if (exceptionField != null)
+        try
         {
-            var exception = exceptionField.Get(result).JavaCast<Throwable>();
-            _taskCompletionSource.TrySetException(new System.Exception(exception?.Message));
-            return;
-        }
-        else
-        {
+            if (result == null)
+            {
+                _taskCompletionSource.TrySetResult(null!);
+                return;
+            }
+
+            //Check if there are any exception. We don't have access to the class Kotlin.Result.Failure. But we can extract the exception (Throwable) from the field in the class.
+            var exceptionField = result.Class?.GetDeclaredFields()?.FirstOrDefault(x => x.Name != null && x.Name.Contains("exception", StringComparison.OrdinalIgnoreCase));
+            if (exceptionField != null)
+            {
+                exceptionField.Accessible = true;
+                var exceptionObj = exceptionField.Get(result);
+                if (exceptionObj != null)
+                {
+                    var exception = exceptionObj.JavaCast<Throwable>();
+                    if (exception != null)
+                    {
+                        _taskCompletionSource.TrySetException(new System.Exception(exception.Message ?? "Unknown error"));
+                        return;
+                    }
+                }
+            }
+
             _taskCompletionSource.TrySetResult(result);
+        }
+        catch (System.Exception ex)
+        {
+            // If we can't process the result properly, just complete successfully
+            // This prevents crashes when Health Connect returns unexpected result formats
+            _taskCompletionSource.TrySetResult(result ?? null!);
         }
     }
 }

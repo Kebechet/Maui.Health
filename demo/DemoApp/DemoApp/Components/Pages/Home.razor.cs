@@ -70,8 +70,30 @@ public partial class Home
     {
         try
         {
-            _demoDataMessage = "Writing demo data...";
+            _demoDataMessage = "Requesting permissions...";
             _demoDataSuccess = false;
+            StateHasChanged();
+
+            // Request write permissions for all data types we'll be writing
+            var permissions = new List<HealthPermissionDto>
+            {
+                new() { HealthDataType = HealthDataType.Steps, PermissionType = PermissionType.Write },
+                new() { HealthDataType = HealthDataType.Weight, PermissionType = PermissionType.Write },
+                new() { HealthDataType = HealthDataType.ActiveCaloriesBurned, PermissionType = PermissionType.Write },
+                new() { HealthDataType = HealthDataType.HeartRate, PermissionType = PermissionType.Write }
+            };
+
+            var permissionResult = await _healthService.RequestPermissions(permissions);
+
+            if (!permissionResult.IsSuccess)
+            {
+                _demoDataMessage = "✗ Permissions denied. Please grant write permissions.";
+                _demoDataSuccess = false;
+                StateHasChanged();
+                return;
+            }
+
+            _demoDataMessage = "Writing demo data...";
             StateHasChanged();
 
             var today = DateTime.Today;
@@ -155,6 +177,19 @@ public partial class Home
     {
         try
         {
+            // Request read permissions for all health data types
+            var permissions = new List<HealthPermissionDto>
+            {
+                new() { HealthDataType = HealthDataType.Steps, PermissionType = PermissionType.Read },
+                new() { HealthDataType = HealthDataType.Weight, PermissionType = PermissionType.Read },
+                new() { HealthDataType = HealthDataType.ActiveCaloriesBurned, PermissionType = PermissionType.Read },
+                new() { HealthDataType = HealthDataType.HeartRate, PermissionType = PermissionType.Read },
+                new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Read }
+            };
+
+            // Request permissions - if denied, individual reads will fail gracefully
+            await _healthService.RequestPermissions(permissions);
+
             var today = DateTime.Today;
             var now = DateTime.Now;
 
@@ -370,7 +405,7 @@ public partial class Home
                 Id = Guid.NewGuid().ToString(),
                 DataOrigin = "DemoApp",
                 ActivityType = ActivityType.Running, // Default to running
-                Title = "Manual Workout Session",
+                Title = "Test of start and stop session",
                 StartTime = now,
                 EndTime = null, // Active session - no end time yet
                 Timestamp = now
@@ -397,8 +432,27 @@ public partial class Home
     {
         try
         {
-            _sessionMessage = "Stopping workout session and saving to Health Connect...";
+            _sessionMessage = "Requesting permissions...";
             _sessionSuccess = false;
+            StateHasChanged();
+
+            // Request write permission for ExerciseSession
+            var permissions = new List<HealthPermissionDto>
+            {
+                new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Write }
+            };
+
+            var permissionResult = await _healthService.RequestPermissions(permissions);
+
+            if (!permissionResult.IsSuccess)
+            {
+                _sessionMessage = "✗ Permission denied. Please grant Exercise write permission.";
+                _sessionSuccess = false;
+                StateHasChanged();
+                return;
+            }
+
+            _sessionMessage = "Stopping workout session and saving to Health Connect...";
             StateHasChanged();
 
             await _healthService.Activity.EndActiveSession();
@@ -431,8 +485,27 @@ public partial class Home
     {
         try
         {
-            _sessionMessage = "Writing manual workout to Health Connect...";
+            _sessionMessage = "Requesting permissions...";
             _sessionSuccess = false;
+            StateHasChanged();
+
+            // Request write permission for ExerciseSession
+            var permissions = new List<HealthPermissionDto>
+            {
+                new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Write }
+            };
+
+            var permissionResult = await _healthService.RequestPermissions(permissions);
+
+            if (!permissionResult.IsSuccess)
+            {
+                _sessionMessage = "✗ Permission denied. Please grant Exercise write permission.";
+                _sessionSuccess = false;
+                StateHasChanged();
+                return;
+            }
+
+            _sessionMessage = "Writing manual workout to Health Connect...";
             StateHasChanged();
 
             var now = DateTimeOffset.UtcNow;

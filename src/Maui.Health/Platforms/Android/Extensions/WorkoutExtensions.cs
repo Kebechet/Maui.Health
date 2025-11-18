@@ -144,44 +144,48 @@ internal static class WorkoutExtensions
     {
         return activityType switch
         {
-            ActivityType.Running => 7,
-            ActivityType.Cycling => 8,
-            ActivityType.Walking => 79,
-            ActivityType.Swimming => 68,
-            ActivityType.Hiking => 36,
-            ActivityType.Yoga => 81,
-            ActivityType.Calisthenics => 28,
-            ActivityType.StrengthTraining => 71,
-            ActivityType.Elliptical => 25,
-            ActivityType.Rowing => 61,
-            ActivityType.Pilates => 54,
-            ActivityType.Dance => 19,
-            ActivityType.Soccer => 62,
-            ActivityType.Basketball => 9,
-            ActivityType.Baseball => 5,
-            ActivityType.Tennis => 73,
-            ActivityType.Golf => 32,
-            ActivityType.Badminton => 3,
-            ActivityType.TableTennis => 72,
-            ActivityType.Volleyball => 78,
-            ActivityType.Cricket => 18,
-            ActivityType.Rugby => 63,
-            ActivityType.AmericanFootball => 1,
-            ActivityType.Skiing => 64,
-            ActivityType.Snowboarding => 66,
-            ActivityType.SkatingSports => 40,
-            ActivityType.SurfingSports => 67,
-            ActivityType.PaddleSports => 53,
-            ActivityType.Sailing => 65,
-            ActivityType.MartialArts => 47,
-            ActivityType.Boxing => 11,
-            ActivityType.Wrestling => 82,
-            ActivityType.Climbing => 59,
-            ActivityType.CrossTraining => 20,
-            ActivityType.StairClimbing => 70,
-            ActivityType.JumpRope => 44,
-            ActivityType.Unknown => 0,
-            _ => 0
+            // Use the correct ExerciseType enum values from Android Health Connect
+            ActivityType.Running => (int)ExerciseType.Running, // 56
+            ActivityType.Cycling => (int)ExerciseType.Biking, // 8
+            ActivityType.CyclingStationary => (int)ExerciseType.BikingStationary, // 9
+            ActivityType.Walking => (int)ExerciseType.Walking, // 79
+            ActivityType.Swimming => (int)ExerciseType.SwimmingPool, // 74
+            ActivityType.Hiking => (int)ExerciseType.Hiking, // 37
+            ActivityType.Yoga => (int)ExerciseType.Yoga, // 83
+            ActivityType.Calisthenics => (int)ExerciseType.Calisthenics, // 13
+            ActivityType.StrengthTraining => (int)ExerciseType.StrengthTraining, // 70
+            ActivityType.Elliptical => (int)ExerciseType.Elliptical, // 25
+            ActivityType.Rowing => (int)ExerciseType.Rowing, // 53
+            ActivityType.Pilates => (int)ExerciseType.Pilates, // 48
+            ActivityType.Dance => (int)ExerciseType.Dancing, // 16
+            ActivityType.Soccer => (int)ExerciseType.Soccer, // 64
+            ActivityType.Basketball => (int)ExerciseType.Basketball, // 5
+            ActivityType.Baseball => (int)ExerciseType.Baseball, // 4
+            ActivityType.Tennis => (int)ExerciseType.Tennis, // 76
+            ActivityType.Golf => (int)ExerciseType.Golf, // 32
+            ActivityType.Badminton => (int)ExerciseType.Badminton, // 2
+            ActivityType.TableTennis => (int)ExerciseType.TableTennis, // 75
+            ActivityType.Volleyball => (int)ExerciseType.Volleyball, // 78
+            ActivityType.Cricket => (int)ExerciseType.Cricket, // 14
+            ActivityType.Rugby => (int)ExerciseType.Rugby, // 55
+            ActivityType.AmericanFootball => (int)ExerciseType.FootballAmerican, // 28
+            ActivityType.Skiing => (int)ExerciseType.Skiing, // 61
+            ActivityType.Snowboarding => (int)ExerciseType.Snowboarding, // 62
+            ActivityType.SkatingSports => (int)ExerciseType.Skating, // 60
+            ActivityType.SurfingSports => (int)ExerciseType.Surfing, // 72
+            ActivityType.PaddleSports => (int)ExerciseType.Paddling, // 46
+            ActivityType.Sailing => (int)ExerciseType.Sailing, // 58
+            ActivityType.MartialArts => (int)ExerciseType.MartialArts, // 44
+            ActivityType.Boxing => (int)ExerciseType.Boxing, // 11
+            ActivityType.Climbing => (int)ExerciseType.RockClimbing, // 51
+            ActivityType.StairClimbing => (int)ExerciseType.StairClimbing, // 68
+            ActivityType.BootCamp => (int)ExerciseType.BootCamp, // 10
+            ActivityType.ExerciseClass => (int)ExerciseType.ExerciseClass, // 26
+            ActivityType.HighIntensityIntervalTraining => (int)ExerciseType.HighIntensityIntervalTraining, // 36
+            ActivityType.Stretching => (int)ExerciseType.Stretching, // 71
+            ActivityType.Weightlifting => (int)ExerciseType.Weightlifting, // 81
+            ActivityType.Unknown => (int)ExerciseType.OtherWorkout, // 0
+            _ => (int)ExerciseType.OtherWorkout // 0
         };
     }
 }
