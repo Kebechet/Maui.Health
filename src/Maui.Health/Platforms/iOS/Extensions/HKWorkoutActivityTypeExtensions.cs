@@ -103,8 +103,9 @@ internal static class HKWorkoutActivityTypeExtensions
        Func<HealthTimeRange, CancellationToken, Task<HeartRateDto[]>> queryHeartRateFunc,
        CancellationToken cancellationToken)
     {
-        var startTime = new DateTimeOffset(workout.StartDate.ToDateTime());
-        var endTime = new DateTimeOffset(workout.EndDate.ToDateTime());
+        // Use direct NSDate to DateTimeOffset conversion for proper UTC handling
+        var startTime = workout.StartDate.ToDateTimeOffset();
+        var endTime = workout.EndDate.ToDateTimeOffset();
         var activityType = workout.WorkoutActivityType.ToActivityType();
 
         // Extract energy burned

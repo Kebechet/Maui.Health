@@ -26,8 +26,8 @@ internal static class HKQuantitySampleExtensions
     public static StepsDto ToStepsDto(this HKQuantitySample sample)
     {
         var value = sample.Quantity.GetDoubleValue(HKUnit.Count);
-        var startTime = new DateTimeOffset(sample.StartDate.ToDateTime());
-        var endTime = new DateTimeOffset(sample.EndDate.ToDateTime());
+        var startTime = sample.StartDate.ToDateTimeOffset();
+        var endTime = sample.EndDate.ToDateTimeOffset();
 
         return new StepsDto
         {
@@ -43,7 +43,7 @@ internal static class HKQuantitySampleExtensions
     public static WeightDto ToWeightDto(this HKQuantitySample sample)
     {
         var value = sample.Quantity.GetDoubleValue(HKUnit.Gram) / 1000.0; // Convert grams to kg
-        var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
+        var timestamp = sample.StartDate.ToDateTimeOffset();
 
         return new WeightDto
         {
@@ -58,7 +58,7 @@ internal static class HKQuantitySampleExtensions
     public static HeightDto ToHeightDto(this HKQuantitySample sample)
     {
         var valueInMeters = sample.Quantity.GetDoubleValue(HKUnit.Meter);
-        var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
+        var timestamp = sample.StartDate.ToDateTimeOffset();
 
         return new HeightDto
         {
@@ -73,8 +73,8 @@ internal static class HKQuantitySampleExtensions
     public static ActiveCaloriesBurnedDto ToActiveCaloriesBurnedDto(this HKQuantitySample sample)
     {
         var valueInKilocalories = sample.Quantity.GetDoubleValue(HKUnit.Kilocalorie);
-        var startTime = new DateTimeOffset(sample.StartDate.ToDateTime());
-        var endTime = new DateTimeOffset(sample.EndDate.ToDateTime());
+        var startTime = sample.StartDate.ToDateTimeOffset();
+        var endTime = sample.EndDate.ToDateTimeOffset();
 
         return new ActiveCaloriesBurnedDto
         {
@@ -91,7 +91,7 @@ internal static class HKQuantitySampleExtensions
     public static HeartRateDto ToHeartRateDto(this HKQuantitySample sample)
     {
         var beatsPerMinute = sample.Quantity.GetDoubleValue(HKUnit.Count.UnitDividedBy(HKUnit.Minute));
-        var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
+        var timestamp = sample.StartDate.ToDateTimeOffset();
 
         return new HeartRateDto
         {
@@ -106,7 +106,7 @@ internal static class HKQuantitySampleExtensions
     public static BodyFatDto ToBodyFatDto(this HKQuantitySample sample)
     {
         var percentage = sample.Quantity.GetDoubleValue(HKUnit.Percent) * 100; // HKUnit.Percent is 0-1, convert to 0-100
-        var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
+        var timestamp = sample.StartDate.ToDateTimeOffset();
 
         return new BodyFatDto
         {
@@ -121,7 +121,7 @@ internal static class HKQuantitySampleExtensions
     public static Vo2MaxDto ToVo2MaxDto(this HKQuantitySample sample)
     {
         var value = sample.Quantity.GetDoubleValue(HKUnit.FromString("ml/kg*min"));
-        var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
+        var timestamp = sample.StartDate.ToDateTimeOffset();
 
         return new Vo2MaxDto
         {

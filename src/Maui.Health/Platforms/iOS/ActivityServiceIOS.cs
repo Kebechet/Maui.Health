@@ -30,13 +30,18 @@ public partial class ActivityService
             _logger?.LogInformation("iOS ActivityService Read: StartTime: {StartTime}, EndTime: {EndTime}",
                 activityTime.StartTime, activityTime.EndTime);
 
-            // Ensure DateTime is treated as UTC for NSDate conversion
-            var fromUtc = DateTime.SpecifyKind(activityTime.StartDateTime, DateTimeKind.Utc);
-            var toUtc = DateTime.SpecifyKind(activityTime.EndDateTime, DateTimeKind.Utc);
+            // Request read permission for workouts before querying
+            var permissionGranted = await RequestWorkoutReadPermission();
+            if (!permissionGranted)
+            {
+                _logger?.LogWarning("iOS ActivityService: Workout read permission not granted");
+                return [];
+            }
 
+            // Use DateTimeOffset.UtcDateTime for correct timezone handling
             var predicate = HKQuery.GetPredicateForSamples(
-                (NSDate)fromUtc,
-                (NSDate)toUtc,
+                (NSDate)activityTime.StartTime.UtcDateTime,
+                (NSDate)activityTime.EndTime.UtcDateTime,
                 HKQueryOptions.StrictStartDate
             );
 
@@ -324,11 +329,11 @@ public partial class ActivityService
     {
         try
         {
-            var fromUtc = DateTime.SpecifyKind(timeRange.StartDateTime, DateTimeKind.Utc);
-            var toUtc = DateTime.SpecifyKind(timeRange.EndDateTime, DateTimeKind.Utc);
-
             var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.HeartRate)!;
-            var predicate = HKQuery.GetPredicateForSamples((NSDate)fromUtc, (NSDate)toUtc, HKQueryOptions.StrictStartDate);
+            var predicate = HKQuery.GetPredicateForSamples(
+                (NSDate)timeRange.StartTime.UtcDateTime,
+                (NSDate)timeRange.EndTime.UtcDateTime,
+                HKQueryOptions.StrictStartDate);
             var tcs = new TaskCompletionSource<HeartRateDto[]>();
 
             var query = new HKSampleQuery(
@@ -369,6 +374,39 @@ public partial class ActivityService
         {
             _logger?.LogError(ex, "Error querying heart rate samples");
             return [];
+        }
+    }
+
+    /// <summary>
+    /// Requests read permission for workouts from HealthKit
+    /// </summary>
+    /// <returns>True if permission was granted, false otherwise</returns>
+    private async Task<bool> RequestWorkoutReadPermission()
+    {
+        try
+        {
+            var workoutType = HKWorkoutType.WorkoutType;
+            var readTypes = new NSSet<HKObjectType>(workoutType);
+            var writeTypes = new NSSet<HKObjectType>();
+
+            using var healthStore = new HKHealthStore();
+
+            // Request authorization to read workouts
+            var (success, error) = await healthStore.RequestAuthorizationToShareAsync(writeTypes, readTypes);
+
+            if (error != null)
+            {
+                _logger?.LogError("iOS ActivityService: Permission request error: {Error}", error.LocalizedDescription);
+                return false;
+            }
+
+            _logger?.LogInformation("iOS ActivityService: Workout read permission granted: {Success}", success);
+            return success;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "iOS ActivityService: Error requesting workout read permission");
+            return false;
         }
     }
 }
