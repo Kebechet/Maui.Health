@@ -86,7 +86,7 @@ public partial class ActivityService
         }
     }
 
-    public partial Task<WorkoutDto> ReadActive(HealthTimeRange activityTime)
+    public partial Task<WorkoutDto> GetActiveSession(HealthTimeRange activityTime)
     {
         try
         {
@@ -98,27 +98,29 @@ public partial class ActivityService
 
             // Try to reconstruct from preferences (for app restarts)
             var activeSessionId = Preferences.Default.Get(SessionPreferenceKeys.ActiveSessionId, string.Empty);
-            if (!string.IsNullOrEmpty(activeSessionId))
+            if (string.IsNullOrEmpty(activeSessionId))
             {
-                var activityTypeStr = Preferences.Default.Get(SessionPreferenceKeys.ActivityType, string.Empty);
-                var title = Preferences.Default.Get(SessionPreferenceKeys.Title, string.Empty);
-                var startTimeMs = Preferences.Default.Get(SessionPreferenceKeys.StartTime, 0L);
-                var dataOrigin = Preferences.Default.Get(SessionPreferenceKeys.DataOrigin, string.Empty);
+                return Task.FromResult<WorkoutDto>(null!);
+            }
 
-                if (Enum.TryParse<ActivityType>(activityTypeStr, out var activityType) && startTimeMs > 0)
+            var activityTypeStr = Preferences.Default.Get(SessionPreferenceKeys.ActivityType, string.Empty);
+            var title = Preferences.Default.Get(SessionPreferenceKeys.Title, string.Empty);
+            var startTimeMs = Preferences.Default.Get(SessionPreferenceKeys.StartTime, 0L);
+            var dataOrigin = Preferences.Default.Get(SessionPreferenceKeys.DataOrigin, string.Empty);
+
+            if (Enum.TryParse<ActivityType>(activityTypeStr, out var activityType) && startTimeMs > 0)
+            {
+                _activeWorkoutDto = new WorkoutDto
                 {
-                    _activeWorkoutDto = new WorkoutDto
-                    {
-                        Id = activeSessionId,
-                        DataOrigin = dataOrigin,
-                        ActivityType = activityType,
-                        Title = string.IsNullOrEmpty(title) ? null : title,
-                        StartTime = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs),
-                        EndTime = null, // Active session - no end time yet
-                        Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs)
-                    };
-                    return Task.FromResult(_activeWorkoutDto);
-                }
+                    Id = activeSessionId,
+                    DataOrigin = dataOrigin,
+                    ActivityType = activityType,
+                    Title = string.IsNullOrEmpty(title) ? null : title,
+                    StartTime = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs),
+                    EndTime = null, // Active session - no end time yet
+                    Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs)
+                };
+                return Task.FromResult(_activeWorkoutDto);
             }
 
             return Task.FromResult<WorkoutDto>(null!);
@@ -130,14 +132,14 @@ public partial class ActivityService
         }
     }
 
-    public partial async Task Write(WorkoutDto workout)
+    public async partial Task Write(WorkoutDto workout)
     {
         try
         {
             _logger?.LogInformation("Android ActivityService Write: {ActivityType}", workout.ActivityType);
 
             var record = workout.ToExerciseSessionRecord();
-            if (record == null)
+            if (record is null)
             {
                 _logger?.LogWarning("Failed to convert WorkoutDto to ExerciseSessionRecord");
                 return;
@@ -150,52 +152,55 @@ public partial class ActivityService
             var handleField = clientType.GetField("handle",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
-            if(handleField is null)
+            if (handleField is null)
             {
                 _logger?.LogWarning("Failed to get handle field from Health Connect client");
                 return;
             }
 
             var handle = handleField.GetValue(_healthConnectClient);
-            if (handle is IntPtr jniHandle && jniHandle != IntPtr.Zero)
-            {
-                var classHandle = Android.Runtime.JNIEnv.GetObjectClass(jniHandle);
-                var clientClass = Java.Lang.Object.GetObject<Java.Lang.Class>(
-                    classHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
-
-                var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(
-                    jniHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
-
-                var insertMethod = clientClass?.GetDeclaredMethod("insertRecords",
-                    Java.Lang.Class.FromType(typeof(Java.Util.IList)),
-                    Java.Lang.Class.FromType(typeof(Kotlin.Coroutines.IContinuation)));
-
-                if(insertMethod is null && clientObject is null)
-                {
-                    _logger?.LogWarning("Failed to invoke insertRecords method");
-                }
-
-                var taskCompletionSource = new TaskCompletionSource<Java.Lang.Object>();
-                var continuation = new Continuation(taskCompletionSource, default);
-
-                insertMethod.Accessible = true;
-                var result = insertMethod.Invoke(clientObject, recordsList, continuation);
-
-                if (result is Java.Lang.Enum javaEnum)
-                {
-                    var currentState = Enum.Parse<CoroutineState>(javaEnum.ToString());
-                    if (currentState == CoroutineState.COROUTINE_SUSPENDED)
-                    {
-                        await taskCompletionSource.Task;
-                    }
-                }
-
-                _logger?.LogInformation("Successfully wrote workout record to Health Connect");
-            }
-            else
+            if (handle is not IntPtr jniHandle || jniHandle == IntPtr.Zero)
             {
                 _logger?.LogWarning("Failed to get JNI handle for Health Connect client");
+                return;
             }
+
+            var classHandle = Android.Runtime.JNIEnv.GetObjectClass(jniHandle);
+            var clientClass = Java.Lang.Object.GetObject<Java.Lang.Class>(
+                classHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
+
+            var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(
+                jniHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
+
+            var insertMethod = clientClass?.GetDeclaredMethod("insertRecords",
+                Java.Lang.Class.FromType(typeof(Java.Util.IList)),
+                Java.Lang.Class.FromType(typeof(Kotlin.Coroutines.IContinuation)));
+
+            if (insertMethod is null || clientObject is null)
+            {
+                _logger?.LogWarning("Failed to invoke insertRecords method");
+                return;
+            }
+
+            var taskCompletionSource = new TaskCompletionSource<Java.Lang.Object>();
+            var continuation = new Continuation(taskCompletionSource, default);
+
+            insertMethod.Accessible = true;
+            var result = insertMethod.Invoke(clientObject, recordsList, continuation);
+
+            if (result is not Java.Lang.Enum javaEnum)
+            {
+                _logger?.LogInformation("Successfully wrote workout record to Health Connect");
+                return;
+            }
+
+            var currentState = Enum.Parse<CoroutineState>(javaEnum.ToString());
+            if (currentState == CoroutineState.COROUTINE_SUSPENDED)
+            {
+                await taskCompletionSource.Task;
+            }
+
+            _logger?.LogInformation("Successfully wrote workout record to Health Connect");
         }
         catch (Exception ex)
         {
@@ -204,7 +209,7 @@ public partial class ActivityService
         }
     }
 
-    public partial async Task Delete(WorkoutDto workout)
+    public async partial Task Delete(WorkoutDto workout)
     {
         try
         {
@@ -218,82 +223,83 @@ public partial class ActivityService
             var handleField = clientType.GetField("handle",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
-            if (handleField != null)
-            {
-                var handle = handleField.GetValue(_healthConnectClient);
-                if (handle is IntPtr jniHandle && jniHandle != IntPtr.Zero)
-                {
-                    var classHandle = Android.Runtime.JNIEnv.GetObjectClass(jniHandle);
-                    var clientClass = Java.Lang.Object.GetObject<Java.Lang.Class>(
-                        classHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
-
-                    var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(
-                        jniHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
-
-                    // Get the KClass for ExerciseSessionRecord
-                    var recordClass = Kotlin.Jvm.JvmClassMappingKt.GetKotlinClass(
-                        Java.Lang.Class.FromType(typeof(ExerciseSessionRecord)));
-
-                    var deleteMethod = clientClass?.GetDeclaredMethod("deleteRecords",
-                        Java.Lang.Class.FromType(typeof(Kotlin.Reflect.IKClass)),
-                        Java.Lang.Class.FromType(typeof(Java.Util.IList)),
-                        Java.Lang.Class.FromType(typeof(Java.Util.IList)),
-                        Java.Lang.Class.FromType(typeof(Kotlin.Coroutines.IContinuation)));
-
-                    if (deleteMethod != null && clientObject != null)
-                    {
-                        var taskCompletionSource = new TaskCompletionSource<Java.Lang.Object>();
-                        var continuation = new Continuation(taskCompletionSource, default);
-
-                        deleteMethod.Accessible = true;
-                        var emptyList = new Java.Util.ArrayList(); // Empty client record ID list
-
-                        // Cast recordClass to Java.Lang.Object for the Invoke call
-                        var recordClassObj = Java.Lang.Object.GetObject<Java.Lang.Object>(
-                            recordClass.Handle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
-
-                        var result = deleteMethod.Invoke(clientObject, recordClassObj, recordIdsList, emptyList, continuation);
-
-                        if (result is Java.Lang.Enum javaEnum)
-                        {
-                            var currentState = Enum.Parse<CoroutineState>(javaEnum.ToString());
-                            if (currentState == CoroutineState.COROUTINE_SUSPENDED)
-                            {
-                                try
-                                {
-                                    await taskCompletionSource.Task;
-                                    _logger?.LogInformation("Successfully deleted workout record from Health Connect");
-                                }
-                                catch (Exception taskEx)
-                                {
-                                    // Handle common cases that might occur even when deletion succeeds
-                                    if (taskEx.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true ||
-                                        taskEx.Message?.Contains("does not exist", StringComparison.OrdinalIgnoreCase) == true)
-                                    {
-                                        _logger?.LogWarning("Workout record not found (may have been already deleted): {Message}", taskEx.Message);
-                                        // Don't throw - treat as successful deletion
-                                        return;
-                                    }
-
-                                    _logger?.LogError(taskEx, "Error during delete operation");
-                                    throw;
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        _logger?.LogWarning("Failed to invoke deleteRecords method");
-                    }
-                }
-                else
-                {
-                    _logger?.LogWarning("Failed to get JNI handle for Health Connect client");
-                }
-            }
-            else
+            if (handleField is null)
             {
                 _logger?.LogWarning("Failed to get handle field from Health Connect client");
+                return;
+            }
+
+            var handle = handleField.GetValue(_healthConnectClient);
+            if (handle is not IntPtr jniHandle || jniHandle == IntPtr.Zero)
+            {
+                _logger?.LogWarning("Failed to get JNI handle for Health Connect client");
+                return;
+            }
+
+            var classHandle = Android.Runtime.JNIEnv.GetObjectClass(jniHandle);
+            var clientClass = Java.Lang.Object.GetObject<Java.Lang.Class>(
+                classHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
+
+            var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(
+                jniHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
+
+            // Get the KClass for ExerciseSessionRecord
+            var recordClass = Kotlin.Jvm.JvmClassMappingKt.GetKotlinClass(
+                Java.Lang.Class.FromType(typeof(ExerciseSessionRecord)));
+
+            var deleteMethod = clientClass?.GetDeclaredMethod("deleteRecords",
+                Java.Lang.Class.FromType(typeof(Kotlin.Reflect.IKClass)),
+                Java.Lang.Class.FromType(typeof(Java.Util.IList)),
+                Java.Lang.Class.FromType(typeof(Java.Util.IList)),
+                Java.Lang.Class.FromType(typeof(Kotlin.Coroutines.IContinuation)));
+
+            if (deleteMethod is null || clientObject is null)
+            {
+                _logger?.LogWarning("Failed to invoke deleteRecords method");
+                return;
+            }
+
+            var taskCompletionSource = new TaskCompletionSource<Java.Lang.Object>();
+            var continuation = new Continuation(taskCompletionSource, default);
+
+            deleteMethod.Accessible = true;
+            var emptyList = new Java.Util.ArrayList(); // Empty client record ID list
+
+            // Cast recordClass to Java.Lang.Object for the Invoke call
+            var recordClassObj = Java.Lang.Object.GetObject<Java.Lang.Object>(
+                recordClass.Handle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
+
+            var result = deleteMethod.Invoke(clientObject, recordClassObj, recordIdsList, emptyList, continuation);
+
+            if (result is not Java.Lang.Enum javaEnum)
+            {
+                return;
+            }
+
+            var currentState = Enum.Parse<CoroutineState>(javaEnum.ToString());
+            if (currentState != CoroutineState.COROUTINE_SUSPENDED)
+            {
+                return;
+            }
+
+            try
+            {
+                await taskCompletionSource.Task;
+                _logger?.LogInformation("Successfully deleted workout record from Health Connect");
+            }
+            catch (Exception taskEx)
+            {
+                // Handle common cases that might occur even when deletion succeeds
+                if (taskEx.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true ||
+                    taskEx.Message?.Contains("does not exist", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    _logger?.LogWarning("Workout record not found (may have been already deleted): {Message}", taskEx.Message);
+                    // Don't throw - treat as successful deletion
+                    return;
+                }
+
+                _logger?.LogError(taskEx, "Error during delete operation");
+                throw;
             }
         }
         catch (Exception ex)
@@ -310,7 +316,9 @@ public partial class ActivityService
         {
             // Check memory first, then check preferences (for app restarts)
             if (_activeWorkoutDto is not null)
+            {
                 return Task.FromResult(true);
+            }
 
             // Check if there's a persisted active session
             var activeSessionId = Preferences.Default.Get(SessionPreferenceKeys.ActiveSessionId, string.Empty);
@@ -351,42 +359,16 @@ public partial class ActivityService
         }
     }
 
-    public partial async Task EndActiveSession()
+    public async partial Task EndActiveSession()
     {
         try
         {
-            // Check memory first, then reconstruct from preferences if needed
-            if (_activeWorkoutDto is null)
-            {
-                // Try to load from preferences
-                var activeSessionId = Preferences.Default.Get(SessionPreferenceKeys.ActiveSessionId, string.Empty);
-                if (!string.IsNullOrEmpty(activeSessionId))
-                {
-                    var activityTypeStr = Preferences.Default.Get(SessionPreferenceKeys.ActivityType, string.Empty);
-                    var title = Preferences.Default.Get(SessionPreferenceKeys.Title, string.Empty);
-                    var startTimeMs = Preferences.Default.Get(SessionPreferenceKeys.StartTime, 0L);
-                    var dataOrigin = Preferences.Default.Get(SessionPreferenceKeys.DataOrigin, string.Empty);
-
-                    if (Enum.TryParse<ActivityType>(activityTypeStr, out var activityType) && startTimeMs > 0)
-                    {
-                        _activeWorkoutDto = new WorkoutDto
-                        {
-                            Id = activeSessionId,
-                            DataOrigin = dataOrigin,
-                            ActivityType = activityType,
-                            Title = string.IsNullOrEmpty(title) ? null : title,
-                            StartTime = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs),
-                            EndTime = null,
-                            Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs)
-                        };
-                    }
-                }
-            }
+            // Try to load from preferences if not in memory
+            _activeWorkoutDto ??= LoadActiveWorkoutFromPreferences();
 
             if (_activeWorkoutDto is null)
             {
                 _logger?.LogWarning("No active session to end");
-                // Still clear preferences in case there's stale data
                 ClearSessionPreferences();
                 return;
             }
@@ -424,6 +406,36 @@ public partial class ActivityService
             // Always clear preferences even if there was an error
             ClearSessionPreferences();
         }
+    }
+
+    private WorkoutDto? LoadActiveWorkoutFromPreferences()
+    {
+        var activeSessionId = Preferences.Default.Get(SessionPreferenceKeys.ActiveSessionId, string.Empty);
+        if (string.IsNullOrEmpty(activeSessionId))
+        {
+            return null;
+        }
+
+        var activityTypeStr = Preferences.Default.Get(SessionPreferenceKeys.ActivityType, string.Empty);
+        var title = Preferences.Default.Get(SessionPreferenceKeys.Title, string.Empty);
+        var startTimeMs = Preferences.Default.Get(SessionPreferenceKeys.StartTime, 0L);
+        var dataOrigin = Preferences.Default.Get(SessionPreferenceKeys.DataOrigin, string.Empty);
+
+        if (!Enum.TryParse<ActivityType>(activityTypeStr, out var activityType) || startTimeMs <= 0)
+        {
+            return null;
+        }
+
+        return new WorkoutDto
+        {
+            Id = activeSessionId,
+            DataOrigin = dataOrigin,
+            ActivityType = activityType,
+            Title = string.IsNullOrEmpty(title) ? null : title,
+            StartTime = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs),
+            EndTime = null,
+            Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(startTimeMs)
+        };
     }
 
     private void ClearSessionPreferences()

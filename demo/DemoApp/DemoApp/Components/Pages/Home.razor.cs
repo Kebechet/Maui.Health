@@ -249,7 +249,7 @@ public partial class Home
                 _isSessionRunning = await _healthService.Activity.IsSessionRunning();
                 if (_isSessionRunning)
                 {
-                    _activeWorkout = await _healthService.Activity.ReadActive(todayRange);
+                    _activeWorkout = await _healthService.Activity.GetActiveSession(todayRange);
                 }
             }
             catch (Exception ex)
@@ -342,7 +342,7 @@ public partial class Home
 
             if (_isSessionRunning)
             {
-                _activeWorkout = await _healthService.Activity.ReadActive(todayRange);
+                _activeWorkout = await _healthService.Activity.GetActiveSession(todayRange);
                 if (_activeWorkout != null)
                 {
                     var duration = (int)(DateTimeOffset.Now - _activeWorkout.StartTime).TotalMinutes;

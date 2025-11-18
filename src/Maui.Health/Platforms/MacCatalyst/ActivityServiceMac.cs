@@ -20,7 +20,7 @@ public partial class ActivityService
         }
     }
 
-    public partial Task<WorkoutDto> ReadActive(HealthTimeRange activityTime)
+    public partial Task<WorkoutDto> GetActiveSession(HealthTimeRange activityTime)
     {
         try
         {
