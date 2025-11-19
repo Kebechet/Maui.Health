@@ -6,6 +6,16 @@ namespace Maui.Health.Services;
 
 public partial class ActivityService
 {
+    /// <summary>
+    /// Callback to fetch heart rate data for a time range (set by HealthService)
+    /// </summary>
+    internal Func<HealthTimeRange, CancellationToken, Task<List<HeartRateDto>>>? HeartRateQueryCallback { get; set; }
+
+    /// <summary>
+    /// Callback to fetch active calories data for a time range (set by HealthService)
+    /// </summary>
+    internal Func<HealthTimeRange, CancellationToken, Task<List<ActiveCaloriesBurnedDto>>>? CaloriesQueryCallback { get; set; }
+
     public partial Task<List<WorkoutDto>> Read(HealthTimeRange activityTime);
 
     public partial Task Write(WorkoutDto workout);

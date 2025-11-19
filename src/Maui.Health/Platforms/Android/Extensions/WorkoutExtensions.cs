@@ -47,45 +47,67 @@ internal static class WorkoutExtensions
     }
 
     /// <summary>
-    /// Converts an ExerciseSessionRecord to a WorkoutDto with heart rate data (async)
+    /// Converts an ExerciseSessionRecord to a WorkoutDto with heart rate and calories data (async)
     /// </summary>
     public static async Task<WorkoutDto> ToWorkoutDtoAsync(
         this ExerciseSessionRecord exerciseRecord,
-        Func<HealthTimeRange, CancellationToken, Task<HeartRateDto[]>> queryHeartRateFunc,
+        Func<HealthTimeRange, CancellationToken, Task<HeartRateDto[]>>? queryHeartRateFunc,
+        Func<HealthTimeRange, CancellationToken, Task<ActiveCaloriesBurnedDto[]>>? queryCaloriesFunc,
         CancellationToken cancellationToken)
     {
         var startTime = exerciseRecord.StartTime.ToDateTimeOffset();
         var endTime = exerciseRecord.EndTime.ToDateTimeOffset();
         var activityType = ((ExerciseType)exerciseRecord.ExerciseType).ToActivityType();
         string? title = exerciseRecord.Title;
+        var workoutTimeRange = HealthTimeRange.FromDateTimeOffset(startTime, endTime);
 
         double? avgHeartRate = null;
         double? minHeartRate = null;
         double? maxHeartRate = null;
+        double? energyBurned = null;
 
-        try
+        // Query heart rate
+        if (queryHeartRateFunc != null)
         {
-            Debug.WriteLine($"Android: Querying HR for workout {startTime:HH:mm} to {endTime:HH:mm}");
-            var workoutTimeRange = HealthTimeRange.FromDateTimeOffset(startTime, endTime);
-            var heartRateData = await queryHeartRateFunc(workoutTimeRange, cancellationToken);
-            Debug.WriteLine($"Android: Found {heartRateData.Length} HR samples for workout");
+            try
+            {
+                Debug.WriteLine($"Android: Querying HR for workout {startTime:HH:mm} to {endTime:HH:mm}");
+                var heartRateData = await queryHeartRateFunc(workoutTimeRange, cancellationToken);
+                Debug.WriteLine($"Android: Found {heartRateData.Length} HR samples for workout");
 
-            if (heartRateData.Any())
-            {
-                avgHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
-                minHeartRate = heartRateData.Min(hr => hr.BeatsPerMinute);
-                maxHeartRate = heartRateData.Max(hr => hr.BeatsPerMinute);
-                Debug.WriteLine($"Android: Workout HR - Avg: {avgHeartRate:F0}, Min: {minHeartRate:F0}, Max: {maxHeartRate:F0}");
+                if (heartRateData.Any())
+                {
+                    avgHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
+                    minHeartRate = heartRateData.Min(hr => hr.BeatsPerMinute);
+                    maxHeartRate = heartRateData.Max(hr => hr.BeatsPerMinute);
+                    Debug.WriteLine($"Android: Workout HR - Avg: {avgHeartRate:F0}, Min: {minHeartRate:F0}, Max: {maxHeartRate:F0}");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Debug.WriteLine($"Android: No HR data found for workout period");
+                Debug.WriteLine($"Android: Error fetching heart rate for workout: {ex.Message}");
             }
         }
-        catch (Exception ex)
+
+        // Query calories
+        if (queryCaloriesFunc != null)
         {
-            Debug.WriteLine($"Android: Error fetching heart rate for workout: {ex.Message}");
-            Debug.WriteLine($"Android: Stack trace: {ex.StackTrace}");
+            try
+            {
+                Debug.WriteLine($"Android: Querying calories for workout {startTime:HH:mm} to {endTime:HH:mm}");
+                var caloriesData = await queryCaloriesFunc(workoutTimeRange, cancellationToken);
+                Debug.WriteLine($"Android: Found {caloriesData.Length} calorie samples for workout");
+
+                if (caloriesData.Any())
+                {
+                    energyBurned = caloriesData.Sum(c => c.Energy);
+                    Debug.WriteLine($"Android: Workout calories: {energyBurned:F0} kcal");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Android: Error fetching calories for workout: {ex.Message}");
+            }
         }
 
         return new WorkoutDto
@@ -99,7 +121,8 @@ internal static class WorkoutExtensions
             EndTime = endTime,
             AverageHeartRate = avgHeartRate,
             MinHeartRate = minHeartRate,
-            MaxHeartRate = maxHeartRate
+            MaxHeartRate = maxHeartRate,
+            EnergyBurned = energyBurned
         };
     }
 

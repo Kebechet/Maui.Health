@@ -98,24 +98,54 @@ internal static class HKWorkoutActivityTypeExtensions
         };
     }
 
-    internal static async Task<WorkoutDto> ToWorkoutDtoAsync(
-       this HKWorkout workout,
-       Func<HealthTimeRange, CancellationToken, Task<HeartRateDto[]>> queryHeartRateFunc,
-       CancellationToken cancellationToken)
+    internal static WorkoutDto ToWorkoutDto(this HKWorkout workout)
     {
-        // Use direct NSDate to DateTimeOffset conversion for proper UTC handling
         var startTime = workout.StartDate.ToDateTimeOffset();
         var endTime = workout.EndDate.ToDateTimeOffset();
         var activityType = workout.WorkoutActivityType.ToActivityType();
 
-        // Extract energy burned
         double? energyBurned = null;
         if (workout.TotalEnergyBurned != null)
         {
             energyBurned = workout.TotalEnergyBurned.GetDoubleValue(HKUnit.Kilocalorie);
         }
 
-        // Extract distance
+        double? distance = null;
+        if (workout.TotalDistance != null)
+        {
+            distance = workout.TotalDistance.GetDoubleValue(HKUnit.Meter);
+        }
+
+        return new WorkoutDto
+        {
+            Id = workout.Uuid.ToString(),
+            DataOrigin = workout.SourceRevision?.Source?.Name ?? "Unknown",
+            Timestamp = startTime,
+            ActivityType = activityType,
+            StartTime = startTime,
+            EndTime = endTime,
+            EnergyBurned = energyBurned,
+            Distance = distance
+        };
+    }
+
+    internal static async Task<WorkoutDto> ToWorkoutDtoAsync(
+       this HKWorkout workout,
+       Func<HealthTimeRange, CancellationToken, Task<HeartRateDto[]>> queryHeartRateFunc,
+       CancellationToken cancellationToken)
+    {
+        var startTime = workout.StartDate.ToDateTimeOffset();
+        var endTime = workout.EndDate.ToDateTimeOffset();
+        var activityType = workout.WorkoutActivityType.ToActivityType();
+
+        // Extract energy burned from HKWorkout (iOS has this built-in)
+        double? energyBurned = null;
+        if (workout.TotalEnergyBurned != null)
+        {
+            energyBurned = workout.TotalEnergyBurned.GetDoubleValue(HKUnit.Kilocalorie);
+        }
+
+        // Extract distance from HKWorkout (iOS has this built-in)
         double? distance = null;
         if (workout.TotalDistance != null)
         {
@@ -129,27 +159,19 @@ internal static class HKWorkoutActivityTypeExtensions
 
         try
         {
-            System.Diagnostics.Debug.WriteLine($"iOS: Querying HR for workout {startTime:HH:mm} to {endTime:HH:mm}");
             var workoutTimeRange = HealthTimeRange.FromDateTimeOffset(startTime, endTime);
             var heartRateData = await queryHeartRateFunc(workoutTimeRange, cancellationToken);
-            System.Diagnostics.Debug.WriteLine($"iOS: Found {heartRateData.Length} HR samples for workout");
 
             if (heartRateData.Any())
             {
                 avgHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
                 minHeartRate = heartRateData.Min(hr => hr.BeatsPerMinute);
                 maxHeartRate = heartRateData.Max(hr => hr.BeatsPerMinute);
-                System.Diagnostics.Debug.WriteLine($"iOS: Workout HR - Avg: {avgHeartRate:F0}, Min: {minHeartRate:F0}, Max: {maxHeartRate:F0}");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"iOS: No HR data found for workout period");
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"iOS: Error fetching heart rate for workout: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"iOS: Stack trace: {ex.StackTrace}");
         }
 
         return new WorkoutDto

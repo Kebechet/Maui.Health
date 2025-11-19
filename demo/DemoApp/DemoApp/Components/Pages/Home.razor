@@ -70,23 +70,6 @@ else if (_activeTab == 1)
     <!-- Sessions Tab -->
     <h1>Workout Session Management:</h1>
     <div style="margin-bottom: 20px;">
-        <!-- Session Status Display -->
-        <div style="padding: 10px; background-color: #e9ecef; border: 1px solid #dee2e6; border-radius: 4px; margin-bottom: 15px;">
-            <strong>Session Status:</strong>
-            <span style="color: @(_isSessionRunning ? (_isSessionPaused ? "#ffc107" : "#28a745") : "#6c757d"); font-weight: bold;">
-                @(_isSessionRunning ? (_isSessionPaused ? "⏸ PAUSED" : "🟢 ACTIVE") : "⚪ INACTIVE")
-            </span>
-            <button @onclick="CheckSessionStatus" style="margin-left: 10px; padding: 5px 15px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
-                🔄 Refresh Status
-            </button>
-            @if (!string.IsNullOrEmpty(_sessionStatusMessage))
-            {
-                <div style="margin-top: 5px; font-size: 0.9em; color: #6c757d;">
-                    @_sessionStatusMessage
-                </div>
-            }
-        </div>
-
         <!-- Active Session Display -->
         @if (_isSessionRunning)
         {

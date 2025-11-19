@@ -136,12 +136,6 @@ public partial class HealthService
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
 
-            // Special handling for WorkoutDto - uses HKWorkout instead of HKQuantitySample
-            if (typeof(TDto) == typeof(WorkoutDto))
-            {
-                return await GetWorkoutsAsync<TDto>(timeRange, cancellationToken);
-            }
-
             // Special handling for BloodPressureDto - split into systolic/diastolic on iOS
             //if (typeof(TDto) == typeof(BloodPressureDto))
             //{
@@ -156,13 +150,19 @@ public partial class HealthService
                 HKQueryOptions.StrictStartDate
             );
 
+            // Use HKStatisticsQuery for cumulative types (steps, calories, distance) to deduplicate
+            if (IsCumulativeType<TDto>())
+            {
+                return await GetCumulativeHealthDataAsync<TDto>(quantityType, predicate, timeRange, healthDataType, cancellationToken);
+            }
+
             var tcs = new TaskCompletionSource<TDto[]>();
 
-            // Use HKSampleQuery to get individual records
+            // Use HKSampleQuery to get individual records (for non-cumulative types like heart rate, weight)
             var query = new HKSampleQuery(
                 quantityType,
                 predicate,
-                _healthRateLimit, // No limit
+                _healthRateLimit,
                 [new NSSortDescriptor(HKSample.SortIdentifierStartDate, false)],
                 (sampleQuery, results, error) =>
                 {
@@ -206,91 +206,69 @@ public partial class HealthService
         }
     }
 
-    private async Task<List<TDto>> GetWorkoutsAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
-        where TDto : HealthMetricBase
+    private static bool IsCumulativeType<TDto>() where TDto : HealthMetricBase
     {
-        var predicate = HKQuery.GetPredicateForSamples(
-            timeRange.StartDateTime.ToNSDate(),
-            timeRange.EndDateTime.ToNSDate(),
-            HKQueryOptions.StrictStartDate
-        );
-
-        var tcs = new TaskCompletionSource<HKWorkout[]>();
-        var workoutType = HKWorkoutType.WorkoutType;
-
-        var query = new HKSampleQuery(
-            workoutType,
-            predicate,
-            _healthRateLimit, // No limit
-            [new NSSortDescriptor(HKSample.SortIdentifierStartDate, false)],
-            (sampleQuery, results, error) =>
-            {
-                if (error != null)
-                {
-                    tcs.TrySetResult([]);
-                    return;
-                }
-
-                var workouts = results?.OfType<HKWorkout>().ToArray();
-                tcs.TrySetResult(workouts ?? []);
-            }
-        );
-
-        using var store = new HKHealthStore();
-        using var ct = cancellationToken.Register(() =>
-        {
-            tcs.TrySetCanceled();
-            store.StopQuery(query);
-        });
-
-        store.ExecuteQuery(query);
-        var workouts = await tcs.Task;
-
-        // Now fetch heart rate data for each workout and convert to DTOs
-        var dtos = new List<TDto>();
-        foreach (var workout in workouts)
-        {
-            var dto = await workout.ToWorkoutDtoAsync(QueryHeartRateSamplesAsync, cancellationToken) as TDto;
-            if (dto is not null)
-            {
-                dtos.Add(dto);
-            }
-        }
-
-        return dtos;
+        return typeof(TDto) == typeof(StepsDto) ||
+               typeof(TDto) == typeof(ActiveCaloriesBurnedDto);
     }
 
-    private async Task<HeartRateDto[]> QueryHeartRateSamplesAsync(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    private async Task<List<TDto>> GetCumulativeHealthDataAsync<TDto>(
+        HKQuantityType quantityType,
+        NSPredicate predicate,
+        HealthTimeRange timeRange,
+        HealthDataType healthDataType,
+        CancellationToken cancellationToken) where TDto : HealthMetricBase
     {
-        // Ensure DateTime is treated as UTC for NSDate conversion
-        var fromUtc = DateTime.SpecifyKind(timeRange.StartDateTime, DateTimeKind.Utc);
-        var toUtc = DateTime.SpecifyKind(timeRange.EndDateTime, DateTimeKind.Utc);
+        var tcs = new TaskCompletionSource<TDto[]>();
 
-        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.HeartRate)!;
-        var predicate = HKQuery.GetPredicateForSamples((NSDate)fromUtc, (NSDate)toUtc, HKQueryOptions.StrictStartDate);
-        var tcs = new TaskCompletionSource<HeartRateDto[]>();
-
-        var query = new HKSampleQuery(
+        var query = new HKStatisticsQuery(
             quantityType,
             predicate,
-            _healthRateLimit,
-            new[] { new NSSortDescriptor(HKSample.SortIdentifierStartDate, false) },
-            (sampleQuery, results, error) =>
+            HKStatisticsOptions.CumulativeSum,
+            (statisticsQuery, statistics, error) =>
             {
-                if (error != null)
+                if (error != null || statistics == null)
                 {
                     tcs.TrySetResult([]);
                     return;
                 }
 
-                var dtos = new List<HeartRateDto>();
-                foreach (var sample in results?.OfType<HKQuantitySample>() ?? [])
+                var sum = statistics.SumQuantity();
+                if (sum == null)
                 {
-                    var dto = sample.ToHeartRateDto();
-                    dtos.Add(dto);
+                    tcs.TrySetResult([]);
+                    return;
                 }
 
-                tcs.TrySetResult(dtos.ToArray());
+                TDto? dto = null;
+
+                if (typeof(TDto) == typeof(StepsDto))
+                {
+                    dto = new StepsDto
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        DataOrigin = "HealthKit",
+                        Timestamp = timeRange.StartTime,
+                        Count = (long)sum.GetDoubleValue(HKUnit.Count),
+                        StartTime = timeRange.StartTime,
+                        EndTime = timeRange.EndTime
+                    } as TDto;
+                }
+                else if (typeof(TDto) == typeof(ActiveCaloriesBurnedDto))
+                {
+                    dto = new ActiveCaloriesBurnedDto
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        DataOrigin = "HealthKit",
+                        Timestamp = timeRange.StartTime,
+                        Energy = sum.GetDoubleValue(HKUnit.Kilocalorie),
+                        StartTime = timeRange.StartTime,
+                        EndTime = timeRange.EndTime,
+                        Unit = "kcal"
+                    } as TDto;
+                }
+
+                tcs.TrySetResult(dto != null ? [dto] : []);
             }
         );
 
@@ -302,7 +280,16 @@ public partial class HealthService
         });
 
         store.ExecuteQuery(query);
-        return await tcs.Task;
+        var results = await tcs.Task;
+
+        if (results.Length > 0)
+        {
+            _logger.LogInformation("Found cumulative {DtoName}: {Value}", typeof(TDto).Name,
+                results[0] is StepsDto steps ? steps.Count.ToString() :
+                results[0] is ActiveCaloriesBurnedDto cal ? cal.Energy.ToString("F0") : "N/A");
+        }
+
+        return results.ToList();
     }
 
     public async partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken) where TDto : HealthMetricBase

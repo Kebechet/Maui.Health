@@ -13,6 +13,10 @@ public partial class HealthService : IHealthService
     {
         Activity = activityService;
         _logger = logger;
+
+        // Set up callbacks for ActivityService to fetch health data
+        Activity.HeartRateQueryCallback = (timeRange, ct) => GetHealthData<HeartRateDto>(timeRange, ct);
+        Activity.CaloriesQueryCallback = (timeRange, ct) => GetHealthData<ActiveCaloriesBurnedDto>(timeRange, ct);
     }
 
     public partial bool IsSupported { get; }

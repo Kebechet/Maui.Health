@@ -167,24 +167,13 @@ public partial class HealthService
             }
 
             var results = new List<TDto>();
-            // Special handling for WorkoutDto to add heart rate data
             for (int i = 0; i < response.Records.Count; i++)
             {
                 var record = response.Records[i];
                 if (record is not Java.Lang.Object javaObject)
                     continue;
 
-                TDto? dto;
-                // Special WorkoutDto handling
-                if (typeof(TDto) == typeof(WorkoutDto) && record is ExerciseSessionRecord exerciseRecord)
-                {
-                    dto = await exerciseRecord.ToWorkoutDtoAsync(QueryHeartRateRecordsAsync, cancellationToken) as TDto;
-                }
-                else
-                {
-                    dto = javaObject.ConvertToDto<TDto>();
-                }
-
+                var dto = javaObject.ConvertToDto<TDto>();
                 if (dto is not null)
                     results.Add(dto);
             }
@@ -196,57 +185,6 @@ public partial class HealthService
         {
             _logger.LogError(ex, "Error fetching health data for {DtoName}", typeof(TDto).Name);
             return new List<TDto>();
-        }
-    }
-
-    private async Task<HeartRateDto[]> QueryHeartRateRecordsAsync(HealthTimeRange timeRange, CancellationToken cancellationToken)
-    {
-        try
-        {
-#pragma warning disable CA1416
-            var timeRangeFilter = TimeRangeFilter.Between(
-                Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
-                Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
-            );
-#pragma warning restore CA1416
-
-            var recordClass = JvmClassMappingKt.GetKotlinClass(Java.Lang.Class.FromType(typeof(HeartRateRecord)));
-
-            var request = new ReadRecordsRequest(
-                recordClass,
-                timeRangeFilter,
-                [],
-                true,
-                1000,
-                null
-            );
-
-            var response = await KotlinResolver.Process<ReadRecordsResponse, ReadRecordsRequest>(_healthConnectClient.ReadRecords, request);
-            if (response is null)
-            {
-                return [];
-            }
-
-            var results = new List<HeartRateDto>();
-            for (int i = 0; i < response.Records.Count; i++)
-            {
-                var record = response.Records[i];
-                if (record is Java.Lang.Object javaObject)
-                {
-                    var dto = javaObject.ToHeartRateDto();
-                    if (dto != null)
-                    {
-                        results.Add(dto);
-                    }
-                }
-            }
-
-            return results.ToArray();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error querying heart rate records");
-            return [];
         }
     }
 

@@ -76,7 +76,18 @@ public partial class ActivityService
             var dtos = new List<WorkoutDto>();
             foreach (var workout in workouts)
             {
-                var dto = await workout.ToWorkoutDtoAsync(QueryHeartRateSamplesAsync, CancellationToken.None);
+                WorkoutDto? dto;
+                if (HeartRateQueryCallback != null)
+                {
+                    dto = await workout.ToWorkoutDtoAsync(
+                        async (range, ct) => (await HeartRateQueryCallback(range, ct)).ToArray(),
+                        CancellationToken.None);
+                }
+                else
+                {
+                    dto = workout.ToWorkoutDto();
+                }
+
                 if (dto is not null)
                 {
                     dtos.Add(dto);
@@ -413,8 +424,15 @@ public partial class ActivityService
                 totalElapsed, _activeWorkoutSession.TotalPausedSeconds, activeDuration);
 
             // Convert WorkoutSession to WorkoutDto using extension method
-            // This preserves the existing workout data (energy, distance, heart rate) and adds pause metadata
-            var completedWorkout = _activeWorkoutSession.ToWorkoutDto(_activeWorkoutDto, endTime);
+            // This preserves pause metadata
+            var completedWorkout = _activeWorkoutSession.ToWorkoutDto(
+                endTime,
+                _activeWorkoutDto.EnergyBurned,
+                _activeWorkoutDto.Distance,
+                _activeWorkoutDto.AverageHeartRate,
+                _activeWorkoutDto.MaxHeartRate,
+                _activeWorkoutDto.MinHeartRate
+            );
 
             // Write the completed workout
             await Write(completedWorkout);
@@ -429,58 +447,6 @@ public partial class ActivityService
             _logger?.LogError(ex, "iOS ActivityService EndActiveSession error");
             // Always clear preferences even if there was an error
             ClearSessionPreferences();
-        }
-    }
-
-    private async Task<HeartRateDto[]> QueryHeartRateSamplesAsync(HealthTimeRange timeRange, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.HeartRate)!;
-            var predicate = HKQuery.GetPredicateForSamples(
-                (NSDate)timeRange.StartTime.UtcDateTime,
-                (NSDate)timeRange.EndTime.UtcDateTime,
-                HKQueryOptions.StrictStartDate);
-            var tcs = new TaskCompletionSource<HeartRateDto[]>();
-
-            var query = new HKSampleQuery(
-                quantityType,
-                predicate,
-                _healthRateLimit,
-                new[] { new NSSortDescriptor(HKSample.SortIdentifierStartDate, false) },
-                (sampleQuery, results, error) =>
-                {
-                    if (error != null)
-                    {
-                        tcs.TrySetResult([]);
-                        return;
-                    }
-
-                    var dtos = new List<HeartRateDto>();
-                    foreach (var sample in results?.OfType<HKQuantitySample>() ?? [])
-                    {
-                        var dto = sample.ToHeartRateDto();
-                        dtos.Add(dto);
-                    }
-
-                    tcs.TrySetResult(dtos.ToArray());
-                }
-            );
-
-            using var store = new HKHealthStore();
-            using var ct = cancellationToken.Register(() =>
-            {
-                tcs.TrySetCanceled();
-                store.StopQuery(query);
-            });
-
-            store.ExecuteQuery(query);
-            return await tcs.Task;
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Error querying heart rate samples");
-            return [];
         }
     }
 

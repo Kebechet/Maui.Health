@@ -73,7 +73,23 @@ public partial class ActivityService
                 var record = response.Records[i];
                 if (record is ExerciseSessionRecord exerciseRecord)
                 {
-                    var dto = exerciseRecord.ToWorkoutDto();
+                    WorkoutDto? dto;
+                    if (HeartRateQueryCallback != null || CaloriesQueryCallback != null)
+                    {
+                        dto = await exerciseRecord.ToWorkoutDtoAsync(
+                            HeartRateQueryCallback != null
+                                ? async (range, ct) => (await HeartRateQueryCallback(range, ct)).ToArray()
+                                : null,
+                            CaloriesQueryCallback != null
+                                ? async (range, ct) => (await CaloriesQueryCallback(range, ct)).ToArray()
+                                : null,
+                            CancellationToken.None);
+                    }
+                    else
+                    {
+                        dto = exerciseRecord.ToWorkoutDto();
+                    }
+
                     if (dto is not null)
                         results.Add(dto);
                 }
@@ -466,8 +482,15 @@ public partial class ActivityService
                 totalElapsed, _activeWorkoutSession.TotalPausedSeconds, activeDuration);
 
             // Convert WorkoutSession to WorkoutDto using extension method
-            // This preserves the existing workout data (energy, distance, heart rate) and adds pause metadata
-            var completedWorkout = _activeWorkoutSession.ToWorkoutDto(_activeWorkoutDto, endTime);
+            // This preserves pause metadata
+            var completedWorkout = _activeWorkoutSession.ToWorkoutDto(
+                endTime,
+                _activeWorkoutDto.EnergyBurned,
+                _activeWorkoutDto.Distance,
+                _activeWorkoutDto.AverageHeartRate,
+                _activeWorkoutDto.MaxHeartRate,
+                _activeWorkoutDto.MinHeartRate
+            );
 
             // Write the completed workout (now with valid endTime > startTime)
             await Write(completedWorkout);
