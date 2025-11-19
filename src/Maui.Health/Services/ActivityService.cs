@@ -19,13 +19,13 @@ public partial class ActivityService
     /// Attempting to delete workouts created by other apps will fail or be ignored by the platform.
     /// </remarks>
     public partial Task Delete(WorkoutDto workout);
-    public partial Task<WorkoutDto> GetActiveSession(HealthTimeRange activityTime);
+    public partial Task<WorkoutDto> GetActive(HealthTimeRange activityTime);
 
-    public partial Task<bool> IsSessionRunning();
+    public partial Task<bool> IsRunning();
 
-    public partial Task StartNewSession(WorkoutDto workoutDto);
+    public partial Task Start(WorkoutDto workoutDto);
 
-    public partial Task EndActiveSession();
+    public partial Task End();
 
     /// <summary>
     /// Loads the active workout session from preferences (used for app restarts)

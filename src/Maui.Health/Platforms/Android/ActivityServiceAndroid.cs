@@ -86,7 +86,7 @@ public partial class ActivityService
         }
     }
 
-    public partial Task<WorkoutDto> GetActiveSession(HealthTimeRange activityTime)
+    public partial Task<WorkoutDto> GetActive(HealthTimeRange activityTime)
     {
         try
         {
@@ -183,6 +183,7 @@ public partial class ActivityService
         }
     }
 
+    // only aktivity created by your source can be deleted.
     public async partial Task Delete(WorkoutDto workout)
     {
         try
@@ -284,7 +285,7 @@ public partial class ActivityService
         }
     }
 
-    public partial Task<bool> IsSessionRunning()
+    public partial Task<bool> IsRunning()
     {
         try
         {
@@ -305,7 +306,7 @@ public partial class ActivityService
         }
     }
 
-    public partial Task StartNewSession(WorkoutDto workoutDto)
+    public partial Task Start(WorkoutDto workoutDto)
     {
         try
         {
@@ -329,7 +330,7 @@ public partial class ActivityService
         }
     }
 
-    public async partial Task EndActiveSession()
+    public async partial Task End()
     {
         try
         {

@@ -20,7 +20,7 @@ public partial class ActivityService
         }
     }
 
-    public partial Task<WorkoutDto> GetActiveSession(HealthTimeRange activityTime)
+    public partial Task<WorkoutDto> GetActive(HealthTimeRange activityTime)
     {
         try
         {
@@ -56,7 +56,7 @@ public partial class ActivityService
         }
     }
 
-    public partial Task<bool> IsSessionRunning()
+    public partial Task<bool> IsRunning()
     {
         try
         {
@@ -68,7 +68,7 @@ public partial class ActivityService
         }
     }
 
-    public partial Task StartNewSession(WorkoutDto workoutDto)
+    public partial Task Start(WorkoutDto workoutDto)
     {
         try
         {
@@ -80,7 +80,7 @@ public partial class ActivityService
         }
     }
 
-    public partial Task EndActiveSession()
+    public partial Task End()
     {
         try
         {

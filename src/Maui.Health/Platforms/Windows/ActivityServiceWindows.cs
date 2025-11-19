@@ -1,8 +1,4 @@
-using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Maui.Health.Services;
 
@@ -20,7 +16,7 @@ public partial class ActivityService
         }
     }
 
-    public partial Task<WorkoutDto> GetActiveSession(HealthTimeRange activityTime)
+    public partial Task<WorkoutDto> GetActive(HealthTimeRange activityTime)
     {
         try
         {
@@ -56,7 +52,7 @@ public partial class ActivityService
         }
     }
 
-    public partial Task<bool> IsSessionRunning()
+    public partial Task<bool> IsRunning()
     {
         try
         {
@@ -68,7 +64,7 @@ public partial class ActivityService
         }
     }
 
-    public partial Task StartNewSession(WorkoutDto workoutDto)
+    public partial Task Start(WorkoutDto workoutDto)
     {
         try
         {
@@ -80,7 +76,7 @@ public partial class ActivityService
         }
     }
 
-    public partial Task EndActiveSession()
+    public partial Task End()
     {
         try
         {
