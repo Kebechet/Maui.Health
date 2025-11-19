@@ -80,6 +80,42 @@ public partial class ActivityService
         }
     }
 
+    public partial Task Pause()
+    {
+        try
+        {
+            return Task.CompletedTask;
+        }
+        catch (Exception)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    public partial Task Resume()
+    {
+        try
+        {
+            return Task.CompletedTask;
+        }
+        catch (Exception)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    public partial Task<bool> IsPaused()
+    {
+        try
+        {
+            return Task.FromResult(false);
+        }
+        catch (Exception)
+        {
+            return Task.FromResult(false);
+        }
+    }
+
     public partial Task End()
     {
         try

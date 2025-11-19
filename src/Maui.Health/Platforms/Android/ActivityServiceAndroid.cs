@@ -6,6 +6,8 @@ using AndroidX.Health.Connect.Client.Time;
 using Java.Time;
 using Maui.Health.Constants;
 using Maui.Health.Enums;
+using Maui.Health.Extensions;
+using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android.Callbacks;
 using Maui.Health.Platforms.Android.Extensions;
@@ -18,6 +20,7 @@ public partial class ActivityService
 {
     private ExerciseSessionRecord? _activeSession;
     private WorkoutDto? _activeWorkoutDto;
+    private WorkoutSession? _activeWorkoutSession;
     private readonly ILogger<ActivityService>? _logger;
 
     private Context _activityContext => Platform.CurrentActivity ??
@@ -95,6 +98,7 @@ public partial class ActivityService
                 return Task.FromResult(_activeWorkoutDto);
 
             // Try to reconstruct from preferences (for app restarts)
+            _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
             _activeWorkoutDto = LoadActiveWorkoutFromPreferences();
 
             return Task.FromResult(_activeWorkoutDto!);
@@ -312,14 +316,24 @@ public partial class ActivityService
         {
             _logger?.LogInformation("Android ActivityService StartNewSession: {ActivityType}", workoutDto.ActivityType);
 
-            // Store the workout DTO for tracking in memory and preferences
+            // Create a new WorkoutSession to track state and pause/resume
+            _activeWorkoutSession = new WorkoutSession(
+                workoutDto.Id,
+                workoutDto.ActivityType,
+                workoutDto.Title,
+                workoutDto.DataOrigin,
+                workoutDto.StartTime,
+                WorkoutSessionState.Running
+            );
+
+            // Store the workout DTO for tracking in memory
             // Don't create ExerciseSessionRecord yet - Android requires endTime > startTime
             // We'll create it when EndActiveSession is called with the actual end time
             _activeWorkoutDto = workoutDto;
             _activeSession = null; // Mark as active but not yet persisted
 
             // Persist to Preferences so session survives app restart
-            SaveActiveWorkoutToPreferences(workoutDto);
+            SaveWorkoutSessionToPreferences(_activeWorkoutSession);
 
             return Task.CompletedTask;
         }
@@ -330,14 +344,106 @@ public partial class ActivityService
         }
     }
 
+    public partial Task Pause()
+    {
+        try
+        {
+            // Try to load from preferences if not in memory
+            _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
+
+            if (_activeWorkoutSession is null)
+            {
+                _logger?.LogWarning("No active session to pause");
+                return Task.CompletedTask;
+            }
+
+            if (_activeWorkoutSession.State != WorkoutSessionState.Running)
+            {
+                _logger?.LogWarning("Cannot pause session in state: {State}", _activeWorkoutSession.State);
+                return Task.CompletedTask;
+            }
+
+            _logger?.LogInformation("Android ActivityService Pause");
+
+            _activeWorkoutSession.Pause();
+
+            // Persist the updated state to preferences
+            SaveWorkoutSessionToPreferences(_activeWorkoutSession);
+
+            return Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Android ActivityService Pause error");
+            return Task.CompletedTask;
+        }
+    }
+
+    public partial Task Resume()
+    {
+        try
+        {
+            // Try to load from preferences if not in memory
+            _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
+
+            if (_activeWorkoutSession is null)
+            {
+                _logger?.LogWarning("No active session to resume");
+                return Task.CompletedTask;
+            }
+
+            if (_activeWorkoutSession.State != WorkoutSessionState.Paused)
+            {
+                _logger?.LogWarning("Cannot resume session in state: {State}", _activeWorkoutSession.State);
+                return Task.CompletedTask;
+            }
+
+            _logger?.LogInformation("Android ActivityService Resume");
+
+            _activeWorkoutSession.Resume();
+
+            // Persist the updated state to preferences
+            SaveWorkoutSessionToPreferences(_activeWorkoutSession);
+
+            return Task.CompletedTask;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Android ActivityService Resume error");
+            return Task.CompletedTask;
+        }
+    }
+
+    public partial Task<bool> IsPaused()
+    {
+        try
+        {
+            // Check memory first, then check preferences (for app restarts)
+            _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
+
+            if (_activeWorkoutSession is null)
+            {
+                return Task.FromResult(false);
+            }
+
+            return Task.FromResult(_activeWorkoutSession.State == WorkoutSessionState.Paused);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Android ActivityService IsPaused error");
+            return Task.FromResult(false);
+        }
+    }
+
     public async partial Task End()
     {
         try
         {
             // Try to load from preferences if not in memory
+            _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
             _activeWorkoutDto ??= LoadActiveWorkoutFromPreferences();
 
-            if (_activeWorkoutDto is null)
+            if (_activeWorkoutDto is null || _activeWorkoutSession is null)
             {
                 _logger?.LogWarning("No active session to end");
                 ClearSessionPreferences();
@@ -346,22 +452,22 @@ public partial class ActivityService
 
             _logger?.LogInformation("Android ActivityService EndActiveSession");
 
-            // Create a new WorkoutDto with updated end time (EndTime is init-only)
-            var completedWorkout = new WorkoutDto
-            {
-                Id = _activeWorkoutDto.Id,
-                DataOrigin = _activeWorkoutDto.DataOrigin,
-                Timestamp = _activeWorkoutDto.Timestamp,
-                ActivityType = _activeWorkoutDto.ActivityType,
-                Title = _activeWorkoutDto.Title,
-                StartTime = _activeWorkoutDto.StartTime,
-                EndTime = DateTimeOffset.UtcNow,
-                EnergyBurned = _activeWorkoutDto.EnergyBurned,
-                Distance = _activeWorkoutDto.Distance,
-                AverageHeartRate = _activeWorkoutDto.AverageHeartRate,
-                MaxHeartRate = _activeWorkoutDto.MaxHeartRate,
-                MinHeartRate = _activeWorkoutDto.MinHeartRate
-            };
+            // End the workout session (this closes any open pause intervals)
+            _activeWorkoutSession.End();
+
+            var endTime = DateTimeOffset.UtcNow;
+
+            // Calculate the actual workout duration excluding paused time
+            var totalElapsed = (endTime - _activeWorkoutSession.StartTime).TotalSeconds;
+            var activeDuration = totalElapsed - _activeWorkoutSession.TotalPausedSeconds;
+
+            _logger?.LogInformation(
+                "Android ActivityService: Total elapsed: {TotalElapsed}s, Paused: {Paused}s, Active: {Active}s",
+                totalElapsed, _activeWorkoutSession.TotalPausedSeconds, activeDuration);
+
+            // Convert WorkoutSession to WorkoutDto using extension method
+            // This preserves the existing workout data (energy, distance, heart rate) and adds pause metadata
+            var completedWorkout = _activeWorkoutSession.ToWorkoutDto(_activeWorkoutDto, endTime);
 
             // Write the completed workout (now with valid endTime > startTime)
             await Write(completedWorkout);
@@ -369,6 +475,7 @@ public partial class ActivityService
             // Clear the active session from memory and preferences
             _activeSession = null;
             _activeWorkoutDto = null;
+            _activeWorkoutSession = null;
             ClearSessionPreferences();
         }
         catch (Exception ex)

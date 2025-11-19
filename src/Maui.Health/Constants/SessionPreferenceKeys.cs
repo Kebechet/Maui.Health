@@ -10,4 +10,6 @@ internal static class SessionPreferenceKeys
     public const string Title = "ActiveSessionTitle";
     public const string StartTime = "ActiveSessionStartTime";
     public const string DataOrigin = "ActiveSessionDataOrigin";
+    public const string State = "ActiveSessionState";
+    public const string PauseIntervals = "ActiveSessionPauseIntervals";
 }

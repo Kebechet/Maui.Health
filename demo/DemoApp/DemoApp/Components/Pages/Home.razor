@@ -73,8 +73,8 @@ else if (_activeTab == 1)
         <!-- Session Status Display -->
         <div style="padding: 10px; background-color: #e9ecef; border: 1px solid #dee2e6; border-radius: 4px; margin-bottom: 15px;">
             <strong>Session Status:</strong>
-            <span style="color: @(_isSessionRunning ? "#28a745" : "#6c757d"); font-weight: bold;">
-                @(_isSessionRunning ? "🟢 ACTIVE" : "⚪ INACTIVE")
+            <span style="color: @(_isSessionRunning ? (_isSessionPaused ? "#ffc107" : "#28a745") : "#6c757d"); font-weight: bold;">
+                @(_isSessionRunning ? (_isSessionPaused ? "⏸ PAUSED" : "🟢 ACTIVE") : "⚪ INACTIVE")
             </span>
             <button @onclick="CheckSessionStatus" style="margin-left: 10px; padding: 5px 15px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em;">
                 🔄 Refresh Status
@@ -90,8 +90,10 @@ else if (_activeTab == 1)
         <!-- Active Session Display -->
         @if (_isSessionRunning)
         {
-            <div style="padding: 15px; background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 4px; margin-bottom: 15px;">
-                <strong style="color: #155724;">🏃 Active Session Running</strong>
+            <div style="padding: 15px; background-color: @(_isSessionPaused ? "#fff3cd" : "#d4edda"); border: 1px solid @(_isSessionPaused ? "#ffc107" : "#c3e6cb"); border-radius: 4px; margin-bottom: 15px;">
+                <strong style="color: @(_isSessionPaused ? "#856404" : "#155724");">
+                    @(_isSessionPaused ? "⏸ Active Session Paused" : "🏃 Active Session Running")
+                </strong>
                 @if (_activeWorkout != null)
                 {
                     <div style="margin-top: 10px;">
@@ -102,6 +104,18 @@ else if (_activeTab == 1)
                     </div>
                 }
             </div>
+            @if (_isSessionPaused)
+            {
+                <button @onclick="ResumeWorkoutSession" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                    ▶ Resume
+                </button>
+            }
+            else
+            {
+                <button @onclick="PauseWorkoutSession" style="padding: 10px 20px; background-color: #ffc107; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                    ⏸ Pause
+                </button>
+            }
             <button @onclick="StopWorkoutSession" style="padding: 10px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
                 ⏹ Stop Session
             </button>
@@ -135,11 +149,24 @@ else if (_activeTab == 1)
                 var calories = workout.EnergyBurned.HasValue ? workout.EnergyBurned.Value.ToString("F0") : null;
                 var avgHR = workout.AverageHeartRate.HasValue ? workout.AverageHeartRate.Value.ToString("F0") : null;
 
+                // Extract pause metadata
+                var hasPauseData = workout.Metadata?.ContainsKey("ActiveDurationSeconds") == true;
+                var activeDuration = hasPauseData && workout.Metadata!.TryGetValue("ActiveDurationSeconds", out var ad) ? Convert.ToDouble(ad) : 0;
+                var pausedDuration = hasPauseData && workout.Metadata!.TryGetValue("PausedDurationSeconds", out var pd) ? Convert.ToDouble(pd) : 0;
+                var pauseCount = hasPauseData && workout.Metadata!.TryGetValue("PauseCount", out var pc) ? Convert.ToInt32(pc) : 0;
+
                 <li style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <div>
                         <strong>@workout.ActivityType</strong> -
                         @workout.StartTime.ToLocalTime().ToString("HH:mm") to @(workout.EndTime.HasValue ? workout.EndTime.Value.ToLocalTime().ToString("HH:mm") : "ACTIVE")
-                        (@((int)workout.DurationSeconds / 60) minutes)
+                        @if (hasPauseData && pausedDuration > 0)
+                        {
+                            <span>(@((int)activeDuration / 60) min active / @((int)workout.DurationSeconds / 60) min total)</span>
+                        }
+                        else
+                        {
+                            <span>(@((int)workout.DurationSeconds / 60) minutes)</span>
+                        }
                         @if (distanceKm != null)
                         {
                             <span> - @distanceKm km</span>
@@ -155,6 +182,11 @@ else if (_activeTab == 1)
 
                         <br/>
                         <small>Source: @workout.DataOrigin</small>
+                        @if (hasPauseData && pauseCount > 0)
+                        {
+                            <br/>
+                            <small style="color: #6c757d;">⏸ @pauseCount pause(s), @((int)pausedDuration / 60) min @((int)pausedDuration % 60) sec paused</small>
+                        }
                     </div>
                     <button @onclick="() => DeleteWorkout(workout)" style="padding: 5px 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-left: 10px;">
                         🗑️ Delete
