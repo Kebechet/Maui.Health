@@ -11,11 +11,12 @@ Abstraction around `Android Health Connect` and `iOS HealthKit` with unified DTO
 Feel free to contribute ❤️
 
 ## Features
-
+- **Cross-Platform**: Works with Android Health Connect and iOS HealthKit
 - **Generic API**: Use `GetHealthDataAsync<TDto>()` for type-safe health data retrieval
 - **Unified DTOs**: Platform-agnostic data transfer objects with common properties
 - **Time Range Support**: Duration-based metrics implement `IHealthTimeRange` interface
-- **Cross-Platform**: Works with Android Health Connect and iOS HealthKit
+- **Write/delete**: Possibility to write/delete activity to/from Android Health/iOS HealthKit.
+- **Duplication detection**: If you write activity under your app to the ios/android health and at same time you start activity on watch/phone natively. You have possibility to detect these workouts and synchronize it as you need.
 
 ## Platform Support & Health Data Mapping
 
@@ -80,16 +81,8 @@ public class HealthExampleService
     {
         var timeRange = HealthTimeRange.FromDateTime(DateTime.Today, DateTime.Now);
 
-        var steps = await _healthService.GetHealthDataAsync<StepsDto>(timeRange);
+        var steps = await _healthService.GetHealthData<StepsDto>(timeRange);
         return steps.ToList();
-    }
-
-    public async Task<List<WeightDto>> GetRecentWeightAsync()
-    {
-        var timeRange = HealthTimeRange.FromDateTime(DateTime.Now.AddDays(-7), DateTime.Now);
-
-        var weights = await _healthService.GetHealthDataAsync<WeightDto>(timeRange);
-        return weights.ToList();
     }
 }
 ```
@@ -102,7 +95,7 @@ Duration-based metrics implement `IHealthTimeRange`:
 public async Task AnalyzeStepsData()
 {
     var timeRange = HealthTimeRange.FromDateTime(DateTime.Today, DateTime.Now);
-    var steps = await _healthService.GetHealthDataAsync<StepsDto>(timeRange);
+    var steps = await _healthService.GetHealthData<StepsDto>(timeRange);
     
     foreach (var stepRecord in steps)
     {
@@ -126,18 +119,6 @@ public async Task AnalyzeStepsData()
     }
 }
 
-public async Task AnalyzeWeightData()
-{
-    var timeRange = HealthTimeRange.FromDateTime(DateTime.Today.AddDays(-30), DateTime.Now);
-    var weights = await _healthService.GetHealthDataAsync<WeightDto>(timeRange);
-    
-    foreach (var weightRecord in weights)
-    {
-        // Instant measurements only have Timestamp
-        Console.WriteLine($"Weight: {weightRecord.Value} {weightRecord.Unit}");
-        Console.WriteLine($"Measured at: {weightRecord.Timestamp}");
-        Console.WriteLine($"Source: {weightRecord.DataOrigin}");
-    }
 }
 ```
 
@@ -162,6 +143,148 @@ public async Task RequestPermissions()
     else
     {
         Console.WriteLine($"Permission error: {result.Error}");
+    }
+}
+```
+
+### 5. Activity Service (Workout Management)
+
+The `ActivityService` provides workout/exercise session management with support for real-time tracking, pause/resume functionality, and duplicate detection.
+
+#### Reading Workouts
+
+```csharp
+public async Task<List<WorkoutDto>> GetTodaysWorkouts()
+{
+    var timeRange = HealthTimeRange.FromDateTime(DateTime.Today, DateTime.Now);
+    var workouts = await _healthService.Activity.Read(timeRange);
+
+    foreach (var workout in workouts)
+    {
+        Console.WriteLine($"{workout.ActivityType}: {workout.StartTime:HH:mm} - {workout.EndTime:HH:mm}");
+        Console.WriteLine($"Duration: {workout.DurationSeconds / 60} minutes");
+        Console.WriteLine($"Source: {workout.DataOrigin}");
+
+        if (workout.EnergyBurned.HasValue)
+            Console.WriteLine($"Calories: {workout.EnergyBurned:F0} kcal");
+        if (workout.AverageHeartRate.HasValue)
+            Console.WriteLine($"Avg HR: {workout.AverageHeartRate:F0} BPM");
+    }
+
+    return workouts;
+}
+```
+
+#### Writing Workouts
+
+```csharp
+public async Task WriteCompletedWorkout()
+{
+    var workout = new WorkoutDto
+    {
+        Id = Guid.NewGuid().ToString(),
+        DataOrigin = "MyApp", -> Your APP data source.
+        ActivityType = ActivityType.Running,
+        Title = "Morning Run",
+        StartTime = DateTimeOffset.Now.AddMinutes(-30),
+        EndTime = DateTimeOffset.Now,
+        EnergyBurned = 250,
+        Distance = 5000 // meters
+    };
+
+    await _healthService.Activity.Write(workout);
+}
+```
+
+#### Live Workout Session (Start/Pause/Resume/End)
+
+Track workouts in real-time with pause/resume support:
+
+```csharp
+public class WorkoutTracker
+{
+    private readonly IHealthService _healthService;
+
+    // Start a new workout session
+    public async Task StartWorkout()
+    {
+        var workout = new WorkoutDto
+        {
+            Id = Guid.NewGuid().ToString(),
+            DataOrigin = "MyApp",
+            ActivityType = ActivityType.Running,
+            StartTime = DateTimeOffset.UtcNow,
+            EndTime = null // null indicates active session
+        };
+
+        await _healthService.Activity.Start(workout);
+    }
+
+    // Pause the active session
+    public async Task PauseWorkout()
+    {
+        await _healthService.Activity.Pause();
+    }
+
+    // Resume from pause
+    public async Task ResumeWorkout()
+    {
+        await _healthService.Activity.Resume();
+    }
+
+    // End session and save to health store
+    public async Task EndWorkout()
+    {
+        // This will:
+        // Save the completed workout to Health Connect/HealthKit
+        await _healthService.Activity.End();
+    }
+
+    // Check session status
+    public async Task<bool> IsWorkoutRunning() => await _healthService.Activity.IsRunning();
+    public async Task<bool> IsWorkoutPaused() => await _healthService.Activity.IsPaused();
+}
+```
+
+#### Duplicate Detection
+
+When users track workouts from both your app and a smartwatch, duplicates can occur. The `FindDuplicates` method identifies these by matching:
+- Same activity type
+- Different data sources (e.g., "MyApp" vs "Apple Watch")
+- Start/end times within a configurable threshold
+
+```csharp
+public async Task DetectDuplicateWorkouts()
+{
+    var timeRange = HealthTimeRange.FromDateTime(DateTime.Today, DateTime.Now);
+    var workouts = await _healthService.Activity.Read(timeRange);
+
+    // Find duplicates with 5-minute threshold
+    var duplicates = _healthService.Activity.FindDuplicates(
+        workouts,
+        appSource: "MyApp",      // Your app's DataOrigin
+        timeThresholdMinutes: 5  // Max time difference to consider as duplicate
+    );
+
+    foreach (var group in duplicates)
+    {
+        // Get the workout from your app
+        var appWorkout = group.AppWorkout;
+
+        // Get the workout from watch/other source
+        var externalWorkout = group.ExternalWorkout;
+
+        Console.WriteLine($"Duplicate found:");
+        Console.WriteLine($"  App: {appWorkout?.DataOrigin} at {appWorkout?.StartTime:HH:mm}");
+        Console.WriteLine($"  External: {externalWorkout?.DataOrigin} at {externalWorkout?.StartTime:HH:mm}");
+        Console.WriteLine($"  Time diff: {group.StartTimeDifferenceMinutes:F1} minutes");
+
+        // User can decide which to keep - typically keep the watch data
+        // as it has more accurate heart rate and calorie data
+        if (appWorkout != null)
+        {
+            await _healthService.Activity.Delete(appWorkout);
+        }
     }
 }
 ```
