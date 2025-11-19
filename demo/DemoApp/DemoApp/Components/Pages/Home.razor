@@ -123,9 +123,29 @@ else if (_activeTab == 1)
     <hr style="margin: 20px 0;" />
 
     <h1>Today's Workouts:</h1>
+
+    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+        <label>Duplicate threshold (minutes):</label>
+        <input type="number" @bind="_duplicateThresholdMinutes" min="1" max="60" style="width: 60px; padding: 5px;" />
+        <button @onclick="LoadHealthDataAsync" style="padding: 5px 10px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Refresh
+        </button>
+    </div>
+
+    @if (_duplicateGroups.Any())
+    {
+        <div style="padding: 15px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; margin-bottom: 15px;">
+            <strong style="color: #856404;">⚠️ Duplicate workouts detected!</strong>
+            <p style="margin: 10px 0 0 0; color: #856404;">
+                Found @_duplicateGroups.Count duplicate group(s). These workouts have matching activity types and overlapping times (within @_duplicateThresholdMinutes min) from different sources.
+                Consider deleting duplicates to keep your data clean.
+            </p>
+        </div>
+    }
+
     @if (_workouts.Any())
     {
-        <ul>
+        <ul style="list-style: none; padding: 0;">
             @foreach (var workout in _workouts)
             {
                 var distanceKm = workout.Distance.HasValue ? (workout.Distance.Value / 1000.0).ToString("F2") : null;
@@ -138,8 +158,17 @@ else if (_activeTab == 1)
                 var pausedDuration = hasPauseData && workout.Metadata!.TryGetValue("PausedDurationSeconds", out var pd) ? Convert.ToDouble(pd) : 0;
                 var pauseCount = hasPauseData && workout.Metadata!.TryGetValue("PauseCount", out var pc) ? Convert.ToInt32(pc) : 0;
 
-                <li style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                // Check for duplicates
+                var isDuplicate = IsDuplicate(workout);
+                var duplicateGroup = isDuplicate ? GetDuplicateGroup(workout) : null;
+                var matchingWorkout = duplicateGroup?.Workouts.FirstOrDefault(w => w.Id != workout.Id);
+
+                <li style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 10px; border-radius: 4px; background-color: @(isDuplicate ? "#fff3cd" : "transparent"); border: @(isDuplicate ? "1px solid #ffc107" : "1px solid #dee2e6");">
                     <div>
+                        @if (isDuplicate)
+                        {
+                            <span style="background-color: #ffc107; color: #856404; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-right: 5px;">DUPLICATE</span>
+                        }
                         <strong>@workout.ActivityType</strong> -
                         @workout.StartTime.ToLocalTime().ToString("HH:mm") to @(workout.EndTime.HasValue ? workout.EndTime.Value.ToLocalTime().ToString("HH:mm") : "ACTIVE")
                         @if (hasPauseData && pausedDuration > 0)
@@ -169,6 +198,11 @@ else if (_activeTab == 1)
                         {
                             <br/>
                             <small style="color: #6c757d;">⏸ @pauseCount pause(s), @((int)pausedDuration / 60) min @((int)pausedDuration % 60) sec paused</small>
+                        }
+                        @if (isDuplicate && matchingWorkout != null)
+                        {
+                            <br/>
+                            <small style="color: #856404;">↔️ Matches with: @matchingWorkout.DataOrigin (@matchingWorkout.StartTime.ToLocalTime().ToString("HH:mm"))</small>
                         }
                     </div>
                     <button @onclick="() => DeleteWorkout(workout)" style="padding: 5px 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-left: 10px;">

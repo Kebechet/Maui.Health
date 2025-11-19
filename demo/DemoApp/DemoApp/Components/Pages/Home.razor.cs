@@ -4,6 +4,8 @@ using Maui.Health.Models.Metrics;
 using Maui.Health.Models;
 using Maui.Health.Enums;
 
+using DuplicateWorkoutGroup = Maui.Health.Models.DuplicateWorkoutGroup;
+
 namespace DemoApp.Components.Pages;
 
 public partial class Home
@@ -25,6 +27,11 @@ public partial class Home
 
     // Tab tracking
     private int _activeTab { get; set; } = 0;
+
+    // Duplicate detection
+    private List<DuplicateWorkoutGroup> _duplicateGroups { get; set; } = [];
+    private const string AppSource = "DemoApp";
+    private int _duplicateThresholdMinutes { get; set; } = 5;
 
     // Session tracking
     private bool _isSessionRunning { get; set; } = false;
@@ -237,11 +244,15 @@ public partial class Home
             try
             {
                 _workouts = await _healthService.Activity.Read(todayRange);
+
+                // Detect duplicate workouts using ActivityService
+                _duplicateGroups = _healthService.Activity.FindDuplicates(_workouts, AppSource, _duplicateThresholdMinutes);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error loading workouts: {ex.Message}");
                 _workouts = [];
+                _duplicateGroups = [];
             }
 
             // Check if there's an active session
@@ -616,5 +627,21 @@ public partial class Home
             _sessionSuccess = false;
             StateHasChanged();
         }
+    }
+
+    /// <summary>
+    /// Checks if a workout is part of a duplicate group
+    /// </summary>
+    private bool IsDuplicate(WorkoutDto workout)
+    {
+        return _duplicateGroups.Any(group => group.Workouts.Any(w => w.Id == workout.Id));
+    }
+
+    /// <summary>
+    /// Gets the duplicate group for a workout, if any
+    /// </summary>
+    private DuplicateWorkoutGroup? GetDuplicateGroup(WorkoutDto workout)
+    {
+        return _duplicateGroups.FirstOrDefault(group => group.Workouts.Any(w => w.Id == workout.Id));
     }
 }

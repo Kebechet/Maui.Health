@@ -1,5 +1,6 @@
 ﻿using Maui.Health.Constants;
 using Maui.Health.Enums;
+using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Services;
@@ -42,6 +43,86 @@ public partial class ActivityService
     public partial Task<bool> IsPaused();
 
     public partial Task End();
+
+    /// <summary>
+    /// Finds duplicate workout groups from a list of workouts.
+    /// Duplicates are identified by: same activity type, different sources, and overlapping times.
+    /// </summary>
+    /// <param name="workouts">List of workouts to check for duplicates</param>
+    /// <param name="appSource">Your app's data origin identifier (e.g., "DemoApp")</param>
+    /// <param name="timeThresholdMinutes">Maximum time difference in minutes to consider as duplicate (default: 5)</param>
+    /// <returns>List of duplicate groups, each containing matching workouts</returns>
+    public List<DuplicateWorkoutGroup> FindDuplicates(
+        List<WorkoutDto> workouts,
+        string appSource,
+        int timeThresholdMinutes = 5)
+    {
+        var duplicateGroups = new List<DuplicateWorkoutGroup>();
+        var processed = new HashSet<string>();
+
+        foreach (var workout in workouts)
+        {
+            if (processed.Contains(workout.Id))
+                continue;
+
+            // Find all workouts that match this one
+            var matches = workouts.Where(w =>
+                w.Id != workout.Id &&
+                !processed.Contains(w.Id) &&
+                AreWorkoutsDuplicates(workout, w, timeThresholdMinutes)
+            ).ToList();
+
+            if (matches.Count > 0)
+            {
+                // Create a group with the original workout and all matches
+                var group = new DuplicateWorkoutGroup
+                {
+                    AppSource = appSource,
+                    Workouts = [workout, .. matches]
+                };
+
+                duplicateGroups.Add(group);
+
+                // Mark all as processed
+                processed.Add(workout.Id);
+                foreach (var match in matches)
+                {
+                    processed.Add(match.Id);
+                }
+            }
+        }
+
+        return duplicateGroups;
+    }
+
+    /// <summary>
+    /// Checks if two workouts are likely duplicates based on activity type, source, and time overlap.
+    /// </summary>
+    private static bool AreWorkoutsDuplicates(WorkoutDto w1, WorkoutDto w2, int timeThresholdMinutes)
+    {
+        // Must be same activity type
+        if (w1.ActivityType != w2.ActivityType)
+            return false;
+
+        // Must be from different sources
+        if (w1.DataOrigin == w2.DataOrigin)
+            return false;
+
+        // Check if start times are within threshold
+        var startDiff = Math.Abs((w1.StartTime - w2.StartTime).TotalMinutes);
+        if (startDiff > timeThresholdMinutes)
+            return false;
+
+        // If both have end times, check those too
+        if (w1.EndTime.HasValue && w2.EndTime.HasValue)
+        {
+            var endDiff = Math.Abs((w1.EndTime.Value - w2.EndTime.Value).TotalMinutes);
+            if (endDiff > timeThresholdMinutes)
+                return false;
+        }
+
+        return true;
+    }
 
     /// <summary>
     /// Loads the active workout session from preferences (used for app restarts)
