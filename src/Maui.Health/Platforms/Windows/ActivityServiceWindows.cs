@@ -1,3 +1,5 @@
+using Maui.Health.Enums;
+using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Services;
@@ -16,15 +18,15 @@ public partial class ActivityService
         }
     }
 
-    public partial Task<WorkoutDto> GetActive(HealthTimeRange activityTime)
+    public partial Task<WorkoutSession?> GetActive()
     {
         try
         {
-            return Task.FromResult<WorkoutDto>(null!);
+            return Task.FromResult<WorkoutSession?>(null);
         }
         catch (Exception)
         {
-            return Task.FromResult<WorkoutDto>(null!);
+            return Task.FromResult<WorkoutSession?>(null);
         }
     }
 
@@ -64,7 +66,7 @@ public partial class ActivityService
         }
     }
 
-    public partial Task Start(WorkoutDto workoutDto)
+    public partial Task Start(ActivityType activityType, string? title = null, string? dataOrigin = null)
     {
         try
         {
@@ -112,15 +114,15 @@ public partial class ActivityService
         }
     }
 
-    public partial Task End()
+    public partial Task<WorkoutDto?> End()
     {
         try
         {
-            return Task.CompletedTask;
+            return Task.FromResult<WorkoutDto?>(null);
         }
         catch (Exception)
         {
-            return Task.CompletedTask;
+            return Task.FromResult<WorkoutDto?>(null);
         }
     }
 }

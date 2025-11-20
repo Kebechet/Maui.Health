@@ -33,7 +33,7 @@ internal static class HKQuantitySampleExtensions
         return new StepsDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.Unknown,
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = startTime, // Use start time as the representative timestamp
             Count = (long)value,
             StartTime = startTime,
@@ -49,7 +49,7 @@ internal static class HKQuantitySampleExtensions
         return new WeightDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.Unknown,
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = timestamp,
             Value = value,
             Unit = Units.Kilogram
@@ -64,7 +64,7 @@ internal static class HKQuantitySampleExtensions
         return new HeightDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.Unknown,
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = timestamp,
             Value = valueInMeters * UnitConversions.CentimetersPerMeter, // Convert to cm
             Unit = Units.Centimeter
@@ -80,7 +80,7 @@ internal static class HKQuantitySampleExtensions
         return new ActiveCaloriesBurnedDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.Unknown,
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = startTime, // Use start time as the representative timestamp
             Energy = valueInKilocalories,
             Unit = Units.Kilocalorie,
@@ -97,7 +97,7 @@ internal static class HKQuantitySampleExtensions
         return new HeartRateDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.Unknown,
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = timestamp,
             BeatsPerMinute = beatsPerMinute,
             Unit = Units.BeatsPerMinute
@@ -112,7 +112,7 @@ internal static class HKQuantitySampleExtensions
         return new BodyFatDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.Unknown,
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = timestamp,
             Percentage = percentage,
             Unit = Units.Percent
@@ -127,7 +127,7 @@ internal static class HKQuantitySampleExtensions
         return new Vo2MaxDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.Unknown,
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = timestamp,
             Value = value,
             Unit = Units.Vo2Max

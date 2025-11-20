@@ -331,11 +331,12 @@ public partial class ActivityService
             var startTime = DateTimeOffset.UtcNow;
             var id = Guid.NewGuid().ToString();
             var origin = dataOrigin ?? _activityContext.PackageName ?? "Unknown";
+            var workoutTitle = title ?? activityType.ToString();
 
             _activeWorkoutSession = new WorkoutSession(
                 id,
                 activityType,
-                title,
+                workoutTitle,
                 origin,
                 startTime,
                 WorkoutSessionState.Running

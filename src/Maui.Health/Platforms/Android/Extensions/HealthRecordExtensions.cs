@@ -14,6 +14,7 @@ using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;
 using ActiveCaloriesBurnedRecord = AndroidX.Health.Connect.Client.Records.ActiveCaloriesBurnedRecord;
 using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
+using Maui.Health.Constants;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 

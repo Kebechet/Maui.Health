@@ -3,6 +3,7 @@ using HealthKit;
 using Maui.Health.Constants;
 using Maui.Health.Enums;
 using Maui.Health.Extensions;
+using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.iOS.Extensions;
 using Microsoft.Extensions.Logging;
@@ -12,7 +13,7 @@ namespace Maui.Health.Services;
 
 public partial class ActivityService
 {
-    private Models.WorkoutSession? _activeWorkoutSession;
+    private WorkoutSession? _activeWorkoutSession;
     private readonly ILogger<ActivityService>? _logger;
     private nuint _healthRateLimit { get; set; } = Defaults.HealthRateLimit;
 
@@ -120,7 +121,7 @@ public partial class ActivityService
         }
     }
 
-    public partial async Task Write(WorkoutDto workout)
+    public async partial Task Write(WorkoutDto workout)
     {
         try
         {
@@ -273,21 +274,17 @@ public partial class ActivityService
             var startTime = DateTimeOffset.UtcNow;
             var id = Guid.NewGuid().ToString();
             var origin = dataOrigin ?? DataOrigins.HealthKit;
+            var workoutTitle = title ?? activityType.ToString();
 
-            // Create a new WorkoutSession to track state and pause/resume
-            _activeWorkoutSession = new Models.WorkoutSession(
+            _activeWorkoutSession = new WorkoutSession(
                 id,
                 activityType,
-                title,
+                workoutTitle,
                 origin,
                 startTime,
                 WorkoutSessionState.Running
             );
 
-            // For iOS (not watchOS), we track the workout locally in memory and preferences
-            // HKWorkoutSession is primarily for watchOS real-time tracking
-
-            // Persist to Preferences so session survives app restart
             SaveWorkoutSessionToPreferences(_activeWorkoutSession);
 
             return Task.CompletedTask;
@@ -303,7 +300,6 @@ public partial class ActivityService
     {
         try
         {
-            // Try to load from preferences if not in memory
             _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
 
             if (_activeWorkoutSession is null)
@@ -322,7 +318,6 @@ public partial class ActivityService
 
             _activeWorkoutSession.Pause();
 
-            // Persist the updated state to preferences
             SaveWorkoutSessionToPreferences(_activeWorkoutSession);
 
             return Task.CompletedTask;
@@ -338,7 +333,6 @@ public partial class ActivityService
     {
         try
         {
-            // Try to load from preferences if not in memory
             _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
 
             if (_activeWorkoutSession is null)
@@ -357,7 +351,6 @@ public partial class ActivityService
 
             _activeWorkoutSession.Resume();
 
-            // Persist the updated state to preferences
             SaveWorkoutSessionToPreferences(_activeWorkoutSession);
 
             return Task.CompletedTask;
@@ -373,7 +366,6 @@ public partial class ActivityService
     {
         try
         {
-            // Check memory first, then check preferences (for app restarts)
             _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
 
             if (_activeWorkoutSession is null)
@@ -394,7 +386,6 @@ public partial class ActivityService
     {
         try
         {
-            // Check memory first, then reconstruct from preferences if needed
             _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
 
             if (_activeWorkoutSession is null)
@@ -407,12 +398,9 @@ public partial class ActivityService
 
             _logger?.LogInformation("iOS ActivityService EndActiveSession");
 
-            // End the workout session (this closes any open pause intervals)
             _activeWorkoutSession.End();
 
             var endTime = DateTimeOffset.UtcNow;
-
-            // Calculate the actual workout duration excluding paused time
             var totalElapsed = (endTime - _activeWorkoutSession.StartTime).TotalSeconds;
             var activeDuration = totalElapsed - _activeWorkoutSession.TotalPausedSeconds;
 
@@ -420,11 +408,8 @@ public partial class ActivityService
                 "iOS ActivityService: Total elapsed: {TotalElapsed}s, Paused: {Paused}s, Active: {Active}s",
                 totalElapsed, _activeWorkoutSession.TotalPausedSeconds, activeDuration);
 
-            // Convert WorkoutSession to WorkoutDto using extension method
-            // This preserves pause metadata
             var completedWorkout = _activeWorkoutSession.ToWorkoutDto(endTime);
 
-            // Clear the active session from memory and preferences
             _activeWorkoutSession = null;
             ClearSessionPreferences();
 
@@ -435,6 +420,7 @@ public partial class ActivityService
             _logger?.LogError(ex, "iOS ActivityService EndActiveSession error");
             // Always clear preferences even if there was an error
             ClearSessionPreferences();
+
             return Task.FromResult<WorkoutDto?>(null);
         }
     }
@@ -453,7 +439,6 @@ public partial class ActivityService
 
             using var healthStore = new HKHealthStore();
 
-            // Request authorization to read workouts
             var (success, error) = await healthStore.RequestAuthorizationToShareAsync(writeTypes, readTypes);
 
             if (error != null)
