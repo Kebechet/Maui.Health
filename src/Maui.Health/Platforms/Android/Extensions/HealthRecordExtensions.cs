@@ -7,6 +7,7 @@ using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android.Enums;
 using System.Diagnostics;
+using static Maui.Health.HealthConstants;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
 using WeightRecord = AndroidX.Health.Connect.Client.Records.WeightRecord;
 using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;
@@ -72,7 +73,7 @@ internal static class HealthRecordExtensions
             DataOrigin = weightRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Value = weightValue,
-            Unit = "kg"
+            Unit = Units.Kilogram
         };
     }
 
@@ -92,7 +93,7 @@ internal static class HealthRecordExtensions
             DataOrigin = heightRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Value = heightValue,
-            Unit = "cm"
+            Unit = Units.Centimeter
         };
     }
 
@@ -113,7 +114,7 @@ internal static class HealthRecordExtensions
             DataOrigin = caloriesRecord.Metadata.DataOrigin.PackageName,
             Timestamp = startTime,
             Energy = energyValue,
-            Unit = "kcal",
+            Unit = Units.Kilocalorie,
             StartTime = startTime,
             EndTime = endTime
         };
@@ -144,7 +145,7 @@ internal static class HealthRecordExtensions
             DataOrigin = heartRateRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             BeatsPerMinute = beatsPerMinute,
-            Unit = "BPM"
+            Unit = Units.BeatsPerMinute
         };
     }
 
@@ -165,7 +166,7 @@ internal static class HealthRecordExtensions
             DataOrigin = bodyFatRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Percentage = percentage,
-            Unit = "%"
+            Unit = Units.Percent
         };
     }
 
@@ -185,7 +186,7 @@ internal static class HealthRecordExtensions
             DataOrigin = vo2MaxRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Value = value,
-            Unit = "ml/kg/min"
+            Unit = Units.Vo2Max
         };
     }
 
@@ -246,13 +247,13 @@ internal static class HealthRecordExtensions
             if (mass.TryGetPropertyValue("value", out double value4))
             {
                 Debug.WriteLine($"Found value via 'value' property (possibly grams, dividing by 1000): {value4}");
-                return value4 / 1000.0; // Assume grams, convert to kg
+                return value4 / UnitConversions.GramsPerKilogram; // Assume grams, convert to kg
             }
 
             if (mass.TryCallMethod("getValue", out double value5))
             {
                 Debug.WriteLine($"Found value via 'getValue()' method (possibly grams, dividing by 1000): {value5}");
-                return value5 / 1000.0; // Assume grams, convert to kg
+                return value5 / UnitConversions.GramsPerKilogram; // Assume grams, convert to kg
             }
 
             var stringValue = mass.ToString();
@@ -261,7 +262,7 @@ internal static class HealthRecordExtensions
             if (stringValue.TryParseFromString(out double value6))
             {
                 Debug.WriteLine($"Found value via string parsing (possibly grams, dividing by 1000): {value6}");
-                return value6 / 1000.0; // Assume grams, convert to kg
+                return value6 / UnitConversions.GramsPerKilogram; // Assume grams, convert to kg
             }
 
             Debug.WriteLine("All approaches failed for Mass extraction");
@@ -271,7 +272,7 @@ internal static class HealthRecordExtensions
             Debug.WriteLine($"Error extracting mass value: {ex}");
         }
 
-        return 70.0; // Default fallback value
+        return Defaults.FallbackWeightKg; // Default fallback value
     }
 
     public static double ExtractLengthValue(this Java.Lang.Object length)
@@ -284,31 +285,31 @@ internal static class HealthRecordExtensions
             if (length.TryOfficialUnitsApi("METERS", out double officialValue))
             {
                 Debug.WriteLine($"Found value via official Units API: {officialValue}");
-                return officialValue * 100; // Convert meters to cm
+                return officialValue * UnitConversions.CentimetersPerMeter; // Convert meters to cm
             }
 
             if (length.TryGetPropertyValue("value", out double value1))
             {
                 Debug.WriteLine($"Found value via 'value' property: {value1}");
-                return value1 * 100;
+                return value1 * UnitConversions.CentimetersPerMeter;
             }
 
             if (length.TryGetPropertyValue("inMeters", out double value2))
             {
                 Debug.WriteLine($"Found value via 'inMeters' property: {value2}");
-                return value2 * 100;
+                return value2 * UnitConversions.CentimetersPerMeter;
             }
 
             if (length.TryCallMethod("inMeters", out double value3))
             {
                 Debug.WriteLine($"Found value via 'inMeters()' method: {value3}");
-                return value3 * 100;
+                return value3 * UnitConversions.CentimetersPerMeter;
             }
 
             if (length.TryCallMethod("getValue", out double value4))
             {
                 Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
-                return value4 * 100;
+                return value4 * UnitConversions.CentimetersPerMeter;
             }
 
             var stringValue = length.ToString();
@@ -317,7 +318,7 @@ internal static class HealthRecordExtensions
             if (stringValue.TryParseFromString(out double value5))
             {
                 Debug.WriteLine($"Found value via string parsing: {value5}");
-                return value5 * 100;
+                return value5 * UnitConversions.CentimetersPerMeter;
             }
 
             Debug.WriteLine("All approaches failed for Length extraction");
@@ -327,7 +328,7 @@ internal static class HealthRecordExtensions
             Debug.WriteLine($"Error extracting length value: {ex}");
         }
 
-        return 175.0; // Default fallback value in cm
+        return Defaults.FallbackHeightCm; // Default fallback value in cm
     }
 
     public static double ExtractEnergyValue(this Java.Lang.Object energy)
@@ -365,13 +366,13 @@ internal static class HealthRecordExtensions
             if (energy.TryGetPropertyValue("value", out double value4))
             {
                 Debug.WriteLine($"Found value via 'value' property (possibly calories, dividing by 1000): {value4}");
-                return value4 / 1000.0; // Assume calories, convert to kcal
+                return value4 / UnitConversions.CaloriesPerKilocalorie; // Assume calories, convert to kcal
             }
 
             if (energy.TryCallMethod("getValue", out double value5))
             {
                 Debug.WriteLine($"Found value via 'getValue()' method (possibly calories, dividing by 1000): {value5}");
-                return value5 / 1000.0; // Assume calories, convert to kcal
+                return value5 / UnitConversions.CaloriesPerKilocalorie; // Assume calories, convert to kcal
             }
 
             var stringValue = energy.ToString();
@@ -380,7 +381,7 @@ internal static class HealthRecordExtensions
             if (stringValue.TryParseFromString(out double value6))
             {
                 Debug.WriteLine($"Found value via string parsing (possibly calories, dividing by 1000): {value6}");
-                return value6 / 1000.0; // Assume calories, convert to kcal
+                return value6 / UnitConversions.CaloriesPerKilocalorie; // Assume calories, convert to kcal
             }
 
             Debug.WriteLine("All approaches failed for Energy extraction");
@@ -390,7 +391,7 @@ internal static class HealthRecordExtensions
             Debug.WriteLine($"Error extracting energy value: {ex}");
         }
 
-        return 0.0; // Default fallback value
+        return Defaults.FallbackValue; // Default fallback value
     }
 
     public static double ExtractPercentageValue(this Java.Lang.Object percentage)
@@ -425,7 +426,7 @@ internal static class HealthRecordExtensions
             Debug.WriteLine($"Error extracting percentage value: {ex}");
         }
 
-        return 0.0; // Default fallback value
+        return Defaults.FallbackValue; // Default fallback value
     }
 
     public static double ExtractVo2MaxValue(this Java.Lang.Object vo2Max)
@@ -460,7 +461,7 @@ internal static class HealthRecordExtensions
             Debug.WriteLine($"Error extracting VO2Max value: {ex}");
         }
 
-        return 0.0; // Default fallback value
+        return Defaults.FallbackValue; // Default fallback value
     }
 
     public static double ExtractPressureValue(this Java.Lang.Object pressure)
@@ -507,7 +508,7 @@ internal static class HealthRecordExtensions
             Debug.WriteLine($"Error extracting pressure value: {ex}");
         }
 
-        return 0.0; // Default fallback value
+        return Defaults.FallbackValue; // Default fallback value
     }
 
     private static bool TryOfficialUnitsApi(this Java.Lang.Object obj, string unitName, out double value)
@@ -558,7 +559,7 @@ internal static class HealthRecordExtensions
         unitConstant = null;
         try
         {
-            var unitsNamespace = "AndroidX.Health.Connect.Client.Units";
+            var unitsNamespace = Android.HealthConnectUnitsNamespace;
             var className = unitName.Contains("KILOGRAM") ? "Mass"
                 : unitName.Contains("KILOCALORIE") || unitName.Contains("CALORIE") ? "Energy"
                 : "Length";
@@ -664,7 +665,7 @@ internal static class HealthRecordExtensions
             return false;
         }
 
-        var numberPattern = @"(\d+\.?\d*)";
+        var numberPattern = Reflection.NumberExtractionPattern;
         var match = System.Text.RegularExpressions.Regex.Match(stringValue, numberPattern);
 
         if (match.Success && double.TryParse(match.Groups[1].Value, out value))
@@ -695,8 +696,8 @@ internal static class HealthRecordExtensions
     public static StepsRecord ToStepsRecord(this StepsDto dto)
     {
 #pragma warning disable CA1416
-        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
-        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
 #pragma warning restore CA1416
 
         var metadata = new Metadata();
@@ -717,19 +718,19 @@ internal static class HealthRecordExtensions
     public static WeightRecord ToWeightRecord(this WeightDto dto)
     {
 #pragma warning disable CA1416
-        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
 #pragma warning restore CA1416
 
         var metadata = new Metadata();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
         // Create Mass from kilograms using Companion factory method via reflection
-        var massClass = Java.Lang.Class.ForName("androidx.health.connect.client.units.Mass");
-        var companionField = massClass!.GetDeclaredField("Companion");
+        var massClass = Java.Lang.Class.ForName(Reflection.MassClassName);
+        var companionField = massClass!.GetDeclaredField(Android.KotlinCompanionFieldName);
         companionField!.Accessible = true;
         var companion = companionField.Get(null);
 
-        var kilogramsMethod = companion!.Class!.GetDeclaredMethod("kilograms", Java.Lang.Double.Type);
+        var kilogramsMethod = companion!.Class!.GetDeclaredMethod(Reflection.KilogramsMethodName, Java.Lang.Double.Type);
         kilogramsMethod!.Accessible = true;
         var massObj = kilogramsMethod.Invoke(companion, new Java.Lang.Double(dto.Value));
         var mass = Java.Lang.Object.GetObject<Mass>(massObj!.Handle, JniHandleOwnership.DoNotTransfer);
@@ -747,21 +748,21 @@ internal static class HealthRecordExtensions
     public static HeightRecord ToHeightRecord(this HeightDto dto)
     {
 #pragma warning disable CA1416
-        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
 #pragma warning restore CA1416
 
         var metadata = new Metadata();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
         // Create Length from meters using Companion factory method via reflection
-        var lengthClass = Java.Lang.Class.ForName("androidx.health.connect.client.units.Length");
-        var companionField = lengthClass!.GetDeclaredField("Companion");
+        var lengthClass = Java.Lang.Class.ForName(Reflection.LengthClassName);
+        var companionField = lengthClass!.GetDeclaredField(Android.KotlinCompanionFieldName);
         companionField!.Accessible = true;
         var companion = companionField.Get(null);
 
-        var metersMethod = companion!.Class!.GetDeclaredMethod("meters", Java.Lang.Double.Type);
+        var metersMethod = companion!.Class!.GetDeclaredMethod(Reflection.MetersMethodName, Java.Lang.Double.Type);
         metersMethod!.Accessible = true;
-        var lengthObj = metersMethod.Invoke(companion, new Java.Lang.Double(dto.Value / 100.0)); // Convert cm to meters
+        var lengthObj = metersMethod.Invoke(companion, new Java.Lang.Double(dto.Value / UnitConversions.CentimetersPerMeter)); // Convert cm to meters
         var length = Java.Lang.Object.GetObject<Length>(lengthObj!.Handle, JniHandleOwnership.DoNotTransfer);
 
         var record = new HeightRecord(
@@ -777,20 +778,20 @@ internal static class HealthRecordExtensions
     public static ActiveCaloriesBurnedRecord ToActiveCaloriesBurnedRecord(this ActiveCaloriesBurnedDto dto)
     {
 #pragma warning disable CA1416
-        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
-        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
 #pragma warning restore CA1416
 
         var metadata = new Metadata();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
         // Create Energy from kilocalories using Companion factory method via reflection
-        var energyClass = Java.Lang.Class.ForName("androidx.health.connect.client.units.Energy");
-        var companionField = energyClass!.GetDeclaredField("Companion");
+        var energyClass = Java.Lang.Class.ForName(Reflection.EnergyClassName);
+        var companionField = energyClass!.GetDeclaredField(Android.KotlinCompanionFieldName);
         companionField!.Accessible = true;
         var companion = companionField.Get(null);
 
-        var kilocaloriesMethod = companion!.Class!.GetDeclaredMethod("kilocalories", Java.Lang.Double.Type);
+        var kilocaloriesMethod = companion!.Class!.GetDeclaredMethod(Reflection.KilocaloriesMethodName, Java.Lang.Double.Type);
         kilocaloriesMethod!.Accessible = true;
         var energyObj = kilocaloriesMethod.Invoke(companion, new Java.Lang.Double(dto.Energy));
         var energy = Java.Lang.Object.GetObject<Energy>(energyObj!.Handle, JniHandleOwnership.DoNotTransfer);
@@ -810,7 +811,7 @@ internal static class HealthRecordExtensions
     public static HeartRateRecord ToHeartRateRecord(this HeartRateDto dto)
     {
 #pragma warning disable CA1416
-        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
 #pragma warning restore CA1416
 
         var metadata = new Metadata();

@@ -1,7 +1,8 @@
-﻿using Maui.Health.Constants;
+using Maui.Health.Constants;
 using Maui.Health.Enums;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
+using static Maui.Health.HealthConstants;
 
 namespace Maui.Health.Services;
 
@@ -55,7 +56,7 @@ public partial class ActivityService
     public List<DuplicateWorkoutGroup> FindDuplicates(
         List<WorkoutDto> workouts,
         string appSource,
-        int timeThresholdMinutes = 5)
+        int timeThresholdMinutes = Defaults.DuplicateThresholdMinutes)
     {
         var duplicateGroups = new List<DuplicateWorkoutGroup>();
         var processed = new HashSet<string>();
@@ -160,7 +161,7 @@ public partial class ActivityService
 
         var activityTypeStr = Preferences.Default.Get(SessionPreferenceKeys.ActivityType, string.Empty);
         var title = Preferences.Default.Get(SessionPreferenceKeys.Title, string.Empty);
-        var startTimeMs = Preferences.Default.Get(SessionPreferenceKeys.StartTime, 0L);
+        var startTimeMs = Preferences.Default.Get(SessionPreferenceKeys.StartTime, Defaults.DefaultTimestampValue);
         var dataOrigin = Preferences.Default.Get(SessionPreferenceKeys.DataOrigin, string.Empty);
         var stateStr = Preferences.Default.Get(SessionPreferenceKeys.State, string.Empty);
         var pauseIntervalsJson = Preferences.Default.Get(SessionPreferenceKeys.PauseIntervals, string.Empty);

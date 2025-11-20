@@ -12,7 +12,7 @@ using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android.Callbacks;
 using Maui.Health.Platforms.Android.Extensions;
 using Microsoft.Extensions.Logging;
-
+using static Maui.Health.HealthConstants;
 
 namespace Maui.Health.Services;
 
@@ -55,7 +55,7 @@ public partial class ActivityService
                 timeRangeFilter,
                 [],
                 true,
-                1000,
+                Defaults.MaxRecordsPerRequest,
                 null
             );
 
@@ -143,7 +143,7 @@ public partial class ActivityService
             recordsList.Add(record);
 
             var clientType = _healthConnectClient.GetType();
-            var handleField = clientType.GetField("handle",
+            var handleField = clientType.GetField(Android.JniHandleFieldName,
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
             if (handleField is null)
@@ -215,7 +215,7 @@ public partial class ActivityService
             recordIdsList.Add(workout.Id);
 
             var clientType = _healthConnectClient.GetType();
-            var handleField = clientType.GetField("handle",
+            var handleField = clientType.GetField(Android.JniHandleFieldName,
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
             if (handleField is null)
@@ -231,12 +231,12 @@ public partial class ActivityService
                 return;
             }
 
-            var classHandle = Android.Runtime.JNIEnv.GetObjectClass(jniHandle);
+            var classHandle = global::Android.Runtime.JNIEnv.GetObjectClass(jniHandle);
             var clientClass = Java.Lang.Object.GetObject<Java.Lang.Class>(
-                classHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
+                classHandle, global::Android.Runtime.JniHandleOwnership.DoNotTransfer);
 
             var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(
-                jniHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
+                jniHandle, global::Android.Runtime.JniHandleOwnership.DoNotTransfer);
 
             // Get the KClass for ExerciseSessionRecord
             var recordClass = Kotlin.Jvm.JvmClassMappingKt.GetKotlinClass(

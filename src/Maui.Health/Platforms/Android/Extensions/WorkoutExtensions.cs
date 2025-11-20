@@ -6,6 +6,7 @@ using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android.Enums;
 using System.Diagnostics;
 using System.Linq;
+using static Maui.Health.HealthConstants;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
@@ -137,8 +138,8 @@ internal static class WorkoutExtensions
             return null;
 
 #pragma warning disable CA1416
-        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
-        var endTime = Instant.Parse(dto.EndTime.Value.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'"));
+        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+        var endTime = Instant.Parse(dto.EndTime.Value.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
 #pragma warning restore CA1416
 
         var metadata = new Metadata();

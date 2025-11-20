@@ -6,6 +6,7 @@ using Maui.Health.Extensions;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.iOS.Extensions;
 using Microsoft.Extensions.Logging;
+using static Maui.Health.HealthConstants;
 
 namespace Maui.Health.Services;
 
@@ -14,7 +15,7 @@ public partial class ActivityService
     private WorkoutDto? _activeWorkoutDto;
     private Models.WorkoutSession? _activeWorkoutSession;
     private readonly ILogger<ActivityService>? _logger;
-    private nuint _healthRateLimit { get; set; } = 0;
+    private nuint _healthRateLimit { get; set; } = Defaults.HealthRateLimit;
 
     public ActivityService(ILogger<ActivityService>? logger = null)
     {
@@ -194,7 +195,7 @@ public partial class ActivityService
             var query = new HKSampleQuery(
                 workoutType,
                 predicate,
-                1,
+                Defaults.SingleRecordLimit,
                 null,
                 (sampleQuery, results, error) =>
                 {

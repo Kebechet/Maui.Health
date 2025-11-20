@@ -9,13 +9,14 @@ using Maui.Health.Platforms.iOS.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Platform;
 using System.Collections.Generic;
+using static Maui.Health.HealthConstants;
 
 namespace Maui.Health.Services;
 
 public partial class HealthService
 {
     public partial bool IsSupported => HKHealthStore.IsHealthDataAvailable;
-    private nuint _healthRateLimit { get; set; } = 0;
+    private nuint _healthRateLimit { get; set; } = Defaults.HealthRateLimit;
 
     /// <summary>
     /// <param name="canRequestFullHistoryPermission">iOS has this by default as TRUE</param>
@@ -247,7 +248,7 @@ public partial class HealthService
                     dto = new StepsDto
                     {
                         Id = Guid.NewGuid().ToString(),
-                        DataOrigin = "HealthKit",
+                        DataOrigin = DataOrigins.HealthKit,
                         Timestamp = timeRange.StartTime,
                         Count = (long)sum.GetDoubleValue(HKUnit.Count),
                         StartTime = timeRange.StartTime,
@@ -259,12 +260,12 @@ public partial class HealthService
                     dto = new ActiveCaloriesBurnedDto
                     {
                         Id = Guid.NewGuid().ToString(),
-                        DataOrigin = "HealthKit",
+                        DataOrigin = DataOrigins.HealthKit,
                         Timestamp = timeRange.StartTime,
                         Energy = sum.GetDoubleValue(HKUnit.Kilocalorie),
                         StartTime = timeRange.StartTime,
                         EndTime = timeRange.EndTime,
-                        Unit = "kcal"
+                        Unit = Units.Kilocalorie
                     } as TDto;
                 }
 
