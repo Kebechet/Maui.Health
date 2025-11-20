@@ -18,6 +18,7 @@ using Microsoft.Extensions.Logging;
 using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
 using Maui.Health.Enums;
+using Maui.Health.Constants;
 using static Maui.Health.Constants.HealthConstants;
 
 namespace Maui.Health.Services;
@@ -172,11 +173,15 @@ public partial class HealthService
             {
                 var record = response.Records[i];
                 if (record is not Java.Lang.Object javaObject)
+                {
                     continue;
+                }
 
                 var dto = javaObject.ConvertToDto<TDto>();
                 if (dto is not null)
+                {
                     results.Add(dto);
+                }
             }
 
             _logger.LogInformation("Found {Count} {DtoName} records", results.Count, typeof(TDto).Name);
@@ -228,47 +233,53 @@ public partial class HealthService
             var clientType = _healthConnectClient.GetType();
             var handleField = clientType.GetField(HealthConstants.Android.JniHandleFieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
-            if (handleField != null)
+            if(handleField is null)
             {
-                var handle = handleField.GetValue(_healthConnectClient);
-                if (handle is IntPtr jniHandle && jniHandle != IntPtr.Zero)
+                _logger.LogWarning("Could not find InsertRecords method via reflection");
+                return false;
+            }
+
+            var handle = handleField.GetValue(_healthConnectClient);
+            if (handle is not IntPtr jniHandle || jniHandle == IntPtr.Zero)
+            {
+                _logger.LogWarning("Invalid JNI handle for Health Connect client");
+                return false;
+            }
+
+            // Get the Java class
+            var classHandle = Android.Runtime.JNIEnv.GetObjectClass(jniHandle);
+            var clientClass = Java.Lang.Object.GetObject<Java.Lang.Class>(classHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
+
+            // Get the client as a Java.Lang.Object for method invocation
+            var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(jniHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
+
+            var insertMethod = clientClass?.GetDeclaredMethod("insertRecords",
+                Java.Lang.Class.FromType(typeof(Java.Util.IList)),
+                Java.Lang.Class.FromType(typeof(Kotlin.Coroutines.IContinuation)));
+
+            if (insertMethod is null || clientObject is null)
+            {
+                _logger.LogWarning("Could not find insertRecords method or client object");
+                return false;
+            }
+
+            var taskCompletionSource = new TaskCompletionSource<Java.Lang.Object>();
+            var continuation = new Continuation(taskCompletionSource, default);
+
+            insertMethod.Accessible = true;
+            var result = insertMethod.Invoke(clientObject, recordsList, continuation);
+
+            if (result is Java.Lang.Enum javaEnum)
+            {
+                var currentState = Enum.Parse<CoroutineState>(javaEnum.ToString());
+                if (currentState == CoroutineState.COROUTINE_SUSPENDED)
                 {
-                    // Get the Java class
-                    var classHandle = Android.Runtime.JNIEnv.GetObjectClass(jniHandle);
-                    var clientClass = Java.Lang.Object.GetObject<Java.Lang.Class>(classHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
-
-                    // Get the client as a Java.Lang.Object for method invocation
-                    var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(jniHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
-
-                    var insertMethod = clientClass?.GetDeclaredMethod("insertRecords",
-                        Java.Lang.Class.FromType(typeof(Java.Util.IList)),
-                        Java.Lang.Class.FromType(typeof(Kotlin.Coroutines.IContinuation)));
-
-                    if (insertMethod != null && clientObject != null)
-                    {
-                        var taskCompletionSource = new TaskCompletionSource<Java.Lang.Object>();
-                        var continuation = new Continuation(taskCompletionSource, default);
-
-                        insertMethod.Accessible = true;
-                        var result = insertMethod.Invoke(clientObject, recordsList, continuation);
-
-                        if (result is Java.Lang.Enum javaEnum)
-                        {
-                            var currentState = Enum.Parse<CoroutineState>(javaEnum.ToString());
-                            if (currentState == CoroutineState.COROUTINE_SUSPENDED)
-                            {
-                                await taskCompletionSource.Task;
-                            }
-                        }
-
-                        _logger.LogInformation("Successfully wrote {DtoName} record", typeof(TDto).Name);
-                        return true;
-                    }
+                    await taskCompletionSource.Task;
                 }
             }
 
-            _logger.LogWarning("Could not find InsertRecords method via reflection");
-            return false;
+            _logger.LogInformation("Successfully wrote {DtoName} record", typeof(TDto).Name);
+            return true;
         }
         catch (Exception ex)
         {
