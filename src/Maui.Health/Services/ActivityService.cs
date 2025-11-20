@@ -68,44 +68,55 @@ public partial class ActivityService
     /// <param name="workouts">List of workouts to check for duplicates</param>
     /// <param name="appSource">Your app's data origin identifier (e.g., "DemoApp")</param>
     /// <param name="timeThresholdMinutes">Maximum time difference in minutes to consider as duplicate (default: 5)</param>
+    /// <param name="activityType">Optional activity type filter - only find duplicates of this type</param>
     /// <returns>List of duplicate groups, each containing matching workouts</returns>
     public List<DuplicateWorkoutGroup> FindDuplicates(
         List<WorkoutDto> workouts,
         string appSource,
-        int timeThresholdMinutes = Defaults.DuplicateThresholdMinutes)
+        int timeThresholdMinutes = Defaults.DuplicateThresholdMinutes,
+        ActivityType? activityType = null)
     {
         var duplicateGroups = new List<DuplicateWorkoutGroup>();
         var processed = new HashSet<string>();
 
-        foreach (var workout in workouts)
+        // Filter workouts by activity type if specified
+        var workoutsToCheck = activityType.HasValue
+            ? workouts.Where(w => w.ActivityType == activityType.Value).ToList()
+            : workouts;
+
+        foreach (var workout in workoutsToCheck)
         {
             if (processed.Contains(workout.Id))
+            {
                 continue;
+            }
 
             // Find all workouts that match this one
-            var matches = workouts.Where(w =>
+            var matches = workoutsToCheck.Where(w =>
                 w.Id != workout.Id &&
                 !processed.Contains(w.Id) &&
                 AreWorkoutsDuplicates(workout, w, timeThresholdMinutes)
             ).ToList();
 
-            if (matches.Count > 0)
+            if (!matches.Any())
             {
-                // Create a group with the original workout and all matches
-                var group = new DuplicateWorkoutGroup
-                {
-                    AppSource = appSource,
-                    Workouts = [workout, .. matches]
-                };
+                continue;
+            }
 
-                duplicateGroups.Add(group);
+            // Create a group with the original workout and all matches
+            var group = new DuplicateWorkoutGroup
+            {
+                AppSource = appSource,
+                Workouts = [workout, .. matches]
+            };
 
-                // Mark all as processed
-                processed.Add(workout.Id);
-                foreach (var match in matches)
-                {
-                    processed.Add(match.Id);
-                }
+            duplicateGroups.Add(group);
+
+            // Mark all as processed
+            processed.Add(workout.Id);
+            foreach (var match in matches)
+            {
+                processed.Add(match.Id);
             }
         }
 
@@ -118,24 +129,32 @@ public partial class ActivityService
     private static bool AreWorkoutsDuplicates(WorkoutDto w1, WorkoutDto w2, int timeThresholdMinutes)
     {
         // Must be same activity type
-        if (w1.ActivityType != w2.ActivityType)
+        if(w1.ActivityType != w2.ActivityType)
+        {
             return false;
+        }
 
         // Must be from different sources
-        if (w1.DataOrigin == w2.DataOrigin)
+        if(w1.DataOrigin == w2.DataOrigin)
+        {
             return false;
+        }
 
         // Check if start times are within threshold
         var startDiff = Math.Abs((w1.StartTime - w2.StartTime).TotalMinutes);
-        if (startDiff > timeThresholdMinutes)
+        if(startDiff > timeThresholdMinutes)
+        {
             return false;
+        }
 
         // If both have end times, check those too
         if (w1.EndTime.HasValue && w2.EndTime.HasValue)
         {
             var endDiff = Math.Abs((w1.EndTime.Value - w2.EndTime.Value).TotalMinutes);
             if (endDiff > timeThresholdMinutes)
+            {
                 return false;
+            }
         }
 
         return true;
@@ -159,41 +178,20 @@ public partial class ActivityService
         var stateStr = Preferences.Default.Get(SessionPreferenceKeys.State, string.Empty);
         var pauseIntervalsJson = Preferences.Default.Get(SessionPreferenceKeys.PauseIntervals, string.Empty);
 
-        if (!System.Enum.TryParse<ActivityType>(activityTypeStr, out var activityType) || startTimeMs <= 0)
+        if (!Enum.TryParse<ActivityType>(activityTypeStr, out var activityType) || startTimeMs <= 0)
         {
             return null;
         }
 
-        if (!System.Enum.TryParse<WorkoutSessionState>(stateStr, out var state))
+        if (!Enum.TryParse<WorkoutSessionState>(stateStr, out var state))
         {
             state = WorkoutSessionState.Running;
         }
 
         // Parse pause intervals from JSON
-        var pauseIntervals = new List<(DateTimeOffset, DateTimeOffset?)>();
-        if (!string.IsNullOrEmpty(pauseIntervalsJson))
-        {
-            try
-            {
-                var intervals = System.Text.Json.JsonSerializer.Deserialize<List<(long, long?)>>(pauseIntervalsJson);
-                if (intervals != null)
-                {
-                    foreach (var (start, end) in intervals)
-                    {
-                        pauseIntervals.Add((
-                            DateTimeOffset.FromUnixTimeMilliseconds(start),
-                            end.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(end.Value) : null
-                        ));
-                    }
-                }
-            }
-            catch
-            {
-                // Ignore parsing errors, start with empty pause intervals
-            }
-        }
+        var pauseIntervals = ParsePauseIntervals(pauseIntervalsJson);
 
-        return new Models.WorkoutSession(
+        return new WorkoutSession(
             activeSessionId,
             activityType,
             string.IsNullOrEmpty(title) ? null : title,
@@ -236,5 +234,34 @@ public partial class ActivityService
         Preferences.Default.Remove(SessionPreferenceKeys.DataOrigin);
         Preferences.Default.Remove(SessionPreferenceKeys.State);
         Preferences.Default.Remove(SessionPreferenceKeys.PauseIntervals);
+    }
+
+    /// <summary>
+    /// Parses pause intervals from JSON string
+    /// </summary>
+    private static List<(DateTimeOffset, DateTimeOffset?)> ParsePauseIntervals(string json)
+    {
+        if (string.IsNullOrEmpty(json))
+        {
+            return [];
+        }
+
+        try
+        {
+            var intervals = System.Text.Json.JsonSerializer.Deserialize<List<(long, long?)>>(json);
+            if (intervals is null)
+            {
+                return [];
+            }
+
+            return intervals.Select(i => (
+                DateTimeOffset.FromUnixTimeMilliseconds(i.Item1),
+                i.Item2.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(i.Item2.Value) : (DateTimeOffset?)null
+            )).ToList();
+        }
+        catch
+        {
+            return [];
+        }
     }
 }
