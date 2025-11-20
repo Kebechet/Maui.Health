@@ -1,12 +1,13 @@
+using Foundation;
 using HealthKit;
-using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
+using static Maui.Health.Constants.HealthConstants;
 
 namespace Maui.Health.Platforms.iOS.Extensions;
 
 internal static class HKQuantitySampleExtensions
 {
-    public static TDto? ConvertToDto<TDto>(this HKQuantitySample sample, HealthDataType healthDataType)
+    public static TDto? ConvertToDto<TDto>(this HKQuantitySample sample)
         where TDto : HealthMetricBase
     {
         return typeof(TDto).Name switch
@@ -25,13 +26,13 @@ internal static class HKQuantitySampleExtensions
     public static StepsDto ToStepsDto(this HKQuantitySample sample)
     {
         var value = sample.Quantity.GetDoubleValue(HKUnit.Count);
-        var startTime = new DateTimeOffset(sample.StartDate.ToDateTime());
-        var endTime = new DateTimeOffset(sample.EndDate.ToDateTime());
+        var startTime = sample.StartDate.ToDateTimeOffset();
+        var endTime = sample.EndDate.ToDateTimeOffset();
 
         return new StepsDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = startTime, // Use start time as the representative timestamp
             Count = (long)value,
             StartTime = startTime,
@@ -41,47 +42,47 @@ internal static class HKQuantitySampleExtensions
 
     public static WeightDto ToWeightDto(this HKQuantitySample sample)
     {
-        var value = sample.Quantity.GetDoubleValue(HKUnit.Gram) / 1000.0; // Convert grams to kg
-        var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
+        var value = sample.Quantity.GetDoubleValue(HKUnit.Gram) / UnitConversions.GramsPerKilogram; // Convert grams to kg
+        var timestamp = sample.StartDate.ToDateTimeOffset();
 
         return new WeightDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = timestamp,
             Value = value,
-            Unit = "kg"
+            Unit = Units.Kilogram
         };
     }
 
     public static HeightDto ToHeightDto(this HKQuantitySample sample)
     {
         var valueInMeters = sample.Quantity.GetDoubleValue(HKUnit.Meter);
-        var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
+        var timestamp = sample.StartDate.ToDateTimeOffset();
 
         return new HeightDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = timestamp,
-            Value = valueInMeters * 100, // Convert to cm
-            Unit = "cm"
+            Value = valueInMeters * UnitConversions.CentimetersPerMeter, // Convert to cm
+            Unit = Units.Centimeter
         };
     }
 
     public static ActiveCaloriesBurnedDto ToActiveCaloriesBurnedDto(this HKQuantitySample sample)
     {
         var valueInKilocalories = sample.Quantity.GetDoubleValue(HKUnit.Kilocalorie);
-        var startTime = new DateTimeOffset(sample.StartDate.ToDateTime());
-        var endTime = new DateTimeOffset(sample.EndDate.ToDateTime());
+        var startTime = sample.StartDate.ToDateTimeOffset();
+        var endTime = sample.EndDate.ToDateTimeOffset();
 
         return new ActiveCaloriesBurnedDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = startTime, // Use start time as the representative timestamp
             Energy = valueInKilocalories,
-            Unit = "kcal",
+            Unit = Units.Kilocalorie,
             StartTime = startTime,
             EndTime = endTime
         };
@@ -90,46 +91,112 @@ internal static class HKQuantitySampleExtensions
     public static HeartRateDto ToHeartRateDto(this HKQuantitySample sample)
     {
         var beatsPerMinute = sample.Quantity.GetDoubleValue(HKUnit.Count.UnitDividedBy(HKUnit.Minute));
-        var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
+        var timestamp = sample.StartDate.ToDateTimeOffset();
 
         return new HeartRateDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = timestamp,
             BeatsPerMinute = beatsPerMinute,
-            Unit = "BPM"
+            Unit = Units.BeatsPerMinute
         };
     }
 
     public static BodyFatDto ToBodyFatDto(this HKQuantitySample sample)
     {
-        var percentage = sample.Quantity.GetDoubleValue(HKUnit.Percent) * 100; // HKUnit.Percent is 0-1, convert to 0-100
-        var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
+        var percentage = sample.Quantity.GetDoubleValue(HKUnit.Percent) * UnitConversions.PercentageMultiplier; // HKUnit.Percent is 0-1, convert to 0-100
+        var timestamp = sample.StartDate.ToDateTimeOffset();
 
         return new BodyFatDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = timestamp,
             Percentage = percentage,
-            Unit = "%"
+            Unit = Units.Percent
         };
     }
 
     public static Vo2MaxDto ToVo2MaxDto(this HKQuantitySample sample)
     {
-        var value = sample.Quantity.GetDoubleValue(HKUnit.FromString("ml/kg*min"));
-        var timestamp = new DateTimeOffset(sample.StartDate.ToDateTime());
+        var value = sample.Quantity.GetDoubleValue(HKUnit.FromString(Units.HKVo2Max));
+        var timestamp = sample.StartDate.ToDateTimeOffset();
 
         return new Vo2MaxDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
+            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = timestamp,
             Value = value,
-            Unit = "ml/kg/min"
+            Unit = Units.Vo2Max
         };
     }
 
+    #region Write Methods
+
+    public static HKObject? ToHKObject(this HealthMetricBase dto)
+    {
+        return dto switch
+        {
+            StepsDto stepsDto => stepsDto.ToHKQuantitySample(),
+            WeightDto weightDto => weightDto.ToHKQuantitySample(),
+            HeightDto heightDto => heightDto.ToHKQuantitySample(),
+            ActiveCaloriesBurnedDto caloriesDto => caloriesDto.ToHKQuantitySample(),
+            HeartRateDto heartRateDto => heartRateDto.ToHKQuantitySample(),
+            _ => throw new NotImplementedException($"DTO type {dto.GetType().Name} is not implemented for write operation")
+        };
+    }
+
+    public static HKQuantitySample ToHKQuantitySample(this StepsDto dto)
+    {
+        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.StepCount)!;
+        var quantity = HKQuantity.FromQuantity(HKUnit.Count, dto.Count);
+        var startDate = dto.StartTime.ToNSDate();
+        var endDate = dto.EndTime.ToNSDate();
+
+        return HKQuantitySample.FromType(quantityType, quantity, startDate, endDate);
+    }
+
+    public static HKQuantitySample ToHKQuantitySample(this WeightDto dto)
+    {
+        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.BodyMass)!;
+        var valueInGrams = dto.Value * UnitConversions.GramsPerKilogram; // Convert kg to grams
+        var quantity = HKQuantity.FromQuantity(HKUnit.Gram, valueInGrams);
+        var date = dto.Timestamp.ToNSDate();
+
+        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+    }
+
+    public static HKQuantitySample ToHKQuantitySample(this HeightDto dto)
+    {
+        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.Height)!;
+        var valueInMeters = dto.Value / UnitConversions.CentimetersPerMeter; // Convert cm to meters
+        var quantity = HKQuantity.FromQuantity(HKUnit.Meter, valueInMeters);
+        var date = dto.Timestamp.ToNSDate();
+
+        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+    }
+
+    public static HKQuantitySample ToHKQuantitySample(this ActiveCaloriesBurnedDto dto)
+    {
+        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.ActiveEnergyBurned)!;
+        var quantity = HKQuantity.FromQuantity(HKUnit.Kilocalorie, dto.Energy);
+        var startDate = dto.StartTime.ToNSDate();
+        var endDate = dto.EndTime.ToNSDate();
+
+        return HKQuantitySample.FromType(quantityType, quantity, startDate, endDate);
+    }
+
+    public static HKQuantitySample ToHKQuantitySample(this HeartRateDto dto)
+    {
+        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.HeartRate)!;
+        var unit = HKUnit.Count.UnitDividedBy(HKUnit.Minute);
+        var quantity = HKQuantity.FromQuantity(unit, dto.BeatsPerMinute);
+        var date = dto.Timestamp.ToNSDate();
+
+        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+    }
+
+    #endregion
 }

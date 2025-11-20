@@ -1,13 +1,20 @@
+using Android.Runtime;
 using AndroidX.Health.Connect.Client.Records;
+using AndroidX.Health.Connect.Client.Records.Metadata;
+using AndroidX.Health.Connect.Client.Units;
+using Java.Time;
+using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
+using Maui.Health.Platforms.Android.Enums;
 using System.Diagnostics;
+using static Maui.Health.Constants.HealthConstants;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
 using WeightRecord = AndroidX.Health.Connect.Client.Records.WeightRecord;
 using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;
 using ActiveCaloriesBurnedRecord = AndroidX.Health.Connect.Client.Records.ActiveCaloriesBurnedRecord;
 using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
-using Maui.Health.Platforms.Android.Enums;
+using Maui.Health.Constants;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
@@ -23,7 +30,6 @@ internal static class HealthRecordExtensions
             nameof(HeightDto) => record.ToHeightDto() as TDto,
             nameof(ActiveCaloriesBurnedDto) => record.ToActiveCaloriesBurnedDto() as TDto,
             nameof(HeartRateDto) => record.ToHeartRateDto() as TDto,
-            nameof(WorkoutDto) => record.ToWorkoutDto() as TDto,
             nameof(BodyFatDto) => record.ToBodyFatDto() as TDto,
             nameof(Vo2MaxDto) => record.ToVo2MaxDto() as TDto,
             //nameof(BloodPressureDto) => record.ToBloodPressureDto() as TDto,
@@ -68,7 +74,7 @@ internal static class HealthRecordExtensions
             DataOrigin = weightRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Value = weightValue,
-            Unit = "kg"
+            Unit = Units.Kilogram
         };
     }
 
@@ -88,7 +94,7 @@ internal static class HealthRecordExtensions
             DataOrigin = heightRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Value = heightValue,
-            Unit = "cm"
+            Unit = Units.Centimeter
         };
     }
 
@@ -109,7 +115,7 @@ internal static class HealthRecordExtensions
             DataOrigin = caloriesRecord.Metadata.DataOrigin.PackageName,
             Timestamp = startTime,
             Energy = energyValue,
-            Unit = "kcal",
+            Unit = Units.Kilocalorie,
             StartTime = startTime,
             EndTime = endTime
         };
@@ -140,87 +146,10 @@ internal static class HealthRecordExtensions
             DataOrigin = heartRateRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             BeatsPerMinute = beatsPerMinute,
-            Unit = "BPM"
+            Unit = Units.BeatsPerMinute
         };
     }
 
-    public static WorkoutDto? ToWorkoutDto(this Java.Lang.Object record)
-    {
-        if (record is not ExerciseSessionRecord exerciseRecord)
-        {
-            return null;
-        }
-
-        var startTime = exerciseRecord.StartTime.ToDateTimeOffset();
-        var endTime = exerciseRecord.EndTime.ToDateTimeOffset();
-        var activityType = ((ExerciseType)exerciseRecord.ExerciseType).ToActivityType();
-        string? title = exerciseRecord.Title;
-
-        return new WorkoutDto
-        {
-            Id = exerciseRecord.Metadata.Id,
-            DataOrigin = exerciseRecord.Metadata.DataOrigin.PackageName,
-            Timestamp = startTime,
-            ActivityType = activityType,
-            Title = title,
-            StartTime = startTime,
-            EndTime = endTime
-        };
-    }
-
-    public static async Task<WorkoutDto> ToWorkoutDtoAsync(
-        this ExerciseSessionRecord exerciseRecord,
-        Func<HealthTimeRange, CancellationToken, Task<HeartRateDto[]>> queryHeartRateFunc,
-        CancellationToken cancellationToken)
-    {
-        var startTime = exerciseRecord.StartTime.ToDateTimeOffset();
-        var endTime = exerciseRecord.EndTime.ToDateTimeOffset();
-        var activityType = ((ExerciseType)exerciseRecord.ExerciseType).ToActivityType();
-        string? title = exerciseRecord.Title;
-
-        double? avgHeartRate = null;
-        double? minHeartRate = null;
-        double? maxHeartRate = null;
-
-        try
-        {
-            Debug.WriteLine($"Android: Querying HR for workout {startTime:HH:mm} to {endTime:HH:mm}");
-            var workoutTimeRange = HealthTimeRange.FromDateTimeOffset(startTime, endTime);
-            var heartRateData = await queryHeartRateFunc(workoutTimeRange, cancellationToken);
-            Debug.WriteLine($"Android: Found {heartRateData.Length} HR samples for workout");
-
-            if (heartRateData.Any())
-            {
-                avgHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
-                minHeartRate = heartRateData.Min(hr => hr.BeatsPerMinute);
-                maxHeartRate = heartRateData.Max(hr => hr.BeatsPerMinute);
-                Debug.WriteLine($"Android: Workout HR - Avg: {avgHeartRate:F0}, Min: {minHeartRate:F0}, Max: {maxHeartRate:F0}");
-            }
-            else
-            {
-                Debug.WriteLine($"Android: No HR data found for workout period");
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Android: Error fetching heart rate for workout: {ex.Message}");
-            Debug.WriteLine($"Android: Stack trace: {ex.StackTrace}");
-        }
-
-        return new WorkoutDto
-        {
-            Id = exerciseRecord.Metadata.Id,
-            DataOrigin = exerciseRecord.Metadata.DataOrigin.PackageName,
-            Timestamp = startTime,
-            ActivityType = activityType,
-            Title = title,
-            StartTime = startTime,
-            EndTime = endTime,
-            AverageHeartRate = avgHeartRate,
-            MinHeartRate = minHeartRate,
-            MaxHeartRate = maxHeartRate
-        };
-    }
 
     public static BodyFatDto? ToBodyFatDto(this Java.Lang.Object record)
     {
@@ -238,7 +167,7 @@ internal static class HealthRecordExtensions
             DataOrigin = bodyFatRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Percentage = percentage,
-            Unit = "%"
+            Unit = Units.Percent
         };
     }
 
@@ -258,7 +187,7 @@ internal static class HealthRecordExtensions
             DataOrigin = vo2MaxRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Value = value,
-            Unit = "ml/kg/min"
+            Unit = Units.Vo2Max
         };
     }
 
@@ -288,285 +217,168 @@ internal static class HealthRecordExtensions
     {
         try
         {
-            Debug.WriteLine($"Mass object type: {mass.GetType().Name}");
-            Debug.WriteLine($"Mass object class: {mass.Class.Name}");
-
             if (mass.TryOfficialUnitsApi("KILOGRAMS", out double officialValue))
-            {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
                 return officialValue;
-            }
 
-            if (mass.TryGetPropertyValue("value", out double value1))
-            {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
+            if (mass.TryGetPropertyValue("inKilograms", out double value1))
                 return value1;
-            }
 
-            if (mass.TryGetPropertyValue("inKilograms", out double value2))
-            {
-                Debug.WriteLine($"Found value via 'inKilograms' property: {value2}");
+            if (mass.TryCallMethod("inKilograms", out double value2))
                 return value2;
-            }
 
-            if (mass.TryCallMethod("inKilograms", out double value3))
-            {
-                Debug.WriteLine($"Found value via 'inKilograms()' method: {value3}");
+            if (mass.TryCallMethod("getInKilograms", out double value3))
                 return value3;
-            }
 
-            if (mass.TryCallMethod("getValue", out double value4))
-            {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
-                return value4;
-            }
+            if (mass.TryGetPropertyValue("value", out double value4))
+                return value4 / UnitConversions.GramsPerKilogram;
+
+            if (mass.TryCallMethod("getValue", out double value5))
+                return value5 / UnitConversions.GramsPerKilogram;
 
             var stringValue = mass.ToString();
-            Debug.WriteLine($"Mass toString(): {stringValue}");
-
-            if (stringValue.TryParseFromString(out double value5))
-            {
-                Debug.WriteLine($"Found value via string parsing: {value5}");
-                return value5;
-            }
-
-            Debug.WriteLine("All approaches failed for Mass extraction");
+            if (stringValue.TryParseFromString(out double value6))
+                return value6 / UnitConversions.GramsPerKilogram;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting mass value: {ex}");
+            Debug.WriteLine($"Error extracting mass value: {ex.Message}");
         }
 
-        return 70.0; // Default fallback value
+        return Defaults.FallbackWeightKg;
     }
 
     public static double ExtractLengthValue(this Java.Lang.Object length)
     {
         try
         {
-            Debug.WriteLine($"Length object type: {length.GetType().Name}");
-            Debug.WriteLine($"Length object class: {length.Class.Name}");
-
             if (length.TryOfficialUnitsApi("METERS", out double officialValue))
-            {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
-                return officialValue * 100; // Convert meters to cm
-            }
+                return officialValue * UnitConversions.CentimetersPerMeter;
 
             if (length.TryGetPropertyValue("value", out double value1))
-            {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
-                return value1 * 100;
-            }
+                return value1 * UnitConversions.CentimetersPerMeter;
 
             if (length.TryGetPropertyValue("inMeters", out double value2))
-            {
-                Debug.WriteLine($"Found value via 'inMeters' property: {value2}");
-                return value2 * 100;
-            }
+                return value2 * UnitConversions.CentimetersPerMeter;
 
             if (length.TryCallMethod("inMeters", out double value3))
-            {
-                Debug.WriteLine($"Found value via 'inMeters()' method: {value3}");
-                return value3 * 100;
-            }
+                return value3 * UnitConversions.CentimetersPerMeter;
 
             if (length.TryCallMethod("getValue", out double value4))
-            {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
-                return value4 * 100;
-            }
+                return value4 * UnitConversions.CentimetersPerMeter;
 
             var stringValue = length.ToString();
-            Debug.WriteLine($"Length toString(): {stringValue}");
-
             if (stringValue.TryParseFromString(out double value5))
-            {
-                Debug.WriteLine($"Found value via string parsing: {value5}");
-                return value5 * 100;
-            }
-
-            Debug.WriteLine("All approaches failed for Length extraction");
+                return value5 * UnitConversions.CentimetersPerMeter;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting length value: {ex}");
+            Debug.WriteLine($"Error extracting length value: {ex.Message}");
         }
 
-        return 175.0; // Default fallback value in cm
+        return Defaults.FallbackHeightCm;
     }
 
     public static double ExtractEnergyValue(this Java.Lang.Object energy)
     {
         try
         {
-            Debug.WriteLine($"Energy object type: {energy.GetType().Name}");
-            Debug.WriteLine($"Energy object class: {energy.Class.Name}");
-
             if (energy.TryOfficialUnitsApi("KILOCALORIES", out double officialValue))
-            {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
                 return officialValue;
-            }
 
-            if (energy.TryGetPropertyValue("value", out double value1))
-            {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
+            if (energy.TryGetPropertyValue("inKilocalories", out double value1))
                 return value1;
-            }
 
-            if (energy.TryGetPropertyValue("inKilocalories", out double value2))
-            {
-                Debug.WriteLine($"Found value via 'inKilocalories' property: {value2}");
+            if (energy.TryCallMethod("inKilocalories", out double value2))
                 return value2;
-            }
 
-            if (energy.TryCallMethod("inKilocalories", out double value3))
-            {
-                Debug.WriteLine($"Found value via 'inKilocalories()' method: {value3}");
+            if (energy.TryCallMethod("getInKilocalories", out double value3))
                 return value3;
-            }
 
-            if (energy.TryCallMethod("getValue", out double value4))
-            {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
-                return value4;
-            }
+            if (energy.TryGetPropertyValue("value", out double value4))
+                return value4 / UnitConversions.CaloriesPerKilocalorie;
+
+            if (energy.TryCallMethod("getValue", out double value5))
+                return value5 / UnitConversions.CaloriesPerKilocalorie;
 
             var stringValue = energy.ToString();
-            Debug.WriteLine($"Energy toString(): {stringValue}");
-
-            if (stringValue.TryParseFromString(out double value5))
-            {
-                Debug.WriteLine($"Found value via string parsing: {value5}");
-                return value5;
-            }
-
-            Debug.WriteLine("All approaches failed for Energy extraction");
+            if (stringValue.TryParseFromString(out double value6))
+                return value6 / UnitConversions.CaloriesPerKilocalorie;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting energy value: {ex}");
+            Debug.WriteLine($"Error extracting energy value: {ex.Message}");
         }
 
-        return 0.0; // Default fallback value
+        return Defaults.FallbackValue;
     }
 
     public static double ExtractPercentageValue(this Java.Lang.Object percentage)
     {
         try
         {
-            Debug.WriteLine($"Percentage object type: {percentage.GetType().Name}");
-            Debug.WriteLine($"Percentage object class: {percentage.Class.Name}");
-
             if (percentage.TryOfficialUnitsApi("PERCENT", out double officialValue))
-            {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
                 return officialValue;
-            }
 
             if (percentage.TryGetPropertyValue("value", out double value1))
-            {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
                 return value1;
-            }
 
             if (percentage.TryCallMethod("getValue", out double value2))
-            {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value2}");
                 return value2;
-            }
-
-            Debug.WriteLine("All approaches failed for Percentage extraction");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting percentage value: {ex}");
+            Debug.WriteLine($"Error extracting percentage value: {ex.Message}");
         }
 
-        return 0.0; // Default fallback value
+        return Defaults.FallbackValue;
     }
 
     public static double ExtractVo2MaxValue(this Java.Lang.Object vo2Max)
     {
         try
         {
-            Debug.WriteLine($"VO2Max object type: {vo2Max.GetType().Name}");
-            Debug.WriteLine($"VO2Max object class: {vo2Max.Class.Name}");
-
             if (vo2Max.TryOfficialUnitsApi("MILLILITERS_PER_MINUTE_KILOGRAM", out double officialValue))
-            {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
                 return officialValue;
-            }
 
             if (vo2Max.TryGetPropertyValue("value", out double value1))
-            {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
                 return value1;
-            }
 
             if (vo2Max.TryCallMethod("getValue", out double value2))
-            {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value2}");
                 return value2;
-            }
-
-            Debug.WriteLine("All approaches failed for VO2Max extraction");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting VO2Max value: {ex}");
+            Debug.WriteLine($"Error extracting VO2Max value: {ex.Message}");
         }
 
-        return 0.0; // Default fallback value
+        return Defaults.FallbackValue;
     }
 
     public static double ExtractPressureValue(this Java.Lang.Object pressure)
     {
         try
         {
-            Debug.WriteLine($"Pressure object type: {pressure.GetType().Name}");
-            Debug.WriteLine($"Pressure object class: {pressure.Class.Name}");
-
             if (pressure.TryOfficialUnitsApi("MILLIMETERS_OF_MERCURY", out double officialValue))
-            {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
                 return officialValue;
-            }
 
             if (pressure.TryGetPropertyValue("inMillimetersOfMercury", out double value1))
-            {
-                Debug.WriteLine($"Found value via 'inMillimetersOfMercury' property: {value1}");
                 return value1;
-            }
 
             if (pressure.TryCallMethod("inMillimetersOfMercury", out double value2))
-            {
-                Debug.WriteLine($"Found value via 'inMillimetersOfMercury()' method: {value2}");
                 return value2;
-            }
 
             if (pressure.TryGetPropertyValue("value", out double value3))
-            {
-                Debug.WriteLine($"Found value via 'value' property: {value3}");
                 return value3;
-            }
 
             if (pressure.TryCallMethod("getValue", out double value4))
-            {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
                 return value4;
-            }
-
-            Debug.WriteLine("All approaches failed for Pressure extraction");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting pressure value: {ex}");
+            Debug.WriteLine($"Error extracting pressure value: {ex.Message}");
         }
 
-        return 0.0; // Default fallback value
+        return Defaults.FallbackValue;
     }
 
     private static bool TryOfficialUnitsApi(this Java.Lang.Object obj, string unitName, out double value)
@@ -580,32 +392,33 @@ internal static class HealthRecordExtensions
                 m.Name.Equals("InUnit", StringComparison.OrdinalIgnoreCase) ||
                 m.Name.Equals("inUnit", StringComparison.OrdinalIgnoreCase));
 
-            if (inUnitMethod != null)
+            if(inUnitMethod is null)
             {
-                Debug.WriteLine($"Found InUnit method: {inUnitMethod.Name}");
+                return false;
+            }
 
-                if (TryGetUnitConstant(unitName, out Java.Lang.Object? unitConstant))
+            if (TryGetUnitConstant(unitName, out Java.Lang.Object? unitConstant))
+            {
+                inUnitMethod.Accessible = true;
+                var result = inUnitMethod.Invoke(obj, unitConstant!);
+
+                if (result is Java.Lang.Double javaDouble)
                 {
-                    inUnitMethod.Accessible = true;
-                    var result = inUnitMethod.Invoke(obj, unitConstant!);
-
-                    if (result is Java.Lang.Double javaDouble)
-                    {
-                        value = javaDouble.DoubleValue();
-                        return true;
-                    }
-                    if (result is Java.Lang.Float javaFloat)
-                    {
-                        value = javaFloat.DoubleValue();
-                        return true;
-                    }
+                    value = javaDouble.DoubleValue();
+                    return true;
+                }
+                if (result is Java.Lang.Float javaFloat)
+                {
+                    value = javaFloat.DoubleValue();
+                    return true;
                 }
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Debug.WriteLine($"Error trying official Units API: {ex.Message}");
+            // API call failed
         }
+
         return false;
     }
 
@@ -614,8 +427,10 @@ internal static class HealthRecordExtensions
         unitConstant = null;
         try
         {
-            var unitsNamespace = "AndroidX.Health.Connect.Client.Units";
-            var className = unitName.Contains("KILOGRAM") ? "Mass" : "Length";
+            var unitsNamespace = HealthConstants.Android.HealthConnectUnitsNamespace;
+            var className = unitName.Contains("KILOGRAM") ? "Mass"
+                : unitName.Contains("KILOCALORIE") || unitName.Contains("CALORIE") ? "Energy"
+                : "Length";
             var fullClassName = $"{unitsNamespace}.{className}";
 
             var unitClass = Java.Lang.Class.ForName(fullClassName);
@@ -630,9 +445,9 @@ internal static class HealthRecordExtensions
                 }
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Debug.WriteLine($"Error getting unit constant '{unitName}': {ex.Message}");
+            // Failed to get unit constant
         }
         return false;
     }
@@ -666,9 +481,9 @@ internal static class HealthRecordExtensions
                 }
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Debug.WriteLine($"Error getting property '{propertyName}': {ex.Message}");
+            // Property access failed
         }
         return false;
     }
@@ -702,9 +517,9 @@ internal static class HealthRecordExtensions
                 }
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Debug.WriteLine($"Error calling method '{methodName}': {ex.Message}");
+            // Method call failed
         }
         return false;
     }
@@ -718,7 +533,7 @@ internal static class HealthRecordExtensions
             return false;
         }
 
-        var numberPattern = @"(\d+\.?\d*)";
+        var numberPattern = Reflection.NumberExtractionPattern;
         var match = System.Text.RegularExpressions.Regex.Match(stringValue, numberPattern);
 
         if (match.Success && double.TryParse(match.Groups[1].Value, out value))
@@ -728,6 +543,163 @@ internal static class HealthRecordExtensions
 
         return false;
     }
+
+    #endregion
+
+    #region Write Methods
+
+    public static Java.Lang.Object? ToAndroidRecord(this HealthMetricBase dto)
+    {
+        return dto switch
+        {
+            StepsDto stepsDto => stepsDto.ToStepsRecord(),
+            WeightDto weightDto => weightDto.ToWeightRecord(),
+            HeightDto heightDto => heightDto.ToHeightRecord(),
+            ActiveCaloriesBurnedDto caloriesDto => caloriesDto.ToActiveCaloriesBurnedRecord(),
+            HeartRateDto heartRateDto => heartRateDto.ToHeartRateRecord(),
+            _ => null
+        };
+    }
+
+    public static StepsRecord ToStepsRecord(this StepsDto dto)
+    {
+#pragma warning disable CA1416
+        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+#pragma warning restore CA1416
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        var record = new StepsRecord(
+            startTime!,
+            offset,
+            endTime!,
+            offset,
+            dto.Count,
+            metadata
+        );
+
+        return record;
+    }
+
+    public static WeightRecord ToWeightRecord(this WeightDto dto)
+    {
+#pragma warning disable CA1416
+        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+#pragma warning restore CA1416
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        // Create Mass from kilograms using Companion factory method via reflection
+        var massClass = Java.Lang.Class.ForName(Reflection.MassClassName);
+        var companionField = massClass!.GetDeclaredField(HealthConstants.Android.KotlinCompanionFieldName);
+        companionField!.Accessible = true;
+        var companion = companionField.Get(null);
+
+        var kilogramsMethod = companion!.Class!.GetDeclaredMethod(Reflection.KilogramsMethodName, Java.Lang.Double.Type);
+        kilogramsMethod!.Accessible = true;
+        var massObj = kilogramsMethod.Invoke(companion, new Java.Lang.Double(dto.Value));
+        var mass = Java.Lang.Object.GetObject<Mass>(massObj!.Handle, JniHandleOwnership.DoNotTransfer);
+
+        var record = new WeightRecord(
+            time!,
+            offset,
+            mass!,
+            metadata
+        );
+
+        return record;
+    }
+
+    public static HeightRecord ToHeightRecord(this HeightDto dto)
+    {
+#pragma warning disable CA1416
+        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+#pragma warning restore CA1416
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        // Create Length from meters using Companion factory method via reflection
+        var lengthClass = Java.Lang.Class.ForName(Reflection.LengthClassName);
+        var companionField = lengthClass!.GetDeclaredField(HealthConstants.Android.KotlinCompanionFieldName);
+        companionField!.Accessible = true;
+        var companion = companionField.Get(null);
+
+        var metersMethod = companion!.Class!.GetDeclaredMethod(Reflection.MetersMethodName, Java.Lang.Double.Type);
+        metersMethod!.Accessible = true;
+        var lengthObj = metersMethod.Invoke(companion, new Java.Lang.Double(dto.Value / UnitConversions.CentimetersPerMeter)); // Convert cm to meters
+        var length = Java.Lang.Object.GetObject<Length>(lengthObj!.Handle, JniHandleOwnership.DoNotTransfer);
+
+        var record = new HeightRecord(
+            time!,
+            offset,
+            length!,
+            metadata
+        );
+
+        return record;
+    }
+
+    public static ActiveCaloriesBurnedRecord ToActiveCaloriesBurnedRecord(this ActiveCaloriesBurnedDto dto)
+    {
+#pragma warning disable CA1416
+        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+#pragma warning restore CA1416
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        // Create Energy from kilocalories using Companion factory method via reflection
+        var energyClass = Java.Lang.Class.ForName(Reflection.EnergyClassName);
+        var companionField = energyClass!.GetDeclaredField(HealthConstants.Android.KotlinCompanionFieldName);
+        companionField!.Accessible = true;
+        var companion = companionField.Get(null);
+
+        var kilocaloriesMethod = companion!.Class!.GetDeclaredMethod(Reflection.KilocaloriesMethodName, Java.Lang.Double.Type);
+        kilocaloriesMethod!.Accessible = true;
+        var energyObj = kilocaloriesMethod.Invoke(companion, new Java.Lang.Double(dto.Energy));
+        var energy = Java.Lang.Object.GetObject<Energy>(energyObj!.Handle, JniHandleOwnership.DoNotTransfer);
+
+        var record = new ActiveCaloriesBurnedRecord(
+            startTime!,
+            offset,
+            endTime!,
+            offset,
+            energy!,
+            metadata
+        );
+
+        return record;
+    }
+
+    public static HeartRateRecord ToHeartRateRecord(this HeartRateDto dto)
+    {
+#pragma warning disable CA1416
+        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+#pragma warning restore CA1416
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        var sample = new HeartRateRecord.Sample(time!, (long)dto.BeatsPerMinute);
+        var samplesList = new List<HeartRateRecord.Sample> { sample };
+
+        var record = new HeartRateRecord(
+            time!,
+            offset,
+            time!,
+            offset,
+            samplesList,
+            metadata
+        );
+
+        return record;
+    }
+
 
     #endregion
 }

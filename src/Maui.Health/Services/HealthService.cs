@@ -6,11 +6,17 @@ namespace Maui.Health.Services;
 
 public partial class HealthService : IHealthService
 {
-    private readonly ILogger<HealthService> _logger;
+    public ActivityService Activity { get; }
+    protected readonly ILogger<HealthService> _logger;
 
-    public HealthService(ILogger<HealthService> logger)
+    public HealthService(ActivityService activityService, ILogger<HealthService> logger)
     {
+        Activity = activityService;
         _logger = logger;
+
+        // Set up callbacks for ActivityService to fetch health data
+        Activity.HeartRateQueryCallback = (timeRange, ct) => GetHealthData<HeartRateDto>(timeRange, ct);
+        Activity.CaloriesQueryCallback = (timeRange, ct) => GetHealthData<ActiveCaloriesBurnedDto>(timeRange, ct);
     }
 
     public partial bool IsSupported { get; }
@@ -22,6 +28,9 @@ public partial class HealthService : IHealthService
 
     public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
 
-    public partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase;
+
+    public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 }

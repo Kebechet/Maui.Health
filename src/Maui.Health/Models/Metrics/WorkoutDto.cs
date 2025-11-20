@@ -3,10 +3,36 @@ using Maui.Health.Enums;
 namespace Maui.Health.Models.Metrics;
 
 /// <summary>
-/// Represents a workout/exercise session from health platforms
+/// Represents a workout/exercise session from health platforms.
+/// Standalone class for workout manipulation, independent of HealthMetricBase.
 /// </summary>
-public class WorkoutDto : HealthMetricBase, IHealthTimeRange
+public class WorkoutDto : IHealthTimeRange
 {
+    /// <summary>
+    /// Unique identifier for this workout record
+    /// </summary>
+    public required string Id { get; init; }
+
+    /// <summary>
+    /// Source of the data (app package name, device name, etc.)
+    /// </summary>
+    public required string DataOrigin { get; init; }
+
+    /// <summary>
+    /// Timestamp when the workout was recorded (typically same as StartTime)
+    /// </summary>
+    public required DateTimeOffset Timestamp { get; init; }
+
+    /// <summary>
+    /// How the data was recorded (manual, automatic, etc.)
+    /// </summary>
+    public string? RecordingMethod { get; init; }
+
+    /// <summary>
+    /// Additional metadata for the workout record
+    /// </summary>
+    public Dictionary<string, object>? Metadata { get; init; }
+
     /// <summary>
     /// Type of activity performed
     /// </summary>
@@ -23,14 +49,20 @@ public class WorkoutDto : HealthMetricBase, IHealthTimeRange
     public required DateTimeOffset StartTime { get; init; }
 
     /// <summary>
-    /// End time of the workout session
+    /// End time of the workout session (null if session is still active)
     /// </summary>
-    public required DateTimeOffset EndTime { get; init; }
+    public DateTimeOffset? EndTime { get; init; }
 
     /// <summary>
-    /// Duration of the workout in seconds
+    /// Explicit implementation of IHealthTimeRange.EndTime
+    /// Returns EndTime if available, otherwise returns current time for active sessions
     /// </summary>
-    public double DurationSeconds => (EndTime - StartTime).TotalSeconds;
+    DateTimeOffset IHealthTimeRange.EndTime => EndTime ?? DateTimeOffset.UtcNow;
+
+    /// <summary>
+    /// Duration of the workout in seconds (calculated from current time if EndTime is null)
+    /// </summary>
+    public double DurationSeconds => ((EndTime ?? DateTimeOffset.UtcNow) - StartTime).TotalSeconds;
 
     /// <summary>
     /// Total energy burned during the workout (in kilocalories)

@@ -17,12 +17,15 @@ using Maui.Health.Extensions;
 using Microsoft.Extensions.Logging;
 using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
+using Maui.Health.Enums;
+using Maui.Health.Constants;
+using static Maui.Health.Constants.HealthConstants;
 
 namespace Maui.Health.Services;
 
 public partial class HealthService
 {
-    private const int _minimalApiVersionRequired = 26; // Android 8.0
+    private const int _minimalApiVersionRequired = HealthConstants.Android.MinimumApiVersion; // Android 8.0
 
     public partial bool IsSupported => IsSdkAvailable().IsSuccess;
 
@@ -51,7 +54,7 @@ public partial class HealthService
             if (canRequestFullHistoryPermission)
             {
                 //https://developer.android.com/health-and-fitness/guides/health-connect/plan/data-types#alpha10
-                permissionsToGrant.Add("android.permission.health.READ_HEALTH_DATA_HISTORY");
+                permissionsToGrant.Add(HealthConstants.Android.FullHistoryReadPermission);
             }
 
             var grantedPermissions = await KotlinResolver.ProcessList<Java.Lang.String>(_healthConnectClient.PermissionController.GetGrantedPermissions);
@@ -118,7 +121,7 @@ public partial class HealthService
         }
     }
 
-    public async partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public async partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         try
@@ -155,7 +158,7 @@ public partial class HealthService
                 timeRangeFilter,
                 [],
                 true,
-                1000,
+                Defaults.MaxRecordsPerRequest,
                 null
             );
 
@@ -166,26 +169,19 @@ public partial class HealthService
             }
 
             var results = new List<TDto>();
-            // Special handling for WorkoutDto to add heart rate data
             for (int i = 0; i < response.Records.Count; i++)
             {
                 var record = response.Records[i];
                 if (record is not Java.Lang.Object javaObject)
+                {
                     continue;
-
-                TDto? dto;
-                // Special WorkoutDto handling
-                if (typeof(TDto) == typeof(WorkoutDto) && record is ExerciseSessionRecord exerciseRecord)
-                {
-                    dto = await exerciseRecord.ToWorkoutDtoAsync(QueryHeartRateRecordsAsync, cancellationToken) as TDto;
-                }
-                else
-                {
-                    dto = javaObject.ConvertToDto<TDto>();
                 }
 
+                var dto = javaObject.ConvertToDto<TDto>();
                 if (dto is not null)
+                {
                     results.Add(dto);
+                }
             }
 
             _logger.LogInformation("Found {Count} {DtoName} records", results.Count, typeof(TDto).Name);
@@ -194,61 +190,103 @@ public partial class HealthService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching health data for {DtoName}", typeof(TDto).Name);
-            return [];
+            return new List<TDto>();
         }
     }
 
-    private async Task<HeartRateDto[]> QueryHeartRateRecordsAsync(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public async partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken) where TDto : HealthMetricBase
     {
         try
         {
-#pragma warning disable CA1416
-            var timeRangeFilter = TimeRangeFilter.Between(
-                Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
-                Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
-            );
-#pragma warning restore CA1416
-
-            var recordClass = JvmClassMappingKt.GetKotlinClass(Java.Lang.Class.FromType(typeof(HeartRateRecord)));
-
-            var request = new ReadRecordsRequest(
-                recordClass,
-                timeRangeFilter,
-                [],
-                true,
-                1000,
-                null
-            );
-
-            var response = await KotlinResolver.Process<ReadRecordsResponse, ReadRecordsRequest>(_healthConnectClient.ReadRecords, request);
-            if (response is null)
+            var sdkCheckResult = IsSdkAvailable();
+            if (!sdkCheckResult.IsSuccess)
             {
-                return [];
+                return false;
             }
 
-            var results = new List<HeartRateDto>();
-            for (int i = 0; i < response.Records.Count; i++)
+            // Request write permission for the specific metric
+            var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+            var writePermission = new HealthPermissionDto
             {
-                var record = response.Records[i];
-                if (record is Java.Lang.Object javaObject)
+                HealthDataType = readPermission.HealthDataType,
+                PermissionType = PermissionType.Write
+            };
+            var requestPermissionResult = await RequestPermissions([writePermission], false, cancellationToken);
+            if (requestPermissionResult.IsError)
+            {
+                return false;
+            }
+
+            var record = data.ToAndroidRecord();
+            if (record == null)
+            {
+                _logger.LogWarning("Failed to convert {DtoName} to Android record", typeof(TDto).Name);
+                return false;
+            }
+
+            // Create a Java ArrayList with the record
+            var recordsList = new Java.Util.ArrayList();
+            recordsList.Add(record);
+
+            // Call InsertRecords - it's a suspend function
+            // Use reflection to get the Java class from the interface implementation
+            var clientType = _healthConnectClient.GetType();
+            var handleField = clientType.GetField(HealthConstants.Android.JniHandleFieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            if(handleField is null)
+            {
+                _logger.LogWarning("Could not find InsertRecords method via reflection");
+                return false;
+            }
+
+            var handle = handleField.GetValue(_healthConnectClient);
+            if (handle is not IntPtr jniHandle || jniHandle == IntPtr.Zero)
+            {
+                _logger.LogWarning("Invalid JNI handle for Health Connect client");
+                return false;
+            }
+
+            // Get the Java class
+            var classHandle = Android.Runtime.JNIEnv.GetObjectClass(jniHandle);
+            var clientClass = Java.Lang.Object.GetObject<Java.Lang.Class>(classHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
+
+            // Get the client as a Java.Lang.Object for method invocation
+            var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(jniHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
+
+            var insertMethod = clientClass?.GetDeclaredMethod("insertRecords",
+                Java.Lang.Class.FromType(typeof(Java.Util.IList)),
+                Java.Lang.Class.FromType(typeof(Kotlin.Coroutines.IContinuation)));
+
+            if (insertMethod is null || clientObject is null)
+            {
+                _logger.LogWarning("Could not find insertRecords method or client object");
+                return false;
+            }
+
+            var taskCompletionSource = new TaskCompletionSource<Java.Lang.Object>();
+            var continuation = new Continuation(taskCompletionSource, default);
+
+            insertMethod.Accessible = true;
+            var result = insertMethod.Invoke(clientObject, recordsList, continuation);
+
+            if (result is Java.Lang.Enum javaEnum)
+            {
+                var currentState = Enum.Parse<CoroutineState>(javaEnum.ToString());
+                if (currentState == CoroutineState.COROUTINE_SUSPENDED)
                 {
-                    var dto = javaObject.ToHeartRateDto();
-                    if (dto != null)
-                    {
-                        results.Add(dto);
-                    }
+                    await taskCompletionSource.Task;
                 }
             }
 
-            return results.ToArray();
+            _logger.LogInformation("Successfully wrote {DtoName} record", typeof(TDto).Name);
+            return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error querying heart rate records");
-            return [];
+            _logger.LogError(ex, "Error writing health data for {DtoName}", typeof(TDto).Name);
+            return false;
         }
     }
-
     private Result<SdkCheckError> IsSdkAvailable()
     {
         try
@@ -264,15 +302,15 @@ public partial class HealthService
 
             if (availabilityStatus == HealthConnectClient.SdkUnavailableProviderUpdateRequired)
             {
-                string providerPackageName = "com.google.android.apps.healthdata";
+                string providerPackageName = HealthConstants.Android.HealthConnectPackage;
                 // Optionally redirect to package installer to find a provider, for example:
-                var uriString = $"market://details?id={providerPackageName}&url=healthconnect%3A%2F%2Fonboarding";
+                var uriString = string.Format(HealthConstants.Android.PlayStoreUriTemplate, providerPackageName);
 
                 var intent = new Intent(Intent.ActionView);
-                intent.SetPackage("com.android.vending");
-                intent.SetData(Android.Net.Uri.Parse(uriString));
-                intent.PutExtra("overlay", true);
-                intent.PutExtra("callerId", _activityContext.PackageName);
+                intent.SetPackage(HealthConstants.Android.PlayStorePackage);
+                intent.SetData(global::Android.Net.Uri.Parse(uriString));
+                intent.PutExtra(HealthConstants.Android.IntentExtraOverlay, true);
+                intent.PutExtra(HealthConstants.Android.IntentExtraCaller, _activityContext.PackageName);
 
                 _activityContext.StartActivity(intent);
 
