@@ -152,8 +152,8 @@ internal static class HKQuantitySampleExtensions
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.StepCount)!;
         var quantity = HKQuantity.FromQuantity(HKUnit.Count, dto.Count);
-        var startDate = (NSDate)dto.StartTime.UtcDateTime;
-        var endDate = (NSDate)dto.EndTime.UtcDateTime;
+        var startDate = dto.StartTime.ToNSDate();
+        var endDate = dto.EndTime.ToNSDate();
 
         return HKQuantitySample.FromType(quantityType, quantity, startDate, endDate);
     }
@@ -163,7 +163,7 @@ internal static class HKQuantitySampleExtensions
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.BodyMass)!;
         var valueInGrams = dto.Value * UnitConversions.GramsPerKilogram; // Convert kg to grams
         var quantity = HKQuantity.FromQuantity(HKUnit.Gram, valueInGrams);
-        var date = (NSDate)dto.Timestamp.UtcDateTime;
+        var date = dto.Timestamp.ToNSDate();
 
         return HKQuantitySample.FromType(quantityType, quantity, date, date);
     }
@@ -173,7 +173,7 @@ internal static class HKQuantitySampleExtensions
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.Height)!;
         var valueInMeters = dto.Value / UnitConversions.CentimetersPerMeter; // Convert cm to meters
         var quantity = HKQuantity.FromQuantity(HKUnit.Meter, valueInMeters);
-        var date = (NSDate)dto.Timestamp.UtcDateTime;
+        var date = dto.Timestamp.ToNSDate();
 
         return HKQuantitySample.FromType(quantityType, quantity, date, date);
     }
@@ -182,8 +182,8 @@ internal static class HKQuantitySampleExtensions
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.ActiveEnergyBurned)!;
         var quantity = HKQuantity.FromQuantity(HKUnit.Kilocalorie, dto.Energy);
-        var startDate = (NSDate)dto.StartTime.UtcDateTime;
-        var endDate = (NSDate)dto.EndTime.UtcDateTime;
+        var startDate = dto.StartTime.ToNSDate();
+        var endDate = dto.EndTime.ToNSDate();
 
         return HKQuantitySample.FromType(quantityType, quantity, startDate, endDate);
     }
@@ -193,7 +193,7 @@ internal static class HKQuantitySampleExtensions
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.HeartRate)!;
         var unit = HKUnit.Count.UnitDividedBy(HKUnit.Minute);
         var quantity = HKQuantity.FromQuantity(unit, dto.BeatsPerMinute);
-        var date = (NSDate)dto.Timestamp.UtcDateTime;
+        var date = dto.Timestamp.ToNSDate();
 
         return HKQuantitySample.FromType(quantityType, quantity, date, date);
     }

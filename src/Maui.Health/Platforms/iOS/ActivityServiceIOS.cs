@@ -44,8 +44,8 @@ public partial class ActivityService
 
             // Use DateTimeOffset.UtcDateTime for correct timezone handling
             var predicate = HKQuery.GetPredicateForSamples(
-                (NSDate)activityTime.StartTime.UtcDateTime,
-                (NSDate)activityTime.EndTime.UtcDateTime,
+                activityTime.StartTime.ToNSDate(),
+                activityTime.EndTime.ToNSDate(),
                 HKQueryOptions.StrictStartDate
             );
 

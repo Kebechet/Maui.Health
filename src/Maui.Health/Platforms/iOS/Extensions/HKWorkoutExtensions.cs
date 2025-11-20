@@ -26,8 +26,8 @@ internal static class HKWorkoutExtensions
             return null;
 
         var activityType = dto.ActivityType.ToHKWorkoutActivityType();
-        var startDate = (NSDate)dto.StartTime.UtcDateTime;
-        var endDate = (NSDate)dto.EndTime.Value.UtcDateTime;
+        var startDate = dto.StartTime.ToNSDate();
+        var endDate = dto.EndTime.Value.ToNSDate();
         var duration = (dto.EndTime.Value - dto.StartTime).TotalSeconds;
 
         HKQuantity? totalEnergyBurned = null;
