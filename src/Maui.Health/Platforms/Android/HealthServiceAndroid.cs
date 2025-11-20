@@ -24,7 +24,7 @@ namespace Maui.Health.Services;
 
 public partial class HealthService
 {
-    private const int _minimalApiVersionRequired = Android.MinimumApiVersion; // Android 8.0
+    private const int _minimalApiVersionRequired = HealthConstants.Android.MinimumApiVersion; // Android 8.0
 
     public partial bool IsSupported => IsSdkAvailable().IsSuccess;
 
@@ -53,7 +53,7 @@ public partial class HealthService
             if (canRequestFullHistoryPermission)
             {
                 //https://developer.android.com/health-and-fitness/guides/health-connect/plan/data-types#alpha10
-                permissionsToGrant.Add(Android.FullHistoryReadPermission);
+                permissionsToGrant.Add(HealthConstants.Android.FullHistoryReadPermission);
             }
 
             var grantedPermissions = await KotlinResolver.ProcessList<Java.Lang.String>(_healthConnectClient.PermissionController.GetGrantedPermissions);
@@ -226,7 +226,7 @@ public partial class HealthService
             // Call InsertRecords - it's a suspend function
             // Use reflection to get the Java class from the interface implementation
             var clientType = _healthConnectClient.GetType();
-            var handleField = clientType.GetField(Android.JniHandleFieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var handleField = clientType.GetField(HealthConstants.Android.JniHandleFieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
             if (handleField != null)
             {
@@ -291,15 +291,15 @@ public partial class HealthService
 
             if (availabilityStatus == HealthConnectClient.SdkUnavailableProviderUpdateRequired)
             {
-                string providerPackageName = Android.HealthConnectPackage;
+                string providerPackageName = HealthConstants.Android.HealthConnectPackage;
                 // Optionally redirect to package installer to find a provider, for example:
-                var uriString = string.Format(Android.PlayStoreUriTemplate, providerPackageName);
+                var uriString = string.Format(HealthConstants.Android.PlayStoreUriTemplate, providerPackageName);
 
                 var intent = new Intent(Intent.ActionView);
-                intent.SetPackage(Android.PlayStorePackage);
+                intent.SetPackage(HealthConstants.Android.PlayStorePackage);
                 intent.SetData(global::Android.Net.Uri.Parse(uriString));
-                intent.PutExtra(Android.IntentExtraOverlay, true);
-                intent.PutExtra(Android.IntentExtraCaller, _activityContext.PackageName);
+                intent.PutExtra(HealthConstants.Android.IntentExtraOverlay, true);
+                intent.PutExtra(HealthConstants.Android.IntentExtraCaller, _activityContext.PackageName);
 
                 _activityContext.StartActivity(intent);
 

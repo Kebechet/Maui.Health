@@ -31,11 +31,22 @@ public partial class ActivityService
     /// Attempting to delete workouts created by other apps will fail or be ignored by the platform.
     /// </remarks>
     public partial Task Delete(WorkoutDto workout);
-    public partial Task<WorkoutDto> GetActive(HealthTimeRange activityTime);
+
+    /// <summary>
+    /// Gets the currently active workout session, if any.
+    /// </summary>
+    /// <returns>The active WorkoutSession, or null if no session is running</returns>
+    public partial Task<WorkoutSession?> GetActive();
 
     public partial Task<bool> IsRunning();
 
-    public partial Task Start(WorkoutDto workoutDto);
+    /// <summary>
+    /// Starts a new workout session with the specified activity type
+    /// </summary>
+    /// <param name="activityType">The type of activity being performed</param>
+    /// <param name="title">Optional title for the workout</param>
+    /// <param name="dataOrigin">Optional data origin identifier (defaults to app package name)</param>
+    public partial Task Start(ActivityType activityType, string? title = null, string? dataOrigin = null);
 
     public partial Task Pause();
 
@@ -43,7 +54,12 @@ public partial class ActivityService
 
     public partial Task<bool> IsPaused();
 
-    public partial Task End();
+    /// <summary>
+    /// Ends the active workout session and returns the completed workout DTO.
+    /// The caller is responsible for writing the workout to the health store.
+    /// </summary>
+    /// <returns>The completed WorkoutDto, or null if no active session</returns>
+    public partial Task<WorkoutDto?> End();
 
     /// <summary>
     /// Finds duplicate workout groups from a list of workouts.

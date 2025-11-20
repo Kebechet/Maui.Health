@@ -12,7 +12,6 @@ namespace Maui.Health.Services;
 
 public partial class ActivityService
 {
-    private WorkoutDto? _activeWorkoutDto;
     private Models.WorkoutSession? _activeWorkoutSession;
     private readonly ILogger<ActivityService>? _logger;
     private nuint _healthRateLimit { get; set; } = Defaults.HealthRateLimit;
@@ -105,24 +104,19 @@ public partial class ActivityService
         }
     }
 
-    public partial Task<WorkoutDto> GetActive(HealthTimeRange activityTime)
+    public partial Task<WorkoutSession?> GetActive()
     {
         try
         {
-            // Return from memory if available
-            if (_activeWorkoutDto is not null)
-                return Task.FromResult(_activeWorkoutDto);
-
-            // Try to reconstruct from preferences (for app restarts)
+            // Try to load from preferences if not in memory
             _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
-            _activeWorkoutDto = LoadActiveWorkoutFromPreferences();
 
-            return Task.FromResult(_activeWorkoutDto!);
+            return Task.FromResult(_activeWorkoutSession);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "iOS ActivityService ReadActive error");
-            return Task.FromResult<WorkoutDto>(null!);
+            return Task.FromResult<WorkoutSession?>(null);
         }
     }
 
@@ -249,7 +243,7 @@ public partial class ActivityService
         try
         {
             // Check memory first, then check preferences (for app restarts)
-            if (_activeWorkoutDto is not null)
+            if (_activeWorkoutSession is not null)
             {
                 return Task.FromResult(true);
             }
@@ -265,30 +259,33 @@ public partial class ActivityService
         }
     }
 
-    public partial Task Start(WorkoutDto workoutDto)
+    public partial Task Start(ActivityType activityType, string? title = null, string? dataOrigin = null)
     {
         try
         {
-            _logger?.LogInformation("iOS ActivityService StartNewSession: {ActivityType}", workoutDto.ActivityType);
+            _logger?.LogInformation("iOS ActivityService StartNewSession: {ActivityType}", activityType);
 
             if (!HKHealthStore.IsHealthDataAvailable)
             {
                 return Task.CompletedTask;
             }
 
+            var startTime = DateTimeOffset.UtcNow;
+            var id = Guid.NewGuid().ToString();
+            var origin = dataOrigin ?? DataOrigins.HealthKit;
+
             // Create a new WorkoutSession to track state and pause/resume
             _activeWorkoutSession = new Models.WorkoutSession(
-                workoutDto.Id,
-                workoutDto.ActivityType,
-                workoutDto.Title,
-                workoutDto.DataOrigin,
-                workoutDto.StartTime,
+                id,
+                activityType,
+                title,
+                origin,
+                startTime,
                 WorkoutSessionState.Running
             );
 
             // For iOS (not watchOS), we track the workout locally in memory and preferences
             // HKWorkoutSession is primarily for watchOS real-time tracking
-            _activeWorkoutDto = workoutDto;
 
             // Persist to Preferences so session survives app restart
             SaveWorkoutSessionToPreferences(_activeWorkoutSession);
@@ -393,20 +390,19 @@ public partial class ActivityService
         }
     }
 
-    public async partial Task End()
+    public partial Task<WorkoutDto?> End()
     {
         try
         {
             // Check memory first, then reconstruct from preferences if needed
             _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
-            _activeWorkoutDto ??= LoadActiveWorkoutFromPreferences();
 
-            if (_activeWorkoutDto is null || _activeWorkoutSession is null)
+            if (_activeWorkoutSession is null)
             {
                 _logger?.LogWarning("No active session to end");
                 // Still clear preferences in case there's stale data
                 ClearSessionPreferences();
-                return;
+                return Task.FromResult<WorkoutDto?>(null);
             }
 
             _logger?.LogInformation("iOS ActivityService EndActiveSession");
@@ -426,28 +422,20 @@ public partial class ActivityService
 
             // Convert WorkoutSession to WorkoutDto using extension method
             // This preserves pause metadata
-            var completedWorkout = _activeWorkoutSession.ToWorkoutDto(
-                endTime,
-                _activeWorkoutDto.EnergyBurned,
-                _activeWorkoutDto.Distance,
-                _activeWorkoutDto.AverageHeartRate,
-                _activeWorkoutDto.MaxHeartRate,
-                _activeWorkoutDto.MinHeartRate
-            );
-
-            // Write the completed workout
-            await Write(completedWorkout);
+            var completedWorkout = _activeWorkoutSession.ToWorkoutDto(endTime);
 
             // Clear the active session from memory and preferences
-            _activeWorkoutDto = null;
             _activeWorkoutSession = null;
             ClearSessionPreferences();
+
+            return Task.FromResult<WorkoutDto?>(completedWorkout);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "iOS ActivityService EndActiveSession error");
             // Always clear preferences even if there was an error
             ClearSessionPreferences();
+            return Task.FromResult<WorkoutDto?>(null);
         }
     }
 

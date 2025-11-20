@@ -19,7 +19,6 @@ namespace Maui.Health.Services;
 public partial class ActivityService
 {
     private ExerciseSessionRecord? _activeSession;
-    private WorkoutDto? _activeWorkoutDto;
     private WorkoutSession? _activeWorkoutSession;
     private readonly ILogger<ActivityService>? _logger;
 
@@ -71,27 +70,31 @@ public partial class ActivityService
             for (int i = 0; i < response.Records.Count; i++)
             {
                 var record = response.Records[i];
-                if (record is ExerciseSessionRecord exerciseRecord)
+                if (record is not ExerciseSessionRecord exerciseRecord)
                 {
-                    WorkoutDto? dto;
-                    if (HeartRateQueryCallback != null || CaloriesQueryCallback != null)
-                    {
-                        dto = await exerciseRecord.ToWorkoutDtoAsync(
-                            HeartRateQueryCallback != null
-                                ? async (range, ct) => (await HeartRateQueryCallback(range, ct)).ToArray()
-                                : null,
-                            CaloriesQueryCallback != null
-                                ? async (range, ct) => (await CaloriesQueryCallback(range, ct)).ToArray()
-                                : null,
-                            CancellationToken.None);
-                    }
-                    else
-                    {
-                        dto = exerciseRecord.ToWorkoutDto();
-                    }
+                    continue;
+                }
 
-                    if (dto is not null)
-                        results.Add(dto);
+                WorkoutDto? dto;
+                if (HeartRateQueryCallback != null || CaloriesQueryCallback != null)
+                {
+                    dto = await exerciseRecord.ToWorkoutDtoAsync(
+                        HeartRateQueryCallback != null
+                            ? async (range, ct) => (await HeartRateQueryCallback(range, ct)).ToArray()
+                            : null,
+                        CaloriesQueryCallback != null
+                            ? async (range, ct) => (await CaloriesQueryCallback(range, ct)).ToArray()
+                            : null,
+                        CancellationToken.None);
+                }
+                else
+                {
+                    dto = exerciseRecord.ToWorkoutDto();
+                }
+
+                if (dto is not null)
+                {
+                    results.Add(dto);
                 }
             }
 
@@ -105,24 +108,19 @@ public partial class ActivityService
         }
     }
 
-    public partial Task<WorkoutDto> GetActive(HealthTimeRange activityTime)
+    public partial Task<WorkoutSession?> GetActive()
     {
         try
         {
-            // Return from memory if available
-            if (_activeWorkoutDto is not null)
-                return Task.FromResult(_activeWorkoutDto);
-
-            // Try to reconstruct from preferences (for app restarts)
+            // Try to load from preferences if not in memory
             _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
-            _activeWorkoutDto = LoadActiveWorkoutFromPreferences();
 
-            return Task.FromResult(_activeWorkoutDto!);
+            return Task.FromResult(_activeWorkoutSession);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Android ActivityService ReadActive error");
-            return Task.FromResult<WorkoutDto>(null!);
+            return Task.FromResult<WorkoutSession?>(null);
         }
     }
 
@@ -143,7 +141,7 @@ public partial class ActivityService
             recordsList.Add(record);
 
             var clientType = _healthConnectClient.GetType();
-            var handleField = clientType.GetField(Android.JniHandleFieldName,
+            var handleField = clientType.GetField(HealthConstants.Android.JniHandleFieldName,
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
             if (handleField is null)
@@ -215,7 +213,7 @@ public partial class ActivityService
             recordIdsList.Add(workout.Id);
 
             var clientType = _healthConnectClient.GetType();
-            var handleField = clientType.GetField(Android.JniHandleFieldName,
+            var handleField = clientType.GetField(HealthConstants.Android.JniHandleFieldName,
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
             if (handleField is null)
@@ -238,7 +236,6 @@ public partial class ActivityService
             var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(
                 jniHandle, global::Android.Runtime.JniHandleOwnership.DoNotTransfer);
 
-            // Get the KClass for ExerciseSessionRecord
             var recordClass = Kotlin.Jvm.JvmClassMappingKt.GetKotlinClass(
                 Java.Lang.Class.FromType(typeof(ExerciseSessionRecord)));
 
@@ -309,8 +306,7 @@ public partial class ActivityService
     {
         try
         {
-            // Check memory first, then check preferences (for app restarts)
-            if (_activeWorkoutDto is not null)
+            if (_activeWorkoutSession is not null)
             {
                 return Task.FromResult(true);
             }
@@ -326,29 +322,27 @@ public partial class ActivityService
         }
     }
 
-    public partial Task Start(WorkoutDto workoutDto)
+    public partial Task Start(ActivityType activityType, string? title = null, string? dataOrigin = null)
     {
         try
         {
-            _logger?.LogInformation("Android ActivityService StartNewSession: {ActivityType}", workoutDto.ActivityType);
+            _logger?.LogInformation("Android ActivityService StartNewSession: {ActivityType}", activityType);
 
-            // Create a new WorkoutSession to track state and pause/resume
+            var startTime = DateTimeOffset.UtcNow;
+            var id = Guid.NewGuid().ToString();
+            var origin = dataOrigin ?? _activityContext.PackageName ?? "Unknown";
+
             _activeWorkoutSession = new WorkoutSession(
-                workoutDto.Id,
-                workoutDto.ActivityType,
-                workoutDto.Title,
-                workoutDto.DataOrigin,
-                workoutDto.StartTime,
+                id,
+                activityType,
+                title,
+                origin,
+                startTime,
                 WorkoutSessionState.Running
             );
 
-            // Store the workout DTO for tracking in memory
-            // Don't create ExerciseSessionRecord yet - Android requires endTime > startTime
-            // We'll create it when EndActiveSession is called with the actual end time
-            _activeWorkoutDto = workoutDto;
-            _activeSession = null; // Mark as active but not yet persisted
+            _activeSession = null;
 
-            // Persist to Preferences so session survives app restart
             SaveWorkoutSessionToPreferences(_activeWorkoutSession);
 
             return Task.CompletedTask;
@@ -451,29 +445,27 @@ public partial class ActivityService
         }
     }
 
-    public async partial Task End()
+    public partial Task<WorkoutDto?> End()
     {
         try
         {
             // Try to load from preferences if not in memory
             _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
-            _activeWorkoutDto ??= LoadActiveWorkoutFromPreferences();
 
-            if (_activeWorkoutDto is null || _activeWorkoutSession is null)
+            if (_activeWorkoutSession is null)
             {
                 _logger?.LogWarning("No active session to end");
+
                 ClearSessionPreferences();
-                return;
+
+                return Task.FromResult<WorkoutDto?>(null);
             }
 
             _logger?.LogInformation("Android ActivityService EndActiveSession");
 
-            // End the workout session (this closes any open pause intervals)
             _activeWorkoutSession.End();
 
             var endTime = DateTimeOffset.UtcNow;
-
-            // Calculate the actual workout duration excluding paused time
             var totalElapsed = (endTime - _activeWorkoutSession.StartTime).TotalSeconds;
             var activeDuration = totalElapsed - _activeWorkoutSession.TotalPausedSeconds;
 
@@ -481,31 +473,22 @@ public partial class ActivityService
                 "Android ActivityService: Total elapsed: {TotalElapsed}s, Paused: {Paused}s, Active: {Active}s",
                 totalElapsed, _activeWorkoutSession.TotalPausedSeconds, activeDuration);
 
-            // Convert WorkoutSession to WorkoutDto using extension method
-            // This preserves pause metadata
-            var completedWorkout = _activeWorkoutSession.ToWorkoutDto(
-                endTime,
-                _activeWorkoutDto.EnergyBurned,
-                _activeWorkoutDto.Distance,
-                _activeWorkoutDto.AverageHeartRate,
-                _activeWorkoutDto.MaxHeartRate,
-                _activeWorkoutDto.MinHeartRate
-            );
-
-            // Write the completed workout (now with valid endTime > startTime)
-            await Write(completedWorkout);
+            var completedWorkout = _activeWorkoutSession.ToWorkoutDto(endTime);
 
             // Clear the active session from memory and preferences
             _activeSession = null;
-            _activeWorkoutDto = null;
             _activeWorkoutSession = null;
             ClearSessionPreferences();
+
+            return Task.FromResult<WorkoutDto?>(completedWorkout);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Android ActivityService EndActiveSession error");
-            // Always clear preferences even if there was an error
+
             ClearSessionPreferences();
+
+            return Task.FromResult<WorkoutDto?>(null);
         }
     }
 }

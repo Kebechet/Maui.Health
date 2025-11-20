@@ -559,7 +559,7 @@ internal static class HealthRecordExtensions
         unitConstant = null;
         try
         {
-            var unitsNamespace = Android.HealthConnectUnitsNamespace;
+            var unitsNamespace = HealthConstants.Android.HealthConnectUnitsNamespace;
             var className = unitName.Contains("KILOGRAM") ? "Mass"
                 : unitName.Contains("KILOCALORIE") || unitName.Contains("CALORIE") ? "Energy"
                 : "Length";
@@ -726,7 +726,7 @@ internal static class HealthRecordExtensions
 
         // Create Mass from kilograms using Companion factory method via reflection
         var massClass = Java.Lang.Class.ForName(Reflection.MassClassName);
-        var companionField = massClass!.GetDeclaredField(Android.KotlinCompanionFieldName);
+        var companionField = massClass!.GetDeclaredField(HealthConstants.Android.KotlinCompanionFieldName);
         companionField!.Accessible = true;
         var companion = companionField.Get(null);
 
@@ -756,7 +756,7 @@ internal static class HealthRecordExtensions
 
         // Create Length from meters using Companion factory method via reflection
         var lengthClass = Java.Lang.Class.ForName(Reflection.LengthClassName);
-        var companionField = lengthClass!.GetDeclaredField(Android.KotlinCompanionFieldName);
+        var companionField = lengthClass!.GetDeclaredField(HealthConstants.Android.KotlinCompanionFieldName);
         companionField!.Accessible = true;
         var companion = companionField.Get(null);
 
@@ -787,7 +787,7 @@ internal static class HealthRecordExtensions
 
         // Create Energy from kilocalories using Companion factory method via reflection
         var energyClass = Java.Lang.Class.ForName(Reflection.EnergyClassName);
-        var companionField = energyClass!.GetDeclaredField(Android.KotlinCompanionFieldName);
+        var companionField = energyClass!.GetDeclaredField(HealthConstants.Android.KotlinCompanionFieldName);
         companionField!.Accessible = true;
         var companion = companionField.Get(null);
 

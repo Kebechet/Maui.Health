@@ -77,13 +77,13 @@ else if (_activeTab == 1)
                 <strong style="color: @(_isSessionPaused ? "#856404" : "#155724");">
                     @(_isSessionPaused ? "⏸ Active Session Paused" : "🏃 Active Session Running")
                 </strong>
-                @if (_activeWorkout != null)
+                @if (_activeSession != null)
                 {
                     <div style="margin-top: 10px;">
-                        <p style="margin: 5px 0;"><strong>Activity:</strong> @_activeWorkout.ActivityType</p>
-                        <p style="margin: 5px 0;"><strong>Started:</strong> @_activeWorkout.StartTime.ToLocalTime().ToString("HH:mm:ss")</p>
-                        <p style="margin: 5px 0;"><strong>Duration:</strong> @((int)(DateTimeOffset.Now - _activeWorkout.StartTime).TotalMinutes) minutes</p>
-                        <p style="margin: 5px 0; font-size: 0.9em; color: #666;">ID: @_activeWorkout.Id</p>
+                        <p style="margin: 5px 0;"><strong>Activity:</strong> @_activeSession.ActivityType</p>
+                        <p style="margin: 5px 0;"><strong>Started:</strong> @_activeSession.StartTime.ToLocalTime().ToString("HH:mm:ss")</p>
+                        <p style="margin: 5px 0;"><strong>Duration:</strong> @((int)(DateTimeOffset.Now - _activeSession.StartTime).TotalMinutes) minutes</p>
+                        <p style="margin: 5px 0; font-size: 0.9em; color: #666;">ID: @_activeSession.Id</p>
                     </div>
                 }
             </div>

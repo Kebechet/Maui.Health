@@ -36,7 +36,7 @@ public partial class Home
     // Session tracking
     private bool _isSessionRunning { get; set; } = false;
     private bool _isSessionPaused { get; set; } = false;
-    private WorkoutDto? _activeWorkout { get; set; } = null;
+    private Maui.Health.Models.WorkoutSession? _activeSession { get; set; } = null;
     private string _sessionMessage { get; set; } = string.Empty;
     private bool _sessionSuccess { get; set; } = false;
     private string _sessionStatusMessage { get; set; } = string.Empty;
@@ -261,7 +261,7 @@ public partial class Home
                 _isSessionRunning = await _healthService.Activity.IsRunning();
                 if (_isSessionRunning)
                 {
-                    _activeWorkout = await _healthService.Activity.GetActive(todayRange);
+                    _activeSession = await _healthService.Activity.GetActive();
                     _isSessionPaused = await _healthService.Activity.IsPaused();
                 }
             }
@@ -270,7 +270,7 @@ public partial class Home
                 System.Diagnostics.Debug.WriteLine($"Error checking session status: {ex.Message}");
                 _isSessionRunning = false;
                 _isSessionPaused = false;
-                _activeWorkout = null;
+                _activeSession = null;
             }
         }
         catch (Exception ex)
@@ -349,21 +349,19 @@ public partial class Home
             _sessionStatusMessage = "Checking session status...";
             StateHasChanged();
 
-            var todayRange = HealthTimeRange.FromDateTime(DateTime.Today, DateTime.Now);
-
             // Check if there's an active session
             _isSessionRunning = await _healthService.Activity.IsRunning();
 
             if (_isSessionRunning)
             {
-                _activeWorkout = await _healthService.Activity.GetActive(todayRange);
+                _activeSession = await _healthService.Activity.GetActive();
                 _isSessionPaused = await _healthService.Activity.IsPaused();
 
-                if (_activeWorkout != null)
+                if (_activeSession != null)
                 {
-                    var duration = (int)(DateTimeOffset.Now - _activeWorkout.StartTime).TotalMinutes;
+                    var duration = (int)(DateTimeOffset.Now - _activeSession.StartTime).TotalMinutes;
                     var statusText = _isSessionPaused ? "paused" : "running";
-                    _sessionStatusMessage = $"Active session detected: {_activeWorkout.ActivityType} {statusText} for {duration} minutes";
+                    _sessionStatusMessage = $"Active session detected: {_activeSession.ActivityType} {statusText} for {duration} minutes";
                 }
                 else
                 {
@@ -372,7 +370,7 @@ public partial class Home
             }
             else
             {
-                _activeWorkout = null;
+                _activeSession = null;
                 _isSessionPaused = false;
                 _sessionStatusMessage = "No active session detected";
             }
@@ -394,27 +392,16 @@ public partial class Home
             _sessionSuccess = false;
             StateHasChanged();
 
-            var now = DateTimeOffset.UtcNow;
-            var localOffset = DateTimeOffset.Now.Offset;
-
-            // Create a new workout session (EndTime is null for active sessions)
-            var newWorkout = new WorkoutDto
-            {
-                Id = Guid.NewGuid().ToString(),
-                DataOrigin = "DemoApp",
-                ActivityType = ActivityType.Running, // Default to running
-                Title = "Test of start and stop session",
-                StartTime = now,
-                EndTime = null, // Active session - no end time yet
-                Timestamp = now
-            };
-
-            await _healthService.Activity.Start(newWorkout);
+            await _healthService.Activity.Start(
+                ActivityType.Running,
+                "Test of start and stop session",
+                "DemoApp"
+            );
 
             // Update session status
             await CheckSessionStatus();
 
-            _sessionMessage = $"✓ Workout session started at {now.ToLocalTime():HH:mm:ss}";
+            _sessionMessage = $"✓ Workout session started at {DateTimeOffset.Now:HH:mm:ss}";
             _sessionSuccess = true;
             StateHasChanged();
         }
@@ -453,9 +440,19 @@ public partial class Home
             _sessionMessage = "Stopping workout session and saving to Health Connect...";
             StateHasChanged();
 
-            // End the active session - this will internally convert WorkoutSession to WorkoutDto
-            // and write it to the health platform with pause/resume metadata
-            await _healthService.Activity.End();
+            // End the active session - returns the completed WorkoutDto
+            var completedWorkout = await _healthService.Activity.End();
+
+            if (completedWorkout is null)
+            {
+                _sessionMessage = "✗ No active session to end.";
+                _sessionSuccess = false;
+                StateHasChanged();
+                return;
+            }
+
+            // Write the completed workout to the health store
+            await _healthService.Activity.Write(completedWorkout);
 
             // Update session status
             await CheckSessionStatus();
