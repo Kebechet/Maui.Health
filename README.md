@@ -208,16 +208,11 @@ public class WorkoutTracker
     // Start a new workout session
     public async Task StartWorkout()
     {
-        var workout = new WorkoutDto
-        {
-            Id = Guid.NewGuid().ToString(),
-            DataOrigin = "MyApp",
-            ActivityType = ActivityType.Running,
-            StartTime = DateTimeOffset.UtcNow,
-            EndTime = null // null indicates active session
-        };
-
-        await _healthService.Activity.Start(workout);
+        await _healthService.Activity.Start(
+            ActivityType.Running,
+            title: "Morning Run",
+            dataOrigin: "MyApp"
+        );
     }
 
     // Pause the active session
@@ -233,11 +228,10 @@ public class WorkoutTracker
     }
 
     // End session and save to health store
-    public async Task EndWorkout()
+    public async Task<WorkoutDto?> EndWorkout()
     {
-        // This will:
-        // Save the completed workout to Health Connect/HealthKit
-        await _healthService.Activity.End();
+        // Returns the completed workout saved to Health Connect/HealthKit
+        return await _healthService.Activity.End();
     }
 
     // Check session status
