@@ -5,21 +5,12 @@ using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android.Enums;
 using System.Diagnostics;
-using System.Linq;
 using static Maui.Health.Constants.HealthConstants;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
 internal static class WorkoutExtensions
 {
-    /// <summary>
-    /// Converts a WorkoutDto to a Java.Lang.Object (ExerciseSessionRecord) for writing to Android Health Connect
-    /// </summary>
-    public static Java.Lang.Object? ToAndroidRecord(this WorkoutDto workoutDto)
-    {
-        return workoutDto.ToExerciseSessionRecord();
-    }
-
     /// <summary>
     /// Converts a Java.Lang.Object to a WorkoutDto (simple conversion without heart rate data)
     /// </summary>
@@ -72,21 +63,18 @@ internal static class WorkoutExtensions
         {
             try
             {
-                Debug.WriteLine($"Android: Querying HR for workout {startTime:HH:mm} to {endTime:HH:mm}");
                 var heartRateData = await queryHeartRateFunc(workoutTimeRange, cancellationToken);
-                Debug.WriteLine($"Android: Found {heartRateData.Length} HR samples for workout");
 
-                if (heartRateData.Any())
+                if (heartRateData.Length > 0)
                 {
                     avgHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
                     minHeartRate = heartRateData.Min(hr => hr.BeatsPerMinute);
                     maxHeartRate = heartRateData.Max(hr => hr.BeatsPerMinute);
-                    Debug.WriteLine($"Android: Workout HR - Avg: {avgHeartRate:F0}, Min: {minHeartRate:F0}, Max: {maxHeartRate:F0}");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Android: Error fetching heart rate for workout: {ex.Message}");
+                Debug.WriteLine($"Error fetching heart rate for workout: {ex.Message}");
             }
         }
 
@@ -95,19 +83,16 @@ internal static class WorkoutExtensions
         {
             try
             {
-                Debug.WriteLine($"Android: Querying calories for workout {startTime:HH:mm} to {endTime:HH:mm}");
                 var caloriesData = await queryCaloriesFunc(workoutTimeRange, cancellationToken);
-                Debug.WriteLine($"Android: Found {caloriesData.Length} calorie samples for workout");
 
-                if (caloriesData.Any())
+                if (caloriesData.Length > 0)
                 {
                     energyBurned = caloriesData.Sum(c => c.Energy);
-                    Debug.WriteLine($"Android: Workout calories: {energyBurned:F0} kcal");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Android: Error fetching calories for workout: {ex.Message}");
+                Debug.WriteLine($"Error fetching calories for workout: {ex.Message}");
             }
         }
 

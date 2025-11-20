@@ -1,6 +1,5 @@
 using Foundation;
 using HealthKit;
-using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
 using static Maui.Health.Constants.HealthConstants;
 
@@ -8,7 +7,7 @@ namespace Maui.Health.Platforms.iOS.Extensions;
 
 internal static class HKQuantitySampleExtensions
 {
-    public static TDto? ConvertToDto<TDto>(this HKQuantitySample sample, HealthDataType healthDataType)
+    public static TDto? ConvertToDto<TDto>(this HKQuantitySample sample)
         where TDto : HealthMetricBase
     {
         return typeof(TDto).Name switch

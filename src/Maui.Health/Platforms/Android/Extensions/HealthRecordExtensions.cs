@@ -217,299 +217,168 @@ internal static class HealthRecordExtensions
     {
         try
         {
-            Debug.WriteLine($"Mass object type: {mass.GetType().Name}");
-            Debug.WriteLine($"Mass object class: {mass.Class.Name}");
-
             if (mass.TryOfficialUnitsApi("KILOGRAMS", out double officialValue))
-            {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
                 return officialValue;
-            }
 
             if (mass.TryGetPropertyValue("inKilograms", out double value1))
-            {
-                Debug.WriteLine($"Found value via 'inKilograms' property: {value1}");
                 return value1;
-            }
 
             if (mass.TryCallMethod("inKilograms", out double value2))
-            {
-                Debug.WriteLine($"Found value via 'inKilograms()' method: {value2}");
                 return value2;
-            }
 
             if (mass.TryCallMethod("getInKilograms", out double value3))
-            {
-                Debug.WriteLine($"Found value via 'getInKilograms()' method: {value3}");
                 return value3;
-            }
 
-            // Try generic accessors last - these might return base units (grams)
             if (mass.TryGetPropertyValue("value", out double value4))
-            {
-                Debug.WriteLine($"Found value via 'value' property (possibly grams, dividing by 1000): {value4}");
-                return value4 / UnitConversions.GramsPerKilogram; // Assume grams, convert to kg
-            }
+                return value4 / UnitConversions.GramsPerKilogram;
 
             if (mass.TryCallMethod("getValue", out double value5))
-            {
-                Debug.WriteLine($"Found value via 'getValue()' method (possibly grams, dividing by 1000): {value5}");
-                return value5 / UnitConversions.GramsPerKilogram; // Assume grams, convert to kg
-            }
+                return value5 / UnitConversions.GramsPerKilogram;
 
             var stringValue = mass.ToString();
-            Debug.WriteLine($"Mass toString(): {stringValue}");
-
             if (stringValue.TryParseFromString(out double value6))
-            {
-                Debug.WriteLine($"Found value via string parsing (possibly grams, dividing by 1000): {value6}");
-                return value6 / UnitConversions.GramsPerKilogram; // Assume grams, convert to kg
-            }
-
-            Debug.WriteLine("All approaches failed for Mass extraction");
+                return value6 / UnitConversions.GramsPerKilogram;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting mass value: {ex}");
+            Debug.WriteLine($"Error extracting mass value: {ex.Message}");
         }
 
-        return Defaults.FallbackWeightKg; // Default fallback value
+        return Defaults.FallbackWeightKg;
     }
 
     public static double ExtractLengthValue(this Java.Lang.Object length)
     {
         try
         {
-            Debug.WriteLine($"Length object type: {length.GetType().Name}");
-            Debug.WriteLine($"Length object class: {length.Class.Name}");
-
             if (length.TryOfficialUnitsApi("METERS", out double officialValue))
-            {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
-                return officialValue * UnitConversions.CentimetersPerMeter; // Convert meters to cm
-            }
+                return officialValue * UnitConversions.CentimetersPerMeter;
 
             if (length.TryGetPropertyValue("value", out double value1))
-            {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
                 return value1 * UnitConversions.CentimetersPerMeter;
-            }
 
             if (length.TryGetPropertyValue("inMeters", out double value2))
-            {
-                Debug.WriteLine($"Found value via 'inMeters' property: {value2}");
                 return value2 * UnitConversions.CentimetersPerMeter;
-            }
 
             if (length.TryCallMethod("inMeters", out double value3))
-            {
-                Debug.WriteLine($"Found value via 'inMeters()' method: {value3}");
                 return value3 * UnitConversions.CentimetersPerMeter;
-            }
 
             if (length.TryCallMethod("getValue", out double value4))
-            {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
                 return value4 * UnitConversions.CentimetersPerMeter;
-            }
 
             var stringValue = length.ToString();
-            Debug.WriteLine($"Length toString(): {stringValue}");
-
             if (stringValue.TryParseFromString(out double value5))
-            {
-                Debug.WriteLine($"Found value via string parsing: {value5}");
                 return value5 * UnitConversions.CentimetersPerMeter;
-            }
-
-            Debug.WriteLine("All approaches failed for Length extraction");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting length value: {ex}");
+            Debug.WriteLine($"Error extracting length value: {ex.Message}");
         }
 
-        return Defaults.FallbackHeightCm; // Default fallback value in cm
+        return Defaults.FallbackHeightCm;
     }
 
     public static double ExtractEnergyValue(this Java.Lang.Object energy)
     {
         try
         {
-            Debug.WriteLine($"Energy object type: {energy.GetType().Name}");
-            Debug.WriteLine($"Energy object class: {energy.Class.Name}");
-
             if (energy.TryOfficialUnitsApi("KILOCALORIES", out double officialValue))
-            {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
                 return officialValue;
-            }
 
             if (energy.TryGetPropertyValue("inKilocalories", out double value1))
-            {
-                Debug.WriteLine($"Found value via 'inKilocalories' property: {value1}");
                 return value1;
-            }
 
             if (energy.TryCallMethod("inKilocalories", out double value2))
-            {
-                Debug.WriteLine($"Found value via 'inKilocalories()' method: {value2}");
                 return value2;
-            }
 
             if (energy.TryCallMethod("getInKilocalories", out double value3))
-            {
-                Debug.WriteLine($"Found value via 'getInKilocalories()' method: {value3}");
                 return value3;
-            }
 
-            // Try generic accessors last - these might return base units (calories)
             if (energy.TryGetPropertyValue("value", out double value4))
-            {
-                Debug.WriteLine($"Found value via 'value' property (possibly calories, dividing by 1000): {value4}");
-                return value4 / UnitConversions.CaloriesPerKilocalorie; // Assume calories, convert to kcal
-            }
+                return value4 / UnitConversions.CaloriesPerKilocalorie;
 
             if (energy.TryCallMethod("getValue", out double value5))
-            {
-                Debug.WriteLine($"Found value via 'getValue()' method (possibly calories, dividing by 1000): {value5}");
-                return value5 / UnitConversions.CaloriesPerKilocalorie; // Assume calories, convert to kcal
-            }
+                return value5 / UnitConversions.CaloriesPerKilocalorie;
 
             var stringValue = energy.ToString();
-            Debug.WriteLine($"Energy toString(): {stringValue}");
-
             if (stringValue.TryParseFromString(out double value6))
-            {
-                Debug.WriteLine($"Found value via string parsing (possibly calories, dividing by 1000): {value6}");
-                return value6 / UnitConversions.CaloriesPerKilocalorie; // Assume calories, convert to kcal
-            }
-
-            Debug.WriteLine("All approaches failed for Energy extraction");
+                return value6 / UnitConversions.CaloriesPerKilocalorie;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting energy value: {ex}");
+            Debug.WriteLine($"Error extracting energy value: {ex.Message}");
         }
 
-        return Defaults.FallbackValue; // Default fallback value
+        return Defaults.FallbackValue;
     }
 
     public static double ExtractPercentageValue(this Java.Lang.Object percentage)
     {
         try
         {
-            Debug.WriteLine($"Percentage object type: {percentage.GetType().Name}");
-            Debug.WriteLine($"Percentage object class: {percentage.Class.Name}");
-
             if (percentage.TryOfficialUnitsApi("PERCENT", out double officialValue))
-            {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
                 return officialValue;
-            }
 
             if (percentage.TryGetPropertyValue("value", out double value1))
-            {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
                 return value1;
-            }
 
             if (percentage.TryCallMethod("getValue", out double value2))
-            {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value2}");
                 return value2;
-            }
-
-            Debug.WriteLine("All approaches failed for Percentage extraction");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting percentage value: {ex}");
+            Debug.WriteLine($"Error extracting percentage value: {ex.Message}");
         }
 
-        return Defaults.FallbackValue; // Default fallback value
+        return Defaults.FallbackValue;
     }
 
     public static double ExtractVo2MaxValue(this Java.Lang.Object vo2Max)
     {
         try
         {
-            Debug.WriteLine($"VO2Max object type: {vo2Max.GetType().Name}");
-            Debug.WriteLine($"VO2Max object class: {vo2Max.Class.Name}");
-
             if (vo2Max.TryOfficialUnitsApi("MILLILITERS_PER_MINUTE_KILOGRAM", out double officialValue))
-            {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
                 return officialValue;
-            }
 
             if (vo2Max.TryGetPropertyValue("value", out double value1))
-            {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
                 return value1;
-            }
 
             if (vo2Max.TryCallMethod("getValue", out double value2))
-            {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value2}");
                 return value2;
-            }
-
-            Debug.WriteLine("All approaches failed for VO2Max extraction");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting VO2Max value: {ex}");
+            Debug.WriteLine($"Error extracting VO2Max value: {ex.Message}");
         }
 
-        return Defaults.FallbackValue; // Default fallback value
+        return Defaults.FallbackValue;
     }
 
     public static double ExtractPressureValue(this Java.Lang.Object pressure)
     {
         try
         {
-            Debug.WriteLine($"Pressure object type: {pressure.GetType().Name}");
-            Debug.WriteLine($"Pressure object class: {pressure.Class.Name}");
-
             if (pressure.TryOfficialUnitsApi("MILLIMETERS_OF_MERCURY", out double officialValue))
-            {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
                 return officialValue;
-            }
 
             if (pressure.TryGetPropertyValue("inMillimetersOfMercury", out double value1))
-            {
-                Debug.WriteLine($"Found value via 'inMillimetersOfMercury' property: {value1}");
                 return value1;
-            }
 
             if (pressure.TryCallMethod("inMillimetersOfMercury", out double value2))
-            {
-                Debug.WriteLine($"Found value via 'inMillimetersOfMercury()' method: {value2}");
                 return value2;
-            }
 
             if (pressure.TryGetPropertyValue("value", out double value3))
-            {
-                Debug.WriteLine($"Found value via 'value' property: {value3}");
                 return value3;
-            }
 
             if (pressure.TryCallMethod("getValue", out double value4))
-            {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
                 return value4;
-            }
-
-            Debug.WriteLine("All approaches failed for Pressure extraction");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting pressure value: {ex}");
+            Debug.WriteLine($"Error extracting pressure value: {ex.Message}");
         }
 
-        return Defaults.FallbackValue; // Default fallback value
+        return Defaults.FallbackValue;
     }
 
     private static bool TryOfficialUnitsApi(this Java.Lang.Object obj, string unitName, out double value)
@@ -528,8 +397,6 @@ internal static class HealthRecordExtensions
                 return false;
             }
 
-            Debug.WriteLine($"Found InUnit method: {inUnitMethod.Name}");
-
             if (TryGetUnitConstant(unitName, out Java.Lang.Object? unitConstant))
             {
                 inUnitMethod.Accessible = true;
@@ -547,9 +414,9 @@ internal static class HealthRecordExtensions
                 }
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Debug.WriteLine($"Error trying official Units API: {ex.Message}");
+            // API call failed
         }
 
         return false;
@@ -578,9 +445,9 @@ internal static class HealthRecordExtensions
                 }
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Debug.WriteLine($"Error getting unit constant '{unitName}': {ex.Message}");
+            // Failed to get unit constant
         }
         return false;
     }
@@ -614,9 +481,9 @@ internal static class HealthRecordExtensions
                 }
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Debug.WriteLine($"Error getting property '{propertyName}': {ex.Message}");
+            // Property access failed
         }
         return false;
     }
@@ -650,9 +517,9 @@ internal static class HealthRecordExtensions
                 }
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Debug.WriteLine($"Error calling method '{methodName}': {ex.Message}");
+            // Method call failed
         }
         return false;
     }

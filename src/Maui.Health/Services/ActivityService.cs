@@ -142,32 +142,9 @@ public partial class ActivityService
     }
 
     /// <summary>
-    /// Loads the active workout session from preferences (used for app restarts)
-    /// </summary>
-    protected WorkoutDto? LoadActiveWorkoutFromPreferences()
-    {
-        var session = LoadWorkoutSessionFromPreferences();
-        if (session == null)
-        {
-            return null;
-        }
-
-        return new WorkoutDto
-        {
-            Id = session.Id,
-            DataOrigin = session.DataOrigin,
-            ActivityType = session.ActivityType,
-            Title = session.Title,
-            StartTime = session.StartTime,
-            EndTime = null,
-            Timestamp = session.StartTime
-        };
-    }
-
-    /// <summary>
     /// Loads the active workout session object from preferences (used for app restarts)
     /// </summary>
-    protected Models.WorkoutSession? LoadWorkoutSessionFromPreferences()
+    protected WorkoutSession? LoadWorkoutSessionFromPreferences()
     {
         var activeSessionId = Preferences.Default.Get(SessionPreferenceKeys.ActiveSessionId, string.Empty);
         if (string.IsNullOrEmpty(activeSessionId))

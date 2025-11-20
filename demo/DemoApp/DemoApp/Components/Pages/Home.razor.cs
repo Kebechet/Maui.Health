@@ -36,7 +36,7 @@ public partial class Home
     // Session tracking
     private bool _isSessionRunning { get; set; } = false;
     private bool _isSessionPaused { get; set; } = false;
-    private Maui.Health.Models.WorkoutSession? _activeSession { get; set; } = null;
+    private WorkoutSession? _activeSession { get; set; } = null;
     private string _sessionMessage { get; set; } = string.Empty;
     private bool _sessionSuccess { get; set; } = false;
     private string _sessionStatusMessage { get; set; } = string.Empty;

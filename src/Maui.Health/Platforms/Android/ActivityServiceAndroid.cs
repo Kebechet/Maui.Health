@@ -18,7 +18,6 @@ namespace Maui.Health.Services;
 
 public partial class ActivityService
 {
-    private ExerciseSessionRecord? _activeSession;
     private WorkoutSession? _activeWorkoutSession;
     private readonly ILogger<ActivityService>? _logger;
 
@@ -32,7 +31,7 @@ public partial class ActivityService
         _logger = logger;
     }
 
-    public partial async Task<List<WorkoutDto>> Read(HealthTimeRange activityTime)
+    public async partial Task<List<WorkoutDto>> Read(HealthTimeRange activityTime)
     {
         try
         {
@@ -257,7 +256,6 @@ public partial class ActivityService
             deleteMethod.Accessible = true;
             var emptyList = new Java.Util.ArrayList(); // Empty client record ID list
 
-            // Cast recordClass to Java.Lang.Object for the Invoke call
             var recordClassObj = Java.Lang.Object.GetObject<Java.Lang.Object>(
                 recordClass.Handle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
 
@@ -342,8 +340,6 @@ public partial class ActivityService
                 WorkoutSessionState.Running
             );
 
-            _activeSession = null;
-
             SaveWorkoutSessionToPreferences(_activeWorkoutSession);
 
             return Task.CompletedTask;
@@ -359,7 +355,6 @@ public partial class ActivityService
     {
         try
         {
-            // Try to load from preferences if not in memory
             _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
 
             if (_activeWorkoutSession is null)
@@ -378,7 +373,6 @@ public partial class ActivityService
 
             _activeWorkoutSession.Pause();
 
-            // Persist the updated state to preferences
             SaveWorkoutSessionToPreferences(_activeWorkoutSession);
 
             return Task.CompletedTask;
@@ -394,7 +388,6 @@ public partial class ActivityService
     {
         try
         {
-            // Try to load from preferences if not in memory
             _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
 
             if (_activeWorkoutSession is null)
@@ -413,7 +406,6 @@ public partial class ActivityService
 
             _activeWorkoutSession.Resume();
 
-            // Persist the updated state to preferences
             SaveWorkoutSessionToPreferences(_activeWorkoutSession);
 
             return Task.CompletedTask;
@@ -429,7 +421,6 @@ public partial class ActivityService
     {
         try
         {
-            // Check memory first, then check preferences (for app restarts)
             _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
 
             if (_activeWorkoutSession is null)
@@ -450,7 +441,6 @@ public partial class ActivityService
     {
         try
         {
-            // Try to load from preferences if not in memory
             _activeWorkoutSession ??= LoadWorkoutSessionFromPreferences();
 
             if (_activeWorkoutSession is null)
@@ -476,9 +466,8 @@ public partial class ActivityService
 
             var completedWorkout = _activeWorkoutSession.ToWorkoutDto(endTime);
 
-            // Clear the active session from memory and preferences
-            _activeSession = null;
             _activeWorkoutSession = null;
+
             ClearSessionPreferences();
 
             return Task.FromResult<WorkoutDto?>(completedWorkout);
