@@ -9,7 +9,7 @@ using Maui.Health.Platforms.iOS.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Platform;
 using System.Collections.Generic;
-using static Maui.Health.HealthConstants;
+using static Maui.Health.Constants.HealthConstants;
 
 namespace Maui.Health.Services;
 

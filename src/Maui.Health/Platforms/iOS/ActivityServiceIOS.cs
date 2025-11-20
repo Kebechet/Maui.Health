@@ -6,7 +6,7 @@ using Maui.Health.Extensions;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.iOS.Extensions;
 using Microsoft.Extensions.Logging;
-using static Maui.Health.HealthConstants;
+using static Maui.Health.Constants.HealthConstants;
 
 namespace Maui.Health.Services;
 

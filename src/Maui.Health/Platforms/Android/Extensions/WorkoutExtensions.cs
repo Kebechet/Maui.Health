@@ -6,7 +6,7 @@ using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android.Enums;
 using System.Diagnostics;
 using System.Linq;
-using static Maui.Health.HealthConstants;
+using static Maui.Health.Constants.HealthConstants;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 

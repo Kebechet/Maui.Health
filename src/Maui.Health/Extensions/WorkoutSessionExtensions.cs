@@ -1,7 +1,7 @@
 using Maui.Health.Enums;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
-using static Maui.Health.HealthConstants;
+using static Maui.Health.Constants.HealthConstants;
 
 namespace Maui.Health.Extensions;
 
