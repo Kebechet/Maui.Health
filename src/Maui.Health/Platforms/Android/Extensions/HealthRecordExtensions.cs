@@ -211,8 +211,6 @@ internal static class HealthRecordExtensions
     //    };
     //}
 
-    #region Value Extraction Helpers
-
     public static double ExtractMassValue(this Java.Lang.Object mass)
     {
         try
@@ -544,10 +542,6 @@ internal static class HealthRecordExtensions
         return false;
     }
 
-    #endregion
-
-    #region Write Methods
-
     public static Java.Lang.Object? ToAndroidRecord(this HealthMetricBase dto)
     {
         return dto switch
@@ -563,10 +557,8 @@ internal static class HealthRecordExtensions
 
     public static StepsRecord ToStepsRecord(this StepsDto dto)
     {
-#pragma warning disable CA1416
-        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
-        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
-#pragma warning restore CA1416
+        var startTime = dto.StartTime.ToJavaInstant();
+        var endTime = dto.EndTime.ToJavaInstant();
 
         var metadata = new Metadata();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
@@ -585,9 +577,7 @@ internal static class HealthRecordExtensions
 
     public static WeightRecord ToWeightRecord(this WeightDto dto)
     {
-#pragma warning disable CA1416
-        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
-#pragma warning restore CA1416
+        var time = dto.Timestamp.ToJavaInstant();
 
         var metadata = new Metadata();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
@@ -615,9 +605,7 @@ internal static class HealthRecordExtensions
 
     public static HeightRecord ToHeightRecord(this HeightDto dto)
     {
-#pragma warning disable CA1416
-        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
-#pragma warning restore CA1416
+        var time = dto.Timestamp.ToJavaInstant();
 
         var metadata = new Metadata();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
@@ -645,10 +633,8 @@ internal static class HealthRecordExtensions
 
     public static ActiveCaloriesBurnedRecord ToActiveCaloriesBurnedRecord(this ActiveCaloriesBurnedDto dto)
     {
-#pragma warning disable CA1416
-        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
-        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
-#pragma warning restore CA1416
+        var startTime = dto.StartTime.ToJavaInstant();
+        var endTime = dto.EndTime.ToJavaInstant();
 
         var metadata = new Metadata();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
@@ -678,9 +664,7 @@ internal static class HealthRecordExtensions
 
     public static HeartRateRecord ToHeartRateRecord(this HeartRateDto dto)
     {
-#pragma warning disable CA1416
-        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
-#pragma warning restore CA1416
+        var time = dto.Timestamp.ToJavaInstant();
 
         var metadata = new Metadata();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
@@ -699,7 +683,4 @@ internal static class HealthRecordExtensions
 
         return record;
     }
-
-
-    #endregion
 }

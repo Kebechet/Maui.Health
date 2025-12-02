@@ -8,7 +8,7 @@ public static class AndroidConstants
     /// <summary>
     /// Minimum Android API version required for Health Connect SDK.
     /// </summary>
-    public const int MinimumApiVersionRequired = 26;
+    public const int MinimumApiVersionRequired = 26; // Android 8.0
 
     /// <summary>
     /// Health Connect provider package name.
