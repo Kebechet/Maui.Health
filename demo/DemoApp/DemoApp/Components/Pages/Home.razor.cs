@@ -20,10 +20,6 @@ public partial class Home
     private List<WorkoutDto> _workouts { get; set; } = [];
     private string _demoDataMessage { get; set; } = string.Empty;
     private bool _demoDataSuccess { get; set; } = false;
-    private bool _isAndroid { get; set; } = false;
-    private bool _isIOS { get; set; } = false;
-    private string _iosStrengthTrainingMessage { get; set; } = string.Empty;
-    private bool _iosStrengthTrainingSuccess { get; set; } = false;
 
     // Tab tracking
     private int _activeTab { get; set; } = 0;
@@ -43,10 +39,6 @@ public partial class Home
 
     protected override async Task OnInitializedAsync()
     {
-        // Check if running on Android or iOS
-        _isAndroid = DeviceInfo.Platform == DevicePlatform.Android;
-        _isIOS = DeviceInfo.Platform == DevicePlatform.iOS;
-
         // Load health data - permissions will be requested automatically if needed
         await LoadHealthDataAsync();
 
@@ -68,7 +60,8 @@ public partial class Home
                 new() { HealthDataType = HealthDataType.Steps, PermissionType = PermissionType.Write },
                 new() { HealthDataType = HealthDataType.Weight, PermissionType = PermissionType.Write },
                 new() { HealthDataType = HealthDataType.ActiveCaloriesBurned, PermissionType = PermissionType.Write },
-                new() { HealthDataType = HealthDataType.HeartRate, PermissionType = PermissionType.Write }
+                new() { HealthDataType = HealthDataType.HeartRate, PermissionType = PermissionType.Write },
+                new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Write }
             };
 
             var permissionResult = await _healthService.RequestPermissions(permissions);
@@ -139,6 +132,23 @@ public partial class Home
             {
                 await _healthService.WriteHealthData(heartRate);
             }
+
+            // Write a strength training workout
+            var workoutStart = now.AddHours(-1);
+            var workoutEnd = now;
+            var strengthTrainingWorkout = new WorkoutDto
+            {
+                Id = "",
+                DataOrigin = "DemoApp",
+                ActivityType = ActivityType.StrengthTraining,
+                Title = "Strength Training",
+                StartTime = new DateTimeOffset(workoutStart, localOffset),
+                EndTime = new DateTimeOffset(workoutEnd, localOffset),
+                Timestamp = new DateTimeOffset(workoutStart, localOffset),
+                EnergyBurned = 250,
+                Distance = null
+            };
+            await _healthService.Activity.Write(strengthTrainingWorkout);
 
             _demoDataMessage = "Demo data written successfully! Refreshing...";
             _demoDataSuccess = true;
@@ -276,69 +286,6 @@ public partial class Home
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error in LoadHealthDataAsync: {ex.Message}");
-        }
-    }
-
-    private async Task CreateIOSStrengthTraining()
-    {
-        var today = DateTime.Today;
-        var now = DateTime.Now;
-        var localOffset = DateTimeOffset.Now.Offset;
-        // Write Weight data
-        var weightData = new WeightDto
-        {
-            Id = "",
-            DataOrigin = "DemoApp",
-            Value = 75.5,
-            Timestamp = new DateTimeOffset(today.AddHours(7), localOffset),
-            Unit = "kg"
-        };
-        await _healthService.WriteHealthData(weightData);
-
-        try
-        {
-            _iosStrengthTrainingMessage = "Creating strength training workout...";
-            _iosStrengthTrainingSuccess = false;
-            StateHasChanged();
-
-            var workoutStart = now.AddHours(-1); // 1 hour ago
-            var workoutEnd = now; // Now
-
-            // Create a strength training workout
-            var strengthTrainingWorkout = new WorkoutDto
-            {
-                Id = "",
-                DataOrigin = "DemoApp",
-                ActivityType = ActivityType.StrengthTraining,
-                Title = "Strength Training",
-                StartTime = new DateTimeOffset(workoutStart, localOffset),
-                EndTime = new DateTimeOffset(workoutEnd, localOffset),
-                Timestamp = new DateTimeOffset(workoutStart, localOffset),
-                EnergyBurned = 250, // 250 kcal
-                Distance = null // No distance for strength training
-            };
-
-            // Use ActivityService.Write instead
-            await _healthService.Activity.Write(strengthTrainingWorkout);
-
-            _iosStrengthTrainingMessage = "Strength training workout created successfully! Refreshing...";
-            _iosStrengthTrainingSuccess = true;
-            StateHasChanged();
-
-            // Wait a moment for HealthKit to process
-            await Task.Delay(500);
-
-            // Reload the data
-            await LoadHealthDataAsync();
-
-            _iosStrengthTrainingMessage = "Strength training workout created and loaded successfully!";
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            _iosStrengthTrainingMessage = $"Error: {ex.Message}";
-            _iosStrengthTrainingSuccess = false;
-            StateHasChanged();
         }
     }
 

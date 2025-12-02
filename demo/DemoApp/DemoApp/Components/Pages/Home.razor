@@ -18,31 +18,14 @@
 {
     <!-- Measurements Tab -->
     <div style="margin-bottom: 20px;">
-        <button @onclick="PopulateDemoData" disabled="@(!_isAndroid)" style="padding: 10px 20px; background-color: @(_isAndroid ? "#007bff" : "#6c757d"); color: white; border: none; border-radius: 4px; cursor: @(_isAndroid ? "pointer" : "not-allowed");">
+        <button @onclick="PopulateDemoData" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
             Populate Demo Data
         </button>
-        @if (!_isAndroid)
-        {
-            <p style="color: #6c757d; margin-top: 10px; font-style: italic;">Writing demo data is available only for Android.</p>
-        }
         @if (!string.IsNullOrEmpty(_demoDataMessage))
         {
             <p style="color: @(_demoDataSuccess ? "green" : "red"); margin-top: 10px;">@_demoDataMessage</p>
         }
     </div>
-
-    @if (_isIOS)
-    {
-        <div style="margin-bottom: 20px;">
-            <button @onclick="CreateIOSStrengthTraining" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                Create Strength Training (iOS)
-            </button>
-            @if (!string.IsNullOrEmpty(_iosStrengthTrainingMessage))
-            {
-                <p style="color: @(_iosStrengthTrainingSuccess ? "green" : "red"); margin-top: 10px;">@_iosStrengthTrainingMessage</p>
-            }
-        </div>
-    }
 
     <hr style="margin: 20px 0;" />
 
