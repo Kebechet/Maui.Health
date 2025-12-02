@@ -215,7 +215,7 @@ public partial class HealthWorkoutService : IHealthWorkoutService
 
         // Serialize pause intervals to JSON
         var intervals = session.PauseIntervals
-            .Select(i => (i.PauseStart.ToUnixTimeMilliseconds(), i.PauseEnd?.ToUnixTimeMilliseconds()))
+            .Select(i => (i.Start.ToUnixTimeMilliseconds(), i.End?.ToUnixTimeMilliseconds()))
             .ToList();
         var json = System.Text.Json.JsonSerializer.Serialize(intervals);
         Preferences.Default.Set(ActiveSessionStorage.PauseIntervals, json);
@@ -238,7 +238,7 @@ public partial class HealthWorkoutService : IHealthWorkoutService
     /// <summary>
     /// Parses pause intervals from JSON string
     /// </summary>
-    private static List<(DateTimeOffset, DateTimeOffset?)> ParsePauseIntervals(string json)
+    private static List<DateRange> ParsePauseIntervals(string json)
     {
         if (string.IsNullOrEmpty(json))
         {
@@ -253,9 +253,9 @@ public partial class HealthWorkoutService : IHealthWorkoutService
                 return [];
             }
 
-            return intervals.Select(i => (
+            return intervals.Select(i => new DateRange(
                 DateTimeOffset.FromUnixTimeMilliseconds(i.Item1),
-                i.Item2.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(i.Item2.Value) : (DateTimeOffset?)null
+                i.Item2.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(i.Item2.Value) : null
             )).ToList();
         }
         catch

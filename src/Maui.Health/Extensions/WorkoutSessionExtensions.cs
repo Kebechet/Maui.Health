@@ -74,7 +74,7 @@ public static class WorkoutSessionExtensions
             : WorkoutSessionState.Running;
 
         // Try to extract pause intervals from metadata
-        var pauseIntervals = new List<(DateTimeOffset, DateTimeOffset?)>();
+        var pauseIntervals = new List<DateRange>();
         if (workout.Metadata?.TryGetValue("PauseIntervals", out var intervalsObj) == true)
         {
             pauseIntervals = DeserializePauseIntervals(intervalsObj);
@@ -116,12 +116,12 @@ public static class WorkoutSessionExtensions
     /// <summary>
     /// Serializes pause intervals to a format that can be stored in metadata
     /// </summary>
-    private static string SerializePauseIntervals(List<(DateTimeOffset PauseStart, DateTimeOffset? PauseEnd)> intervals)
+    private static string SerializePauseIntervals(List<DateRange> intervals)
     {
         var serialized = intervals
             .Select(i => new {
-                Start = i.PauseStart.ToUnixTimeMilliseconds(),
-                End = i.PauseEnd?.ToUnixTimeMilliseconds()
+                Start = i.Start.ToUnixTimeMilliseconds(),
+                End = i.End?.ToUnixTimeMilliseconds()
             })
             .ToList();
 
@@ -131,17 +131,17 @@ public static class WorkoutSessionExtensions
     /// <summary>
     /// Deserializes pause intervals from metadata
     /// </summary>
-    private static List<(DateTimeOffset, DateTimeOffset?)> DeserializePauseIntervals(object intervalsObj)
+    private static List<DateRange> DeserializePauseIntervals(object intervalsObj)
     {
         try
         {
             var json = intervalsObj.ToString();
             if (string.IsNullOrEmpty(json))
-                return new List<(DateTimeOffset, DateTimeOffset?)>();
+                return [];
 
             var intervals = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, long?>>>(json);
             if (intervals == null)
-                return new List<(DateTimeOffset, DateTimeOffset?)>();
+                return [];
 
             return intervals
                 .Select(i =>
@@ -154,13 +154,13 @@ public static class WorkoutSessionExtensions
                         ? DateTimeOffset.FromUnixTimeMilliseconds(endMs.Value)
                         : (DateTimeOffset?)null;
 
-                    return (start, end);
+                    return new DateRange(start, end);
                 })
                 .ToList();
         }
         catch
         {
-            return new List<(DateTimeOffset, DateTimeOffset?)>();
+            return [];
         }
     }
 }

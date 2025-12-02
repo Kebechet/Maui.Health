@@ -38,9 +38,9 @@ public class WorkoutSession
     public WorkoutSessionState State { get; private set; }
 
     /// <summary>
-    /// List of pause intervals (start and end times)
+    /// List of pause intervals
     /// </summary>
-    public List<(DateTimeOffset PauseStart, DateTimeOffset? PauseEnd)> PauseIntervals { get; }
+    public List<DateRange> PauseIntervals { get; }
 
     /// <summary>
     /// Gets the total paused duration in seconds
@@ -49,13 +49,7 @@ public class WorkoutSession
     {
         get
         {
-            var total = 0.0;
-            foreach (var (pauseStart, pauseEnd) in PauseIntervals)
-            {
-                var end = pauseEnd ?? DateTimeOffset.UtcNow;
-                total += (end - pauseStart).TotalSeconds;
-            }
-            return total;
+            return PauseIntervals.Sum(p => p.Duration.TotalSeconds);
         }
     }
 
@@ -78,7 +72,7 @@ public class WorkoutSession
         string dataOrigin,
         DateTimeOffset startTime,
         WorkoutSessionState state = WorkoutSessionState.Running,
-        List<(DateTimeOffset, DateTimeOffset?)>? pauseIntervals = null)
+        List<DateRange>? pauseIntervals = null)
     {
         Id = id;
         ActivityType = activityType;
@@ -86,7 +80,7 @@ public class WorkoutSession
         DataOrigin = dataOrigin;
         StartTime = startTime;
         State = state;
-        PauseIntervals = pauseIntervals ?? new List<(DateTimeOffset, DateTimeOffset?)>();
+        PauseIntervals = pauseIntervals ?? [];
     }
 
     public void Pause()
@@ -97,7 +91,7 @@ public class WorkoutSession
         }
 
         State = WorkoutSessionState.Paused;
-        PauseIntervals.Add((DateTimeOffset.UtcNow, null));
+        PauseIntervals.Add(new DateRange(DateTimeOffset.UtcNow));
     }
 
     public void Resume()
@@ -111,9 +105,9 @@ public class WorkoutSession
         if (PauseIntervals.Count > 0)
         {
             var lastPause = PauseIntervals.Last();
-            if (lastPause.PauseEnd == null)
+            if (!lastPause.IsClosed)
             {
-                PauseIntervals[PauseIntervals.Count - 1] = (lastPause.PauseStart, DateTimeOffset.UtcNow);
+                lastPause.Close(DateTimeOffset.UtcNow);
             }
         }
 
@@ -126,9 +120,9 @@ public class WorkoutSession
         if (State == WorkoutSessionState.Paused && PauseIntervals.Count > 0)
         {
             var lastPause = PauseIntervals.Last();
-            if (lastPause.PauseEnd == null)
+            if (!lastPause.IsClosed)
             {
-                PauseIntervals[PauseIntervals.Count - 1] = (lastPause.PauseStart, DateTimeOffset.UtcNow);
+                lastPause.Close(DateTimeOffset.UtcNow);
             }
         }
 
