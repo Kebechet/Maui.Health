@@ -26,8 +26,6 @@ namespace Maui.Health.Services;
 
 public partial class HealthService
 {
-    private const int _minimalApiVersionRequired = AndroidConstants.MinimumApiVersion; // Android 8.0
-
     public partial bool IsSupported => IsSdkAvailable().IsSuccess;
 
     private Context _activityContext => Platform.CurrentActivity ??
@@ -324,7 +322,7 @@ public partial class HealthService
             //The Health Connect SDK supports Android 8(API level 26) or higher, while the Health Connect app is only compatible with Android 9(API level 28) or higher.
             //This means that third-party apps can support users with Android 8, but only users with Android 9 or higher can use Health Connect.
             //https://developer.android.com/health-and-fitness/guides/health-connect/develop/get-started#:~:text=the%20latest%20version.-,Note,-%3A%20The%20Health
-            if (!OperatingSystem.IsAndroidVersionAtLeast(_minimalApiVersionRequired))
+            if (!OperatingSystem.IsAndroidVersionAtLeast(AndroidConstants.MinimumApiVersionRequired))
             {
                 return new()
                 {
