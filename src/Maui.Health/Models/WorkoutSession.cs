@@ -110,10 +110,10 @@ public class WorkoutSession
         // Close the current pause interval
         if (PauseIntervals.Count > 0)
         {
-            var lastPause = PauseIntervals[^1];
-            if (lastPause.Item2 == null)
+            var lastPause = PauseIntervals.Last();
+            if (lastPause.PauseEnd == null)
             {
-                PauseIntervals[^1] = (lastPause.Item1, DateTimeOffset.UtcNow);
+                PauseIntervals[PauseIntervals.Count - 1] = (lastPause.PauseStart, DateTimeOffset.UtcNow);
             }
         }
 
@@ -125,10 +125,10 @@ public class WorkoutSession
         // If we're paused when ending, close the pause interval
         if (State == WorkoutSessionState.Paused && PauseIntervals.Count > 0)
         {
-            var lastPause = PauseIntervals[^1];
-            if (lastPause.Item2 == null)
+            var lastPause = PauseIntervals.Last();
+            if (lastPause.PauseEnd == null)
             {
-                PauseIntervals[^1] = (lastPause.Item1, DateTimeOffset.UtcNow);
+                PauseIntervals[PauseIntervals.Count - 1] = (lastPause.PauseStart, DateTimeOffset.UtcNow);
             }
         }
 
