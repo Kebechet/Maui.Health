@@ -1,4 +1,5 @@
 ﻿using HealthKit;
+using Maui.Health.Constants;
 using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
 
@@ -119,7 +120,7 @@ internal static class HKWorkoutActivityTypeExtensions
         return new WorkoutDto
         {
             Id = workout.Uuid.ToString(),
-            DataOrigin = workout.SourceRevision?.Source?.Name ?? "Unknown",
+            DataOrigin = workout.SourceRevision?.Source?.Name ?? DataOrigins.Unknown,
             Timestamp = startTime,
             ActivityType = activityType,
             StartTime = startTime,
@@ -177,7 +178,7 @@ internal static class HKWorkoutActivityTypeExtensions
         return new WorkoutDto
         {
             Id = workout.Uuid.ToString(),
-            DataOrigin = workout.SourceRevision?.Source?.Name ?? "Unknown",
+            DataOrigin = workout.SourceRevision?.Source?.Name ?? DataOrigins.Unknown,
             Timestamp = startTime,
             ActivityType = activityType,
             StartTime = startTime,

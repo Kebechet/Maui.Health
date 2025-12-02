@@ -327,7 +327,7 @@ public partial class HealthWorkoutService
 
             var startTime = DateTimeOffset.UtcNow;
             var id = Guid.NewGuid().ToString();
-            var origin = dataOrigin ?? _activityContext.PackageName ?? "Unknown";
+            var origin = dataOrigin ?? _activityContext.PackageName ?? DataOrigins.Unknown;
             var workoutTitle = title ?? activityType.ToString();
 
             _activeWorkoutSession = new WorkoutSession(
