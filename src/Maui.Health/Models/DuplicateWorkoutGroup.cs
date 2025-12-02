@@ -41,7 +41,10 @@ public class DuplicateWorkoutGroup
         get
         {
             if (AppWorkout == null || ExternalWorkout == null)
+            {
                 return 0;
+            }
+
             return Math.Abs((AppWorkout.StartTime - ExternalWorkout.StartTime).TotalMinutes);
         }
     }
@@ -54,7 +57,10 @@ public class DuplicateWorkoutGroup
         get
         {
             if (AppWorkout?.EndTime == null || ExternalWorkout?.EndTime == null)
+            {
                 return null;
+            }
+
             return Math.Abs((AppWorkout.EndTime.Value - ExternalWorkout.EndTime.Value).TotalMinutes);
         }
     }

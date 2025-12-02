@@ -23,7 +23,9 @@ internal static class HKWorkoutExtensions
     {
         // Can only write completed workouts (with EndTime) to HealthKit
         if (!dto.EndTime.HasValue)
+        {
             return null;
+        }
 
         var activityType = dto.ActivityType.ToHKWorkoutActivityType();
         var startDate = dto.StartTime.ToNSDate();

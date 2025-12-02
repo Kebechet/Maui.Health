@@ -8,7 +8,9 @@ internal static class StringExtensions
     internal static string ToScreamingSnakeCase(this string input)
     {
         if (string.IsNullOrEmpty(input))
+        {
             return input;
+        }
 
         return Regex.Replace(input, "(?<!^)([A-Z])", "_$1").ToUpper();
     }

@@ -120,7 +120,9 @@ internal static class WorkoutExtensions
     {
         // Can only write completed workouts (with EndTime) to Health Connect
         if (!dto.EndTime.HasValue)
+        {
             return null;
+        }
 
 #pragma warning disable CA1416
         var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
