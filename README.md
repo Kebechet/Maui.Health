@@ -147,9 +147,9 @@ public async Task RequestPermissions()
 }
 ```
 
-### 5. Activity Service (Workout Management)
+### 5. Workout Management (IHealthWorkoutService)
 
-The `ActivityService` provides workout/exercise session management with support for real-time tracking, pause/resume functionality, and duplicate detection.
+The `Activity` property on `IHealthService` provides workout/exercise session management (`IHealthWorkoutService`) with support for real-time tracking, pause/resume functionality, and duplicate detection.
 
 #### Reading Workouts
 

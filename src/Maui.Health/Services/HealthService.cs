@@ -6,17 +6,19 @@ namespace Maui.Health.Services;
 
 public partial class HealthService : IHealthService
 {
-    public HealthWorkoutService Activity { get; }
+    public IHealthWorkoutService Activity => _activityService;
+
+    private readonly HealthWorkoutService _activityService;
     protected readonly ILogger<HealthService> _logger;
 
     public HealthService(HealthWorkoutService activityService, ILogger<HealthService> logger)
     {
-        Activity = activityService;
+        _activityService = activityService;
         _logger = logger;
 
         // Set up callbacks for ActivityService to fetch health data
-        Activity.HeartRateQueryCallback = (timeRange, ct) => GetHealthData<HeartRateDto>(timeRange, ct);
-        Activity.CaloriesQueryCallback = (timeRange, ct) => GetHealthData<ActiveCaloriesBurnedDto>(timeRange, ct);
+        _activityService.HeartRateQueryCallback = (timeRange, ct) => GetHealthData<HeartRateDto>(timeRange, ct);
+        _activityService.CaloriesQueryCallback = (timeRange, ct) => GetHealthData<ActiveCaloriesBurnedDto>(timeRange, ct);
     }
 
     public partial bool IsSupported { get; }
