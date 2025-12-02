@@ -109,11 +109,11 @@ public partial class HealthService
 
             return new();
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
             return new()
             {
-                ErrorException = e
+                ErrorException = ex
             };
         }
     }
@@ -330,11 +330,11 @@ public partial class HealthService
 
             return new();
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
             return new()
             {
-                ErrorException = e
+                ErrorException = ex
             };
         }
     }

@@ -276,18 +276,18 @@ public partial class ActivityService
                 await taskCompletionSource.Task;
                 _logger?.LogInformation("Successfully deleted workout record from Health Connect");
             }
-            catch (Exception taskEx)
+            catch (Exception ex)
             {
                 // Handle common cases that might occur even when deletion succeeds
-                if (taskEx.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true ||
-                    taskEx.Message?.Contains("does not exist", StringComparison.OrdinalIgnoreCase) == true)
+                if (ex.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true ||
+                    ex.Message?.Contains("does not exist", StringComparison.OrdinalIgnoreCase) == true)
                 {
-                    _logger?.LogWarning("Workout record not found (may have been already deleted): {Message}", taskEx.Message);
+                    _logger?.LogWarning("Workout record not found (may have been already deleted): {Message}", ex.Message);
                     // Don't throw - treat as successful deletion
                     return;
                 }
 
-                _logger?.LogError(taskEx, "Error during delete operation");
+                _logger?.LogError(ex, "Error during delete operation");
                 throw;
             }
         }
