@@ -17,6 +17,8 @@ public partial class Home
     private double _calories { get; set; } = 0;
     private double _averageHeartRate { get; set; } = 0;
     private int _heartRateCount { get; set; } = 0;
+    private double _vo2Max { get; set; } = 0;
+    private double _bodyFat { get; set; } = 0;
     private List<WorkoutDto> _workouts { get; set; } = [];
     private string _demoDataMessage { get; set; } = string.Empty;
     private bool _demoDataSuccess { get; set; } = false;
@@ -61,7 +63,9 @@ public partial class Home
                 new() { HealthDataType = HealthDataType.Weight, PermissionType = PermissionType.Write },
                 new() { HealthDataType = HealthDataType.ActiveCaloriesBurned, PermissionType = PermissionType.Write },
                 new() { HealthDataType = HealthDataType.HeartRate, PermissionType = PermissionType.Write },
-                new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Write }
+                new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Write },
+                new() { HealthDataType = HealthDataType.Vo2Max, PermissionType = PermissionType.Write },
+                new() { HealthDataType = HealthDataType.BodyFat, PermissionType = PermissionType.Write }
             };
 
             var permissionResult = await _healthService.RequestPermissions(permissions);
@@ -133,6 +137,28 @@ public partial class Home
                 await _healthService.WriteHealthData(heartRate);
             }
 
+            // Write VO2 Max data
+            var vo2MaxData = new Vo2MaxDto
+            {
+                Id = "",
+                DataOrigin = "DemoApp",
+                Value = 42.5,
+                Timestamp = new DateTimeOffset(today.AddHours(7), localOffset),
+                Unit = "ml/kg/min"
+            };
+            await _healthService.WriteHealthData(vo2MaxData);
+
+            // Write Body Fat data
+            var bodyFatData = new BodyFatDto
+            {
+                Id = "",
+                DataOrigin = "DemoApp",
+                Percentage = 18.5,
+                Timestamp = new DateTimeOffset(today.AddHours(7), localOffset),
+                Unit = "%"
+            };
+            await _healthService.WriteHealthData(bodyFatData);
+
             // Write a strength training workout
             var workoutStart = now.AddHours(-1);
             var workoutEnd = now;
@@ -182,7 +208,9 @@ public partial class Home
                 new() { HealthDataType = HealthDataType.Weight, PermissionType = PermissionType.Read },
                 new() { HealthDataType = HealthDataType.ActiveCaloriesBurned, PermissionType = PermissionType.Read },
                 new() { HealthDataType = HealthDataType.HeartRate, PermissionType = PermissionType.Read },
-                new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Read }
+                new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Read },
+                new() { HealthDataType = HealthDataType.Vo2Max, PermissionType = PermissionType.Read },
+                new() { HealthDataType = HealthDataType.BodyFat, PermissionType = PermissionType.Read }
             };
 
             // Request permissions - if denied, individual reads will fail gracefully
@@ -248,6 +276,30 @@ public partial class Home
                 System.Diagnostics.Debug.WriteLine($"Error loading heart rate: {ex.Message}");
                 _averageHeartRate = 0;
                 _heartRateCount = 0;
+            }
+
+            try
+            {
+                var vo2MaxData = await _healthService.GetHealthData<Vo2MaxDto>(todayRange);
+                var firstVo2Max = vo2MaxData.OrderByDescending(v => v.Timestamp).FirstOrDefault();
+                System.Diagnostics.Debug.WriteLine($"VO2 Max records: {vo2MaxData.Count}, First value: {firstVo2Max?.Value ?? -1}");
+                _vo2Max = firstVo2Max?.Value ?? 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading VO2 Max: {ex.Message}");
+                _vo2Max = 0;
+            }
+
+            try
+            {
+                var bodyFatData = await _healthService.GetHealthData<BodyFatDto>(todayRange);
+                _bodyFat = bodyFatData.OrderByDescending(b => b.Timestamp).FirstOrDefault()?.Percentage ?? 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading body fat: {ex.Message}");
+                _bodyFat = 0;
             }
 
             // Fetch today's workouts using ActivityService

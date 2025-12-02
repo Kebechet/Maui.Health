@@ -47,6 +47,26 @@
     {
         <p>No heart rate data available for this time period</p>
     }
+
+    <h1>VO2 Max (ml/kg/min):</h1>
+    @if (_vo2Max > 0)
+    {
+        <p>@_vo2Max.ToString("F1") ml/kg/min</p>
+    }
+    else
+    {
+        <p>No VO2 Max data available</p>
+    }
+
+    <h1>Body Fat (%):</h1>
+    @if (_bodyFat > 0)
+    {
+        <p>@_bodyFat.ToString("F1")%</p>
+    }
+    else
+    {
+        <p>No body fat data available</p>
+    }
 }
 else if (_activeTab == 1)
 {

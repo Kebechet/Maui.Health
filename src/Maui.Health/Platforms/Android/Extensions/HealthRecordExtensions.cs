@@ -4,9 +4,7 @@ using AndroidX.Health.Connect.Client.Records.Metadata;
 using AndroidX.Health.Connect.Client.Units;
 using Java.Time;
 using Maui.Health.Constants;
-using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
-using Maui.Health.Platforms.Android.Enums;
 using System.Diagnostics;
 using static Maui.Health.Platforms.Android.AndroidConstants;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
@@ -179,7 +177,8 @@ internal static class HealthRecordExtensions
         }
 
         var timestamp = vo2MaxRecord.Time.ToDateTimeOffset();
-        var value = vo2MaxRecord.ExtractVo2MaxValue();
+        // Extract VO2Max value using reflection - try common property names
+        var value = ((Java.Lang.Object)vo2MaxRecord).ExtractVo2MaxValue();
 
         return new Vo2MaxDto
         {
@@ -216,26 +215,40 @@ internal static class HealthRecordExtensions
         try
         {
             if (mass.TryOfficialUnitsApi("KILOGRAMS", out double officialValue))
+            {
                 return officialValue;
+            }
 
             if (mass.TryGetPropertyValue("inKilograms", out double value1))
+            {
                 return value1;
+            }
 
             if (mass.TryCallMethod("inKilograms", out double value2))
+            {
                 return value2;
+            }
 
             if (mass.TryCallMethod("getInKilograms", out double value3))
+            {
                 return value3;
+            }
 
             if (mass.TryGetPropertyValue("value", out double value4))
+            {
                 return value4 / UnitConversions.GramsPerKilogram;
+            }
 
             if (mass.TryCallMethod("getValue", out double value5))
+            {
                 return value5 / UnitConversions.GramsPerKilogram;
+            }
 
             var stringValue = mass.ToString();
             if (stringValue.TryParseFromString(out double value6))
+            {
                 return value6 / UnitConversions.GramsPerKilogram;
+            }
         }
         catch (Exception ex)
         {
@@ -250,23 +263,35 @@ internal static class HealthRecordExtensions
         try
         {
             if (length.TryOfficialUnitsApi("METERS", out double officialValue))
+            {
                 return officialValue * UnitConversions.CentimetersPerMeter;
+            }
 
             if (length.TryGetPropertyValue("value", out double value1))
+            {
                 return value1 * UnitConversions.CentimetersPerMeter;
+            }
 
             if (length.TryGetPropertyValue("inMeters", out double value2))
+            {
                 return value2 * UnitConversions.CentimetersPerMeter;
+            }
 
             if (length.TryCallMethod("inMeters", out double value3))
+            {
                 return value3 * UnitConversions.CentimetersPerMeter;
+            }
 
             if (length.TryCallMethod("getValue", out double value4))
+            {
                 return value4 * UnitConversions.CentimetersPerMeter;
+            }
 
             var stringValue = length.ToString();
             if (stringValue.TryParseFromString(out double value5))
+            {
                 return value5 * UnitConversions.CentimetersPerMeter;
+            }
         }
         catch (Exception ex)
         {
@@ -281,26 +306,40 @@ internal static class HealthRecordExtensions
         try
         {
             if (energy.TryOfficialUnitsApi("KILOCALORIES", out double officialValue))
+            {
                 return officialValue;
+            }
 
             if (energy.TryGetPropertyValue("inKilocalories", out double value1))
+            {
                 return value1;
+            }
 
             if (energy.TryCallMethod("inKilocalories", out double value2))
+            {
                 return value2;
+            }
 
             if (energy.TryCallMethod("getInKilocalories", out double value3))
+            {
                 return value3;
+            }
 
             if (energy.TryGetPropertyValue("value", out double value4))
+            {
                 return value4 / UnitConversions.CaloriesPerKilocalorie;
+            }
 
             if (energy.TryCallMethod("getValue", out double value5))
+            {
                 return value5 / UnitConversions.CaloriesPerKilocalorie;
+            }
 
             var stringValue = energy.ToString();
             if (stringValue.TryParseFromString(out double value6))
+            {
                 return value6 / UnitConversions.CaloriesPerKilocalorie;
+            }
         }
         catch (Exception ex)
         {
@@ -315,13 +354,19 @@ internal static class HealthRecordExtensions
         try
         {
             if (percentage.TryOfficialUnitsApi("PERCENT", out double officialValue))
+            {
                 return officialValue;
+            }
 
             if (percentage.TryGetPropertyValue("value", out double value1))
+            {
                 return value1;
+            }
 
             if (percentage.TryCallMethod("getValue", out double value2))
+            {
                 return value2;
+            }
         }
         catch (Exception ex)
         {
@@ -335,14 +380,26 @@ internal static class HealthRecordExtensions
     {
         try
         {
-            if (vo2Max.TryOfficialUnitsApi("MILLILITERS_PER_MINUTE_KILOGRAM", out double officialValue))
-                return officialValue;
+            // Field name is vo2MillilitersPerMinuteKilogram (not vo2MaxMillilitersPerMinuteKilogram)
+            if (vo2Max.TryGetPropertyValue("vo2MillilitersPerMinuteKilogram", out double vo2Value))
+            {
+                return vo2Value;
+            }
+
+            if (vo2Max.TryCallMethod("getVo2MillilitersPerMinuteKilogram", out double vo2Value2))
+            {
+                return vo2Value2;
+            }
 
             if (vo2Max.TryGetPropertyValue("value", out double value1))
+            {
                 return value1;
+            }
 
             if (vo2Max.TryCallMethod("getValue", out double value2))
+            {
                 return value2;
+            }
         }
         catch (Exception ex)
         {
@@ -357,19 +414,29 @@ internal static class HealthRecordExtensions
         try
         {
             if (pressure.TryOfficialUnitsApi("MILLIMETERS_OF_MERCURY", out double officialValue))
+            {
                 return officialValue;
+            }
 
             if (pressure.TryGetPropertyValue("inMillimetersOfMercury", out double value1))
+            {
                 return value1;
+            }
 
             if (pressure.TryCallMethod("inMillimetersOfMercury", out double value2))
+            {
                 return value2;
+            }
 
             if (pressure.TryGetPropertyValue("value", out double value3))
+            {
                 return value3;
+            }
 
             if (pressure.TryCallMethod("getValue", out double value4))
+            {
                 return value4;
+            }
         }
         catch (Exception ex)
         {
@@ -551,6 +618,8 @@ internal static class HealthRecordExtensions
             HeightDto heightDto => heightDto.ToHeightRecord(),
             ActiveCaloriesBurnedDto caloriesDto => caloriesDto.ToActiveCaloriesBurnedRecord(),
             HeartRateDto heartRateDto => heartRateDto.ToHeartRateRecord(),
+            BodyFatDto bodyFatDto => bodyFatDto.ToBodyFatRecord(),
+            Vo2MaxDto vo2MaxDto => vo2MaxDto.ToVo2MaxRecord(),
             _ => null
         };
     }
@@ -678,6 +747,47 @@ internal static class HealthRecordExtensions
             time!,
             offset,
             samplesList,
+            metadata
+        );
+
+        return record;
+    }
+
+    public static BodyFatRecord ToBodyFatRecord(this BodyFatDto dto)
+    {
+        var time = dto.Timestamp.ToJavaInstant();
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        // Percentage is a simple value class, create directly
+        var percentage = new Percentage(dto.Percentage);
+
+        var record = new BodyFatRecord(
+            time!,
+            offset,
+            percentage,
+            metadata
+        );
+
+        return record;
+    }
+
+    public static Vo2MaxRecord ToVo2MaxRecord(this Vo2MaxDto dto)
+    {
+        var time = dto.Timestamp.ToJavaInstant();
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        // MeasurementMethod constants: 0 = Other, 1 = Metabolic cart, 2 = Heart rate ratio, 3 = Cooper test, 4 = Multistage fitness test, 5 = Rockport fitness test
+        const int measurementMethodOther = 0;
+
+        var record = new Vo2MaxRecord(
+            time!,
+            offset,
+            dto.Value,
+            measurementMethodOther,
             metadata
         );
 

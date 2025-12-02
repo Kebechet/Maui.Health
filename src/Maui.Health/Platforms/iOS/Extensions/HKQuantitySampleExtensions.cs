@@ -144,6 +144,8 @@ internal static class HKQuantitySampleExtensions
             HeightDto heightDto => heightDto.ToHKQuantitySample(),
             ActiveCaloriesBurnedDto caloriesDto => caloriesDto.ToHKQuantitySample(),
             HeartRateDto heartRateDto => heartRateDto.ToHKQuantitySample(),
+            BodyFatDto bodyFatDto => bodyFatDto.ToHKQuantitySample(),
+            Vo2MaxDto vo2MaxDto => vo2MaxDto.ToHKQuantitySample(),
             _ => throw new NotImplementedException($"DTO type {dto.GetType().Name} is not implemented for write operation")
         };
     }
@@ -193,6 +195,25 @@ internal static class HKQuantitySampleExtensions
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.HeartRate)!;
         var unit = HKUnit.Count.UnitDividedBy(HKUnit.Minute);
         var quantity = HKQuantity.FromQuantity(unit, dto.BeatsPerMinute);
+        var date = dto.Timestamp.ToNSDate();
+
+        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+    }
+
+    public static HKQuantitySample ToHKQuantitySample(this BodyFatDto dto)
+    {
+        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.BodyFatPercentage)!;
+        var quantity = HKQuantity.FromQuantity(HKUnit.Percent, dto.Percentage / 100.0); // HealthKit expects 0-1 range
+        var date = dto.Timestamp.ToNSDate();
+
+        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+    }
+
+    public static HKQuantitySample ToHKQuantitySample(this Vo2MaxDto dto)
+    {
+        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.VO2Max)!;
+        var unit = HKUnit.FromString(Units.HKVo2Max);
+        var quantity = HKQuantity.FromQuantity(unit, dto.Value);
         var date = dto.Timestamp.ToNSDate();
 
         return HKQuantitySample.FromType(quantityType, quantity, date, date);

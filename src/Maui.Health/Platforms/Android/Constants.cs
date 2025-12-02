@@ -101,5 +101,15 @@ public static class AndroidConstants
         /// Kilocalories factory method name.
         /// </summary>
         public const string KilocaloriesMethodName = "kilocalories";
+
+        /// <summary>
+        /// Percentage class full name for reflection.
+        /// </summary>
+        public const string PercentageClassName = "androidx.health.connect.client.units.Percentage";
+
+        /// <summary>
+        /// Percentage factory method name.
+        /// </summary>
+        public const string PercentageMethodName = "percentage";
     }
 }
