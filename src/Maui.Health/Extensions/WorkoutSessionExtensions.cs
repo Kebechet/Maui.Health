@@ -56,7 +56,7 @@ public static class WorkoutSessionExtensions
                 { WorkoutMetadata.ActiveDurationSeconds, activeDuration },
                 { WorkoutMetadata.PausedDurationSeconds, session.TotalPausedSeconds },
                 { WorkoutMetadata.PauseCount, session.PauseIntervals.Count },
-                { WorkoutMetadata.PauseIntervals, SerializePauseIntervals(session.PauseIntervals) }
+                { WorkoutMetadata.PauseIntervals, session.PauseIntervals.ToJson() }
             }
         };
     }
@@ -75,9 +75,9 @@ public static class WorkoutSessionExtensions
 
         // Try to extract pause intervals from metadata
         var pauseIntervals = new List<DateRange>();
-        if (workout.Metadata?.TryGetValue("PauseIntervals", out var intervalsObj) == true)
+        if (workout.Metadata?.TryGetValue(WorkoutMetadata.PauseIntervals, out var intervalsObj) == true)
         {
-            pauseIntervals = DeserializePauseIntervals(intervalsObj);
+            pauseIntervals = intervalsObj.ToDateRanges();
         }
 
         return new WorkoutSession(
@@ -111,56 +111,5 @@ public static class WorkoutSessionExtensions
             existingWorkout.MaxHeartRate,
             existingWorkout.MinHeartRate
         );
-    }
-
-    /// <summary>
-    /// Serializes pause intervals to a format that can be stored in metadata
-    /// </summary>
-    private static string SerializePauseIntervals(List<DateRange> intervals)
-    {
-        var serialized = intervals
-            .Select(i => new {
-                Start = i.Start.ToUnixTimeMilliseconds(),
-                End = i.End?.ToUnixTimeMilliseconds()
-            })
-            .ToList();
-
-        return System.Text.Json.JsonSerializer.Serialize(serialized);
-    }
-
-    /// <summary>
-    /// Deserializes pause intervals from metadata
-    /// </summary>
-    private static List<DateRange> DeserializePauseIntervals(object intervalsObj)
-    {
-        try
-        {
-            var json = intervalsObj.ToString();
-            if (string.IsNullOrEmpty(json))
-                return [];
-
-            var intervals = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, long?>>>(json);
-            if (intervals == null)
-                return [];
-
-            return intervals
-                .Select(i =>
-                {
-                    var start = i.TryGetValue("Start", out var startMs) && startMs.HasValue
-                        ? DateTimeOffset.FromUnixTimeMilliseconds(startMs.Value)
-                        : DateTimeOffset.UtcNow;
-
-                    var end = i.TryGetValue("End", out var endMs) && endMs.HasValue
-                        ? DateTimeOffset.FromUnixTimeMilliseconds(endMs.Value)
-                        : (DateTimeOffset?)null;
-
-                    return new DateRange(start, end);
-                })
-                .ToList();
-        }
-        catch
-        {
-            return [];
-        }
     }
 }

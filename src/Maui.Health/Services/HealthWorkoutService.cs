@@ -1,5 +1,6 @@
 using Maui.Health.Constants;
 using Maui.Health.Enums;
+using Maui.Health.Extensions;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 
@@ -188,7 +189,7 @@ public partial class HealthWorkoutService : IHealthWorkoutService
         }
 
         // Parse pause intervals from JSON
-        var pauseIntervals = ParsePauseIntervals(pauseIntervalsJson);
+        var pauseIntervals = pauseIntervalsJson.ParseDateRanges();
 
         return new WorkoutSession(
             activeSessionId,
@@ -235,32 +236,4 @@ public partial class HealthWorkoutService : IHealthWorkoutService
         Preferences.Default.Remove(ActiveSessionStorage.PauseIntervals);
     }
 
-    /// <summary>
-    /// Parses pause intervals from JSON string
-    /// </summary>
-    private static List<DateRange> ParsePauseIntervals(string json)
-    {
-        if (string.IsNullOrEmpty(json))
-        {
-            return [];
-        }
-
-        try
-        {
-            var intervals = System.Text.Json.JsonSerializer.Deserialize<List<(long, long?)>>(json);
-            if (intervals is null)
-            {
-                return [];
-            }
-
-            return intervals.Select(i => new DateRange(
-                DateTimeOffset.FromUnixTimeMilliseconds(i.Item1),
-                i.Item2.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(i.Item2.Value) : null
-            )).ToList();
-        }
-        catch
-        {
-            return [];
-        }
-    }
 }
