@@ -4,7 +4,7 @@ using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Services;
 
-public partial class ActivityService
+public partial class HealthWorkoutService
 {
     public partial Task<List<WorkoutDto>> Read(HealthTimeRange activityTime)
     {

@@ -8,7 +8,7 @@ public interface IHealthService
     /// <summary>
     /// Access to workout/activity tracking service
     /// </summary>
-    ActivityService Activity { get; }
+    HealthWorkoutService Activity { get; }
 
     /// <summary>
     /// Get health data for a specific metric type within a time range

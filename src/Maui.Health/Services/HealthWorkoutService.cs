@@ -5,7 +5,7 @@ using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Services;
 
-public partial class ActivityService
+public partial class HealthWorkoutService
 {
     /// <summary>
     /// Callback to fetch heart rate data for a time range (set by HealthService)

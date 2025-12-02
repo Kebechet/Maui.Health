@@ -10,13 +10,13 @@ using Microsoft.Extensions.Logging;
 
 namespace Maui.Health.Services;
 
-public partial class ActivityService
+public partial class HealthWorkoutService
 {
     private WorkoutSession? _activeWorkoutSession;
-    private readonly ILogger<ActivityService>? _logger;
+    private readonly ILogger<HealthWorkoutService>? _logger;
     private nuint _healthRateLimit { get; set; } = Defaults.HeartRateLimit;
 
-    public ActivityService(ILogger<ActivityService>? logger = null)
+    public HealthWorkoutService(ILogger<HealthWorkoutService>? logger = null)
     {
         _logger = logger;
     }
