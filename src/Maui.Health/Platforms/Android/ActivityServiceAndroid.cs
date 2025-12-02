@@ -9,6 +9,7 @@ using Maui.Health.Enums;
 using Maui.Health.Extensions;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
+using Maui.Health.Platforms.Android;
 using Maui.Health.Platforms.Android.Callbacks;
 using Maui.Health.Platforms.Android.Extensions;
 using Microsoft.Extensions.Logging;
@@ -53,7 +54,7 @@ public partial class ActivityService
                 timeRangeFilter,
                 [],
                 true,
-                Defaults.MaxRecordsPerRequest,
+                AndroidConstants.MaxRecordsPerRequest,
                 null
             );
 
@@ -140,7 +141,7 @@ public partial class ActivityService
             recordsList.Add(record);
 
             var clientType = _healthConnectClient.GetType();
-            var handleField = clientType.GetField(HealthConstants.Android.JniHandleFieldName,
+            var handleField = clientType.GetField(AndroidConstants.JniHandleFieldName,
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
             if (handleField is null)
@@ -212,7 +213,7 @@ public partial class ActivityService
             recordIdsList.Add(workout.Id);
 
             var clientType = _healthConnectClient.GetType();
-            var handleField = clientType.GetField(HealthConstants.Android.JniHandleFieldName,
+            var handleField = clientType.GetField(AndroidConstants.JniHandleFieldName,
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
             if (handleField is null)
