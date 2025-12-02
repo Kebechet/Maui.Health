@@ -16,17 +16,17 @@ using Microsoft.Extensions.Logging;
 
 namespace Maui.Health.Services;
 
-public partial class ActivityService
+public partial class HealthWorkoutService
 {
     private WorkoutSession? _activeWorkoutSession;
-    private readonly ILogger<ActivityService>? _logger;
+    private readonly ILogger<HealthWorkoutService> _logger;
 
     private Context _activityContext => Platform.CurrentActivity ??
         throw new Exception("Current activity is null");
 
     private IHealthConnectClient _healthConnectClient => HealthConnectClient.GetOrCreate(_activityContext);
 
-    public ActivityService(ILogger<ActivityService>? logger = null)
+    public HealthWorkoutService(ILogger<HealthWorkoutService> logger)
     {
         _logger = logger;
     }
@@ -35,7 +35,7 @@ public partial class ActivityService
     {
         try
         {
-            _logger?.LogInformation("Android ActivityService Read: StartTime: {StartTime}, EndTime: {EndTime}",
+            _logger.LogInformation("Android HealthWorkoutService Read: StartTime: {StartTime}, EndTime: {EndTime}",
                 activityTime.StartTime, activityTime.EndTime);
 
 #pragma warning disable CA1416
@@ -96,12 +96,12 @@ public partial class ActivityService
                 }
             }
 
-            _logger?.LogInformation("Android ActivityService: Found {Count} workout records", results.Count);
+            _logger.LogInformation("Android HealthWorkoutService: Found {Count} workout records", results.Count);
             return results;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Android ActivityService Read error");
+            _logger.LogError(ex, "Android HealthWorkoutService Read error");
             return [];
         }
     }
@@ -117,7 +117,7 @@ public partial class ActivityService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Android ActivityService ReadActive error");
+            _logger.LogError(ex, "Android HealthWorkoutService GetActive error");
             return Task.FromResult<WorkoutSession?>(null);
         }
     }
@@ -126,12 +126,12 @@ public partial class ActivityService
     {
         try
         {
-            _logger?.LogInformation("Android ActivityService Write: {ActivityType}", workout.ActivityType);
+            _logger.LogInformation("Android HealthWorkoutService Write: {ActivityType}", workout.ActivityType);
 
             var record = workout.ToExerciseSessionRecord();
             if (record is null)
             {
-                _logger?.LogWarning("Failed to convert WorkoutDto to ExerciseSessionRecord");
+                _logger.LogWarning("Failed to convert WorkoutDto to ExerciseSessionRecord");
                 return;
             }
 
@@ -144,14 +144,14 @@ public partial class ActivityService
 
             if (handleField is null)
             {
-                _logger?.LogWarning("Failed to get handle field from Health Connect client");
+                _logger.LogWarning("Failed to get handle field from Health Connect client");
                 return;
             }
 
             var handle = handleField.GetValue(_healthConnectClient);
             if (handle is not IntPtr jniHandle || jniHandle == IntPtr.Zero)
             {
-                _logger?.LogWarning("Failed to get JNI handle for Health Connect client");
+                _logger.LogWarning("Failed to get JNI handle for Health Connect client");
                 return;
             }
 
@@ -168,7 +168,7 @@ public partial class ActivityService
 
             if (insertMethod is null || clientObject is null)
             {
-                _logger?.LogWarning("Failed to invoke insertRecords method");
+                _logger.LogWarning("Failed to invoke insertRecords method");
                 return;
             }
 
@@ -180,7 +180,7 @@ public partial class ActivityService
 
             if (result is not Java.Lang.Enum javaEnum)
             {
-                _logger?.LogInformation("Successfully wrote workout record to Health Connect");
+                _logger.LogInformation("Successfully wrote workout record to Health Connect");
                 return;
             }
 
@@ -190,11 +190,11 @@ public partial class ActivityService
                 await taskCompletionSource.Task;
             }
 
-            _logger?.LogInformation("Successfully wrote workout record to Health Connect");
+            _logger.LogInformation("Successfully wrote workout record to Health Connect");
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Android ActivityService Write error");
+            _logger.LogError(ex, "Android HealthWorkoutService Write error");
             throw; // Re-throw so caller knows it failed
         }
     }
@@ -204,7 +204,7 @@ public partial class ActivityService
     {
         try
         {
-            _logger?.LogInformation("Android ActivityService Delete: {WorkoutId}", workout.Id);
+            _logger.LogInformation("Android HealthWorkoutService Delete: {WorkoutId}", workout.Id);
 
             // Create a list with the workout ID to delete
             var recordIdsList = new Java.Util.ArrayList();
@@ -216,14 +216,14 @@ public partial class ActivityService
 
             if (handleField is null)
             {
-                _logger?.LogWarning("Failed to get handle field from Health Connect client");
+                _logger.LogWarning("Failed to get handle field from Health Connect client");
                 return;
             }
 
             var handle = handleField.GetValue(_healthConnectClient);
             if (handle is not IntPtr jniHandle || jniHandle == IntPtr.Zero)
             {
-                _logger?.LogWarning("Failed to get JNI handle for Health Connect client");
+                _logger.LogWarning("Failed to get JNI handle for Health Connect client");
                 return;
             }
 
@@ -245,7 +245,7 @@ public partial class ActivityService
 
             if (deleteMethod is null || clientObject is null)
             {
-                _logger?.LogWarning("Failed to invoke deleteRecords method");
+                _logger.LogWarning("Failed to invoke deleteRecords method");
                 return;
             }
 
@@ -274,7 +274,7 @@ public partial class ActivityService
             try
             {
                 await taskCompletionSource.Task;
-                _logger?.LogInformation("Successfully deleted workout record from Health Connect");
+                _logger.LogInformation("Successfully deleted workout record from Health Connect");
             }
             catch (Exception ex)
             {
@@ -282,18 +282,18 @@ public partial class ActivityService
                 if (ex.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true ||
                     ex.Message?.Contains("does not exist", StringComparison.OrdinalIgnoreCase) == true)
                 {
-                    _logger?.LogWarning("Workout record not found (may have been already deleted): {Message}", ex.Message);
+                    _logger.LogWarning("Workout record not found (may have been already deleted): {Message}", ex.Message);
                     // Don't throw - treat as successful deletion
                     return;
                 }
 
-                _logger?.LogError(ex, "Error during delete operation");
+                _logger.LogError(ex, "Error during delete operation");
                 throw;
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Android ActivityService Delete error");
+            _logger.LogError(ex, "Android HealthWorkoutService Delete error");
             // Don't re-throw - log the error but allow the operation to complete
             // This prevents crashes when the record was actually deleted successfully
         }
@@ -314,7 +314,7 @@ public partial class ActivityService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Android ActivityService IsSessionRunning error");
+            _logger.LogError(ex, "Android HealthWorkoutService IsSessionRunning error");
             return Task.FromResult(false);
         }
     }
@@ -323,7 +323,7 @@ public partial class ActivityService
     {
         try
         {
-            _logger?.LogInformation("Android ActivityService StartNewSession: {ActivityType}", activityType);
+            _logger.LogInformation("Android HealthWorkoutService StartNewSession: {ActivityType}", activityType);
 
             var startTime = DateTimeOffset.UtcNow;
             var id = Guid.NewGuid().ToString();
@@ -345,7 +345,7 @@ public partial class ActivityService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Android ActivityService StartNewSession error");
+            _logger.LogError(ex, "Android HealthWorkoutService StartNewSession error");
             return Task.CompletedTask;
         }
     }
@@ -358,17 +358,17 @@ public partial class ActivityService
 
             if (_activeWorkoutSession is null)
             {
-                _logger?.LogWarning("No active session to pause");
+                _logger.LogWarning("No active session to pause");
                 return Task.CompletedTask;
             }
 
             if (_activeWorkoutSession.State != WorkoutSessionState.Running)
             {
-                _logger?.LogWarning("Cannot pause session in state: {State}", _activeWorkoutSession.State);
+                _logger.LogWarning("Cannot pause session in state: {State}", _activeWorkoutSession.State);
                 return Task.CompletedTask;
             }
 
-            _logger?.LogInformation("Android ActivityService Pause");
+            _logger.LogInformation("Android HealthWorkoutService Pause");
 
             _activeWorkoutSession.Pause();
 
@@ -378,7 +378,7 @@ public partial class ActivityService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Android ActivityService Pause error");
+            _logger.LogError(ex, "Android HealthWorkoutService Pause error");
             return Task.CompletedTask;
         }
     }
@@ -391,17 +391,17 @@ public partial class ActivityService
 
             if (_activeWorkoutSession is null)
             {
-                _logger?.LogWarning("No active session to resume");
+                _logger.LogWarning("No active session to resume");
                 return Task.CompletedTask;
             }
 
             if (_activeWorkoutSession.State != WorkoutSessionState.Paused)
             {
-                _logger?.LogWarning("Cannot resume session in state: {State}", _activeWorkoutSession.State);
+                _logger.LogWarning("Cannot resume session in state: {State}", _activeWorkoutSession.State);
                 return Task.CompletedTask;
             }
 
-            _logger?.LogInformation("Android ActivityService Resume");
+            _logger.LogInformation("Android HealthWorkoutService Resume");
 
             _activeWorkoutSession.Resume();
 
@@ -411,7 +411,7 @@ public partial class ActivityService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Android ActivityService Resume error");
+            _logger.LogError(ex, "Android HealthWorkoutService Resume error");
             return Task.CompletedTask;
         }
     }
@@ -431,7 +431,7 @@ public partial class ActivityService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Android ActivityService IsPaused error");
+            _logger.LogError(ex, "Android HealthWorkoutService IsPaused error");
             return Task.FromResult(false);
         }
     }
@@ -444,14 +444,14 @@ public partial class ActivityService
 
             if (_activeWorkoutSession is null)
             {
-                _logger?.LogWarning("No active session to end");
+                _logger.LogWarning("No active session to end");
 
                 ClearSessionPreferences();
 
                 return Task.FromResult<WorkoutDto?>(null);
             }
 
-            _logger?.LogInformation("Android ActivityService EndActiveSession");
+            _logger.LogInformation("Android HealthWorkoutService EndActiveSession");
 
             _activeWorkoutSession.End();
 
@@ -459,8 +459,8 @@ public partial class ActivityService
             var totalElapsed = (endTime - _activeWorkoutSession.StartTime).TotalSeconds;
             var activeDuration = totalElapsed - _activeWorkoutSession.TotalPausedSeconds;
 
-            _logger?.LogInformation(
-                "Android ActivityService: Total elapsed: {TotalElapsed}s, Paused: {Paused}s, Active: {Active}s",
+            _logger.LogInformation(
+                "Android HealthWorkoutService: Total elapsed: {TotalElapsed}s, Paused: {Paused}s, Active: {Active}s",
                 totalElapsed, _activeWorkoutSession.TotalPausedSeconds, activeDuration);
 
             var completedWorkout = _activeWorkoutSession.ToWorkoutDto(endTime);
@@ -473,7 +473,7 @@ public partial class ActivityService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Android ActivityService EndActiveSession error");
+            _logger.LogError(ex, "Android HealthWorkoutService EndActiveSession error");
 
             ClearSessionPreferences();
 

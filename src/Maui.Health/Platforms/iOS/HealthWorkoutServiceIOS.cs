@@ -13,10 +13,10 @@ namespace Maui.Health.Services;
 public partial class HealthWorkoutService
 {
     private WorkoutSession? _activeWorkoutSession;
-    private readonly ILogger<HealthWorkoutService>? _logger;
+    private readonly ILogger<HealthWorkoutService> _logger;
     private nuint _healthRateLimit { get; set; } = Defaults.HeartRateLimit;
 
-    public HealthWorkoutService(ILogger<HealthWorkoutService>? logger = null)
+    public HealthWorkoutService(ILogger<HealthWorkoutService> logger)
     {
         _logger = logger;
     }
@@ -30,14 +30,14 @@ public partial class HealthWorkoutService
                 return [];
             }
 
-            _logger?.LogInformation("iOS ActivityService Read: StartTime: {StartTime}, EndTime: {EndTime}",
+            _logger.LogInformation("iOS HealthWorkoutService Read: StartTime: {StartTime}, EndTime: {EndTime}",
                 activityTime.StartTime, activityTime.EndTime);
 
             // Request read permission for workouts before querying
             var permissionGranted = await RequestWorkoutReadPermission();
             if (!permissionGranted)
             {
-                _logger?.LogWarning("iOS ActivityService: Workout read permission not granted");
+                _logger.LogWarning("iOS HealthWorkoutService: Workout read permission not granted");
                 return [];
             }
 
@@ -94,12 +94,12 @@ public partial class HealthWorkoutService
                 }
             }
 
-            _logger?.LogInformation("iOS ActivityService: Found {Count} workout records", dtos.Count);
+            _logger.LogInformation("iOS HealthWorkoutService: Found {Count} workout records", dtos.Count);
             return dtos;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "iOS ActivityService Read error");
+            _logger.LogError(ex, "iOS HealthWorkoutService Read error");
             return [];
         }
     }
@@ -115,7 +115,7 @@ public partial class HealthWorkoutService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "iOS ActivityService ReadActive error");
+            _logger.LogError(ex, "iOS HealthWorkoutService ReadActive error");
             return Task.FromResult<WorkoutSession?>(null);
         }
     }
@@ -129,12 +129,12 @@ public partial class HealthWorkoutService
                 return;
             }
 
-            _logger?.LogInformation("iOS ActivityService Write: {ActivityType}", workout.ActivityType);
+            _logger.LogInformation("iOS HealthWorkoutService Write: {ActivityType}", workout.ActivityType);
 
             var hkWorkout = workout.ToHKWorkout();
             if (hkWorkout == null)
             {
-                _logger?.LogWarning("Failed to convert WorkoutDto to HKWorkout");
+                _logger.LogWarning("Failed to convert WorkoutDto to HKWorkout");
                 return;
             }
 
@@ -145,12 +145,12 @@ public partial class HealthWorkoutService
             {
                 if (error != null)
                 {
-                    _logger?.LogError("iOS ActivityService Write Error: {Error}", error.LocalizedDescription);
+                    _logger.LogError("iOS HealthWorkoutService Write Error: {Error}", error.LocalizedDescription);
                     tcs.TrySetResult(false);
                     return;
                 }
 
-                _logger?.LogInformation("iOS ActivityService: Successfully wrote workout");
+                _logger.LogInformation("iOS HealthWorkoutService: Successfully wrote workout");
                 tcs.TrySetResult(success);
             });
 
@@ -158,7 +158,7 @@ public partial class HealthWorkoutService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "iOS ActivityService Write error");
+            _logger.LogError(ex, "iOS HealthWorkoutService Write error");
         }
     }
 
@@ -171,13 +171,13 @@ public partial class HealthWorkoutService
                 return;
             }
 
-            _logger?.LogInformation("iOS ActivityService Delete: {WorkoutId}", workout.Id);
+            _logger.LogInformation("iOS HealthWorkoutService Delete: {WorkoutId}", workout.Id);
 
             // To delete a workout from HealthKit, we need to query for it first using its UUID
             // The workout.Id should be the UUID string from HealthKit
             if (!Guid.TryParse(workout.Id, out var workoutGuid))
             {
-                _logger?.LogWarning("Invalid workout ID format for deletion: {WorkoutId}", workout.Id);
+                _logger.LogWarning("Invalid workout ID format for deletion: {WorkoutId}", workout.Id);
                 return;
             }
 
@@ -195,7 +195,7 @@ public partial class HealthWorkoutService
                 {
                     if (error != null)
                     {
-                        _logger?.LogError("iOS ActivityService Delete query error: {Error}", error.LocalizedDescription);
+                        _logger.LogError("iOS HealthWorkoutService Delete query error: {Error}", error.LocalizedDescription);
                         tcs.TrySetResult(null);
                         return;
                     }
@@ -211,7 +211,7 @@ public partial class HealthWorkoutService
 
             if (hkWorkout == null)
             {
-                _logger?.LogWarning("Workout not found for deletion: {WorkoutId}", workout.Id);
+                _logger.LogWarning("Workout not found for deletion: {WorkoutId}", workout.Id);
                 return;
             }
 
@@ -220,12 +220,12 @@ public partial class HealthWorkoutService
             {
                 if (error != null)
                 {
-                    _logger?.LogError("iOS ActivityService Delete error: {Error}", error.LocalizedDescription);
+                    _logger.LogError("iOS HealthWorkoutService Delete error: {Error}", error.LocalizedDescription);
                     deleteTcs.TrySetResult(false);
                     return;
                 }
 
-                _logger?.LogInformation("iOS ActivityService: Successfully deleted workout");
+                _logger.LogInformation("iOS HealthWorkoutService: Successfully deleted workout");
                 deleteTcs.TrySetResult(success);
             });
 
@@ -233,7 +233,7 @@ public partial class HealthWorkoutService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "iOS ActivityService Delete error");
+            _logger.LogError(ex, "iOS HealthWorkoutService Delete error");
             throw; // Re-throw so caller knows it failed
         }
     }
@@ -254,7 +254,7 @@ public partial class HealthWorkoutService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "iOS ActivityService IsSessionRunning error");
+            _logger.LogError(ex, "iOS HealthWorkoutService IsSessionRunning error");
             return Task.FromResult(false);
         }
     }
@@ -263,7 +263,7 @@ public partial class HealthWorkoutService
     {
         try
         {
-            _logger?.LogInformation("iOS ActivityService StartNewSession: {ActivityType}", activityType);
+            _logger.LogInformation("iOS HealthWorkoutService StartNewSession: {ActivityType}", activityType);
 
             if (!HKHealthStore.IsHealthDataAvailable)
             {
@@ -290,7 +290,7 @@ public partial class HealthWorkoutService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "iOS ActivityService StartNewSession error");
+            _logger.LogError(ex, "iOS HealthWorkoutService StartNewSession error");
             return Task.CompletedTask;
         }
     }
@@ -303,17 +303,17 @@ public partial class HealthWorkoutService
 
             if (_activeWorkoutSession is null)
             {
-                _logger?.LogWarning("No active session to pause");
+                _logger.LogWarning("No active session to pause");
                 return Task.CompletedTask;
             }
 
             if (_activeWorkoutSession.State != WorkoutSessionState.Running)
             {
-                _logger?.LogWarning("Cannot pause session in state: {State}", _activeWorkoutSession.State);
+                _logger.LogWarning("Cannot pause session in state: {State}", _activeWorkoutSession.State);
                 return Task.CompletedTask;
             }
 
-            _logger?.LogInformation("iOS ActivityService Pause");
+            _logger.LogInformation("iOS HealthWorkoutService Pause");
 
             _activeWorkoutSession.Pause();
 
@@ -323,7 +323,7 @@ public partial class HealthWorkoutService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "iOS ActivityService Pause error");
+            _logger.LogError(ex, "iOS HealthWorkoutService Pause error");
             return Task.CompletedTask;
         }
     }
@@ -336,17 +336,17 @@ public partial class HealthWorkoutService
 
             if (_activeWorkoutSession is null)
             {
-                _logger?.LogWarning("No active session to resume");
+                _logger.LogWarning("No active session to resume");
                 return Task.CompletedTask;
             }
 
             if (_activeWorkoutSession.State != WorkoutSessionState.Paused)
             {
-                _logger?.LogWarning("Cannot resume session in state: {State}", _activeWorkoutSession.State);
+                _logger.LogWarning("Cannot resume session in state: {State}", _activeWorkoutSession.State);
                 return Task.CompletedTask;
             }
 
-            _logger?.LogInformation("iOS ActivityService Resume");
+            _logger.LogInformation("iOS HealthWorkoutService Resume");
 
             _activeWorkoutSession.Resume();
 
@@ -356,7 +356,7 @@ public partial class HealthWorkoutService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "iOS ActivityService Resume error");
+            _logger.LogError(ex, "iOS HealthWorkoutService Resume error");
             return Task.CompletedTask;
         }
     }
@@ -376,7 +376,7 @@ public partial class HealthWorkoutService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "iOS ActivityService IsPaused error");
+            _logger.LogError(ex, "iOS HealthWorkoutService IsPaused error");
             return Task.FromResult(false);
         }
     }
@@ -389,13 +389,13 @@ public partial class HealthWorkoutService
 
             if (_activeWorkoutSession is null)
             {
-                _logger?.LogWarning("No active session to end");
+                _logger.LogWarning("No active session to end");
                 // Still clear preferences in case there's stale data
                 ClearSessionPreferences();
                 return Task.FromResult<WorkoutDto?>(null);
             }
 
-            _logger?.LogInformation("iOS ActivityService EndActiveSession");
+            _logger.LogInformation("iOS HealthWorkoutService EndActiveSession");
 
             _activeWorkoutSession.End();
 
@@ -403,8 +403,8 @@ public partial class HealthWorkoutService
             var totalElapsed = (endTime - _activeWorkoutSession.StartTime).TotalSeconds;
             var activeDuration = totalElapsed - _activeWorkoutSession.TotalPausedSeconds;
 
-            _logger?.LogInformation(
-                "iOS ActivityService: Total elapsed: {TotalElapsed}s, Paused: {Paused}s, Active: {Active}s",
+            _logger.LogInformation(
+                "iOS HealthWorkoutService: Total elapsed: {TotalElapsed}s, Paused: {Paused}s, Active: {Active}s",
                 totalElapsed, _activeWorkoutSession.TotalPausedSeconds, activeDuration);
 
             var completedWorkout = _activeWorkoutSession.ToWorkoutDto(endTime);
@@ -416,7 +416,7 @@ public partial class HealthWorkoutService
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "iOS ActivityService EndActiveSession error");
+            _logger.LogError(ex, "iOS HealthWorkoutService EndActiveSession error");
             // Always clear preferences even if there was an error
             ClearSessionPreferences();
 
@@ -442,16 +442,16 @@ public partial class HealthWorkoutService
 
             if (error != null)
             {
-                _logger?.LogError("iOS ActivityService: Permission request error: {Error}", error.LocalizedDescription);
+                _logger.LogError("iOS HealthWorkoutService: Permission request error: {Error}", error.LocalizedDescription);
                 return false;
             }
 
-            _logger?.LogInformation("iOS ActivityService: Workout read permission granted: {Success}", success);
+            _logger.LogInformation("iOS HealthWorkoutService: Workout read permission granted: {Success}", success);
             return success;
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "iOS ActivityService: Error requesting workout read permission");
+            _logger.LogError(ex, "iOS HealthWorkoutService: Error requesting workout read permission");
             return false;
         }
     }
