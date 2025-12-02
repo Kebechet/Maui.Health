@@ -1,7 +1,7 @@
 using Foundation;
 using HealthKit;
+using Maui.Health.Constants;
 using Maui.Health.Models.Metrics;
-using static Maui.Health.Constants.HealthConstants;
 
 namespace Maui.Health.Platforms.iOS.Extensions;
 

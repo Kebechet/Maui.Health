@@ -2,7 +2,6 @@ using Maui.Health.Constants;
 using Maui.Health.Enums;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
-using static Maui.Health.Constants.HealthConstants;
 
 namespace Maui.Health.Services;
 
@@ -165,18 +164,18 @@ public partial class ActivityService
     /// </summary>
     protected WorkoutSession? LoadWorkoutSessionFromPreferences()
     {
-        var activeSessionId = Preferences.Default.Get(SessionPreferenceKeys.ActiveSessionId, string.Empty);
+        var activeSessionId = Preferences.Default.Get(ActiveSessionStorage.ActiveSessionId, string.Empty);
         if (string.IsNullOrEmpty(activeSessionId))
         {
             return null;
         }
 
-        var activityTypeStr = Preferences.Default.Get(SessionPreferenceKeys.ActivityType, string.Empty);
-        var title = Preferences.Default.Get(SessionPreferenceKeys.Title, string.Empty);
-        var startTimeMs = Preferences.Default.Get(SessionPreferenceKeys.StartTime, Defaults.DefaultTimestampValue);
-        var dataOrigin = Preferences.Default.Get(SessionPreferenceKeys.DataOrigin, string.Empty);
-        var stateStr = Preferences.Default.Get(SessionPreferenceKeys.State, string.Empty);
-        var pauseIntervalsJson = Preferences.Default.Get(SessionPreferenceKeys.PauseIntervals, string.Empty);
+        var activityTypeStr = Preferences.Default.Get(ActiveSessionStorage.ActivityType, string.Empty);
+        var title = Preferences.Default.Get(ActiveSessionStorage.Title, string.Empty);
+        var startTimeMs = Preferences.Default.Get(ActiveSessionStorage.StartTime, Defaults.DefaultTimestampValue);
+        var dataOrigin = Preferences.Default.Get(ActiveSessionStorage.DataOrigin, string.Empty);
+        var stateStr = Preferences.Default.Get(ActiveSessionStorage.State, string.Empty);
+        var pauseIntervalsJson = Preferences.Default.Get(ActiveSessionStorage.PauseIntervals, string.Empty);
 
         if (!Enum.TryParse<ActivityType>(activityTypeStr, out var activityType) || startTimeMs <= 0)
         {
@@ -207,19 +206,19 @@ public partial class ActivityService
     /// </summary>
     protected void SaveWorkoutSessionToPreferences(Models.WorkoutSession session)
     {
-        Preferences.Default.Set(SessionPreferenceKeys.ActiveSessionId, session.Id);
-        Preferences.Default.Set(SessionPreferenceKeys.ActivityType, session.ActivityType.ToString());
-        Preferences.Default.Set(SessionPreferenceKeys.Title, session.Title ?? "");
-        Preferences.Default.Set(SessionPreferenceKeys.StartTime, session.StartTime.ToUnixTimeMilliseconds());
-        Preferences.Default.Set(SessionPreferenceKeys.DataOrigin, session.DataOrigin);
-        Preferences.Default.Set(SessionPreferenceKeys.State, session.State.ToString());
+        Preferences.Default.Set(ActiveSessionStorage.ActiveSessionId, session.Id);
+        Preferences.Default.Set(ActiveSessionStorage.ActivityType, session.ActivityType.ToString());
+        Preferences.Default.Set(ActiveSessionStorage.Title, session.Title ?? "");
+        Preferences.Default.Set(ActiveSessionStorage.StartTime, session.StartTime.ToUnixTimeMilliseconds());
+        Preferences.Default.Set(ActiveSessionStorage.DataOrigin, session.DataOrigin);
+        Preferences.Default.Set(ActiveSessionStorage.State, session.State.ToString());
 
         // Serialize pause intervals to JSON
         var intervals = session.PauseIntervals
             .Select(i => (i.PauseStart.ToUnixTimeMilliseconds(), i.PauseEnd?.ToUnixTimeMilliseconds()))
             .ToList();
         var json = System.Text.Json.JsonSerializer.Serialize(intervals);
-        Preferences.Default.Set(SessionPreferenceKeys.PauseIntervals, json);
+        Preferences.Default.Set(ActiveSessionStorage.PauseIntervals, json);
     }
 
     /// <summary>
@@ -227,13 +226,13 @@ public partial class ActivityService
     /// </summary>
     protected void ClearSessionPreferences()
     {
-        Preferences.Default.Remove(SessionPreferenceKeys.ActiveSessionId);
-        Preferences.Default.Remove(SessionPreferenceKeys.ActivityType);
-        Preferences.Default.Remove(SessionPreferenceKeys.Title);
-        Preferences.Default.Remove(SessionPreferenceKeys.StartTime);
-        Preferences.Default.Remove(SessionPreferenceKeys.DataOrigin);
-        Preferences.Default.Remove(SessionPreferenceKeys.State);
-        Preferences.Default.Remove(SessionPreferenceKeys.PauseIntervals);
+        Preferences.Default.Remove(ActiveSessionStorage.ActiveSessionId);
+        Preferences.Default.Remove(ActiveSessionStorage.ActivityType);
+        Preferences.Default.Remove(ActiveSessionStorage.Title);
+        Preferences.Default.Remove(ActiveSessionStorage.StartTime);
+        Preferences.Default.Remove(ActiveSessionStorage.DataOrigin);
+        Preferences.Default.Remove(ActiveSessionStorage.State);
+        Preferences.Default.Remove(ActiveSessionStorage.PauseIntervals);
     }
 
     /// <summary>

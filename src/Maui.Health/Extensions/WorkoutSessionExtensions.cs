@@ -1,7 +1,7 @@
+using Maui.Health.Constants;
 using Maui.Health.Enums;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
-using static Maui.Health.Constants.HealthConstants;
 
 namespace Maui.Health.Extensions;
 
@@ -53,10 +53,10 @@ public static class WorkoutSessionExtensions
             // Store pause/resume metadata
             Metadata = new Dictionary<string, object>
             {
-                { MetadataKeys.ActiveDurationSeconds, activeDuration },
-                { MetadataKeys.PausedDurationSeconds, session.TotalPausedSeconds },
-                { MetadataKeys.PauseCount, session.PauseIntervals.Count },
-                { MetadataKeys.PauseIntervals, SerializePauseIntervals(session.PauseIntervals) }
+                { WorkoutMetadata.ActiveDurationSeconds, activeDuration },
+                { WorkoutMetadata.PausedDurationSeconds, session.TotalPausedSeconds },
+                { WorkoutMetadata.PauseCount, session.PauseIntervals.Count },
+                { WorkoutMetadata.PauseIntervals, SerializePauseIntervals(session.PauseIntervals) }
             }
         };
     }

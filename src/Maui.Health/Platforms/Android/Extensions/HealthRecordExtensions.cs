@@ -8,7 +8,6 @@ using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android.Enums;
 using System.Diagnostics;
-using static Maui.Health.Constants.HealthConstants;
 using static Maui.Health.Platforms.Android.AndroidConstants;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
 using WeightRecord = AndroidX.Health.Connect.Client.Records.WeightRecord;
@@ -565,8 +564,8 @@ internal static class HealthRecordExtensions
     public static StepsRecord ToStepsRecord(this StepsDto dto)
     {
 #pragma warning disable CA1416
-        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
-        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
+        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
 #pragma warning restore CA1416
 
         var metadata = new Metadata();
@@ -587,7 +586,7 @@ internal static class HealthRecordExtensions
     public static WeightRecord ToWeightRecord(this WeightDto dto)
     {
 #pragma warning disable CA1416
-        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
 #pragma warning restore CA1416
 
         var metadata = new Metadata();
@@ -617,7 +616,7 @@ internal static class HealthRecordExtensions
     public static HeightRecord ToHeightRecord(this HeightDto dto)
     {
 #pragma warning disable CA1416
-        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
 #pragma warning restore CA1416
 
         var metadata = new Metadata();
@@ -647,8 +646,8 @@ internal static class HealthRecordExtensions
     public static ActiveCaloriesBurnedRecord ToActiveCaloriesBurnedRecord(this ActiveCaloriesBurnedDto dto)
     {
 #pragma warning disable CA1416
-        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
-        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+        var startTime = Instant.Parse(dto.StartTime.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
+        var endTime = Instant.Parse(dto.EndTime.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
 #pragma warning restore CA1416
 
         var metadata = new Metadata();
@@ -680,7 +679,7 @@ internal static class HealthRecordExtensions
     public static HeartRateRecord ToHeartRateRecord(this HeartRateDto dto)
     {
 #pragma warning disable CA1416
-        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DateFormats.Iso8601Utc));
+        var time = Instant.Parse(dto.Timestamp.ToUniversalTime().ToString(DataFormats.Iso8601Utc));
 #pragma warning restore CA1416
 
         var metadata = new Metadata();

@@ -3,7 +3,7 @@ namespace Maui.Health.Constants;
 /// <summary>
 /// Shared preference keys for storing active workout session data
 /// </summary>
-internal static class SessionPreferenceKeys
+internal static class ActiveSessionStorage
 {
     public const string ActiveSessionId = "ActiveSessionId";
     public const string ActivityType = "ActiveSessionActivityType";

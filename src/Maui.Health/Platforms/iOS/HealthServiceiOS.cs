@@ -1,5 +1,6 @@
 ﻿using Foundation;
 using HealthKit;
+using Maui.Health.Constants;
 using Maui.Health.Enums;
 using Maui.Health.Enums.Errors;
 using Maui.Health.Extensions;
@@ -9,7 +10,6 @@ using Maui.Health.Platforms.iOS.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Platform;
 using System.Collections.Generic;
-using static Maui.Health.Constants.HealthConstants;
 
 namespace Maui.Health.Services;
 

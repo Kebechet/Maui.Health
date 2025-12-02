@@ -18,9 +18,7 @@ using Microsoft.Extensions.Logging;
 using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
 using Maui.Health.Enums;
-using Maui.Health.Constants;
 using Maui.Health.Platforms.Android;
-using static Maui.Health.Constants.HealthConstants;
 
 namespace Maui.Health.Services;
 

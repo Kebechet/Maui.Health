@@ -13,7 +13,6 @@ using Maui.Health.Platforms.Android;
 using Maui.Health.Platforms.Android.Callbacks;
 using Maui.Health.Platforms.Android.Extensions;
 using Microsoft.Extensions.Logging;
-using static Maui.Health.Constants.HealthConstants;
 
 namespace Maui.Health.Services;
 
@@ -311,7 +310,7 @@ public partial class ActivityService
             }
 
             // Check if there's a persisted active session
-            var activeSessionId = Preferences.Default.Get(SessionPreferenceKeys.ActiveSessionId, string.Empty);
+            var activeSessionId = Preferences.Default.Get(ActiveSessionStorage.ActiveSessionId, string.Empty);
             return Task.FromResult(!string.IsNullOrEmpty(activeSessionId));
         }
         catch (Exception ex)
