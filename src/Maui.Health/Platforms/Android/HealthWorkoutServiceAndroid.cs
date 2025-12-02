@@ -66,9 +66,8 @@ public partial class ActivityService
             }
 
             var results = new List<WorkoutDto>();
-            for (int i = 0; i < response.Records.Count; i++)
+            foreach (var record in response.Records)
             {
-                var record = response.Records[i];
                 if (record is not ExerciseSessionRecord exerciseRecord)
                 {
                     continue;
