@@ -15,7 +15,7 @@ public partial class ActivityService
 {
     private WorkoutSession? _activeWorkoutSession;
     private readonly ILogger<ActivityService>? _logger;
-    private nuint _healthRateLimit { get; set; } = Defaults.HealthRateLimit;
+    private nuint _healthRateLimit { get; set; } = Defaults.HeartRateLimit;
 
     public ActivityService(ILogger<ActivityService>? logger = null)
     {

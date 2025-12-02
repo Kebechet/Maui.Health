@@ -16,7 +16,7 @@ namespace Maui.Health.Services;
 public partial class HealthService
 {
     public partial bool IsSupported => HKHealthStore.IsHealthDataAvailable;
-    private nuint _healthRateLimit { get; set; } = Defaults.HealthRateLimit;
+    private nuint _healthRateLimit { get; set; } = Defaults.HeartRateLimit;
 
     /// <summary>
     /// <param name="canRequestFullHistoryPermission">iOS has this by default as TRUE</param>

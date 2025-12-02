@@ -68,6 +68,9 @@ public static class HealthConstants
     {
         /// <summary>
         /// Maximum number of records per Health Connect request.
+        /// This is an Android Health Connect API limitation - the SDK enforces a maximum of 1000 records per read request.
+        /// iOS HealthKit does not have this limitation.
+        /// See: https://developer.android.com/health-and-fitness/health-connect/read-data
         /// </summary>
         public const int MaxRecordsPerRequest = 1000;
 
@@ -92,9 +95,9 @@ public static class HealthConstants
         public const double FallbackValue = 0.0;
 
         /// <summary>
-        /// Default health rate limit.
+        /// Default hear rate limit.
         /// </summary>
-        public const int HealthRateLimit = 0;
+        public const int HeartRateLimit = 0;
 
         /// <summary>
         /// Single record limit for queries.
