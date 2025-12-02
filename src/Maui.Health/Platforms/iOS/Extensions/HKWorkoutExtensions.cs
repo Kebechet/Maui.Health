@@ -54,47 +54,4 @@ internal static class HKWorkoutExtensions
             (NSDictionary?)null
         );
     }
-
-    public static HKWorkoutActivityType ToHKWorkoutActivityType(this ActivityType activityType)
-    {
-        return activityType switch
-        {
-            ActivityType.Running => HKWorkoutActivityType.Running,
-            ActivityType.Cycling => HKWorkoutActivityType.Cycling,
-            ActivityType.Walking => HKWorkoutActivityType.Walking,
-            ActivityType.Swimming => HKWorkoutActivityType.Swimming,
-            ActivityType.Hiking => HKWorkoutActivityType.Hiking,
-            ActivityType.Yoga => HKWorkoutActivityType.Yoga,
-            ActivityType.StrengthTraining => HKWorkoutActivityType.TraditionalStrengthTraining,
-            ActivityType.Calisthenics => HKWorkoutActivityType.FunctionalStrengthTraining,
-            ActivityType.Elliptical => HKWorkoutActivityType.Elliptical,
-            ActivityType.Rowing => HKWorkoutActivityType.Rowing,
-            ActivityType.Pilates => HKWorkoutActivityType.Pilates,
-            ActivityType.Dance => HKWorkoutActivityType.Dance,
-            ActivityType.Soccer => HKWorkoutActivityType.Soccer,
-            ActivityType.Basketball => HKWorkoutActivityType.Basketball,
-            ActivityType.Baseball => HKWorkoutActivityType.Baseball,
-            ActivityType.Tennis => HKWorkoutActivityType.Tennis,
-            ActivityType.Golf => HKWorkoutActivityType.Golf,
-            ActivityType.Badminton => HKWorkoutActivityType.Badminton,
-            ActivityType.TableTennis => HKWorkoutActivityType.TableTennis,
-            ActivityType.Volleyball => HKWorkoutActivityType.Volleyball,
-            ActivityType.Cricket => HKWorkoutActivityType.Cricket,
-            ActivityType.Rugby => HKWorkoutActivityType.Rugby,
-            ActivityType.AmericanFootball => HKWorkoutActivityType.AmericanFootball,
-            ActivityType.Skiing => HKWorkoutActivityType.DownhillSkiing,
-            ActivityType.Snowboarding => HKWorkoutActivityType.Snowboarding,
-            ActivityType.SurfingSports => HKWorkoutActivityType.SurfingSports,
-            ActivityType.Sailing => HKWorkoutActivityType.Sailing,
-            ActivityType.MartialArts => HKWorkoutActivityType.MartialArts,
-            ActivityType.Boxing => HKWorkoutActivityType.Boxing,
-            ActivityType.Wrestling => HKWorkoutActivityType.Wrestling,
-            ActivityType.Climbing => HKWorkoutActivityType.Climbing,
-            ActivityType.CrossTraining => HKWorkoutActivityType.CrossTraining,
-            ActivityType.StairClimbing => HKWorkoutActivityType.StairClimbing,
-            ActivityType.JumpRope => HKWorkoutActivityType.JumpRope,
-            ActivityType.Unknown => HKWorkoutActivityType.Other,
-            _ => HKWorkoutActivityType.Other
-        };
-    }
 }
