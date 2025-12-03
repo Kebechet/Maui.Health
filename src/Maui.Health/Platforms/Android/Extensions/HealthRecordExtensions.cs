@@ -6,7 +6,11 @@ using Java.Time;
 using Maui.Health.Constants;
 using Maui.Health.Models.Metrics;
 using System.Diagnostics;
+using UnitsNet;
 using static Maui.Health.Platforms.Android.AndroidConstants;
+using Length = AndroidX.Health.Connect.Client.Units.Length;
+using Mass = AndroidX.Health.Connect.Client.Units.Mass;
+using Energy = AndroidX.Health.Connect.Client.Units.Energy;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
 using WeightRecord = AndroidX.Health.Connect.Client.Records.WeightRecord;
 using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;
@@ -236,18 +240,18 @@ internal static class HealthRecordExtensions
 
             if (mass.TryGetPropertyValue("value", out double value4))
             {
-                return value4 / UnitConversions.GramsPerKilogram;
+                return UnitsNet.Mass.FromGrams(value4).Kilograms;
             }
 
             if (mass.TryCallMethod("getValue", out double value5))
             {
-                return value5 / UnitConversions.GramsPerKilogram;
+                return UnitsNet.Mass.FromGrams(value5).Kilograms;
             }
 
             var stringValue = mass.ToString();
             if (stringValue.TryParseFromString(out double value6))
             {
-                return value6 / UnitConversions.GramsPerKilogram;
+                return UnitsNet.Mass.FromGrams(value6).Kilograms;
             }
         }
         catch (Exception ex)
@@ -264,33 +268,33 @@ internal static class HealthRecordExtensions
         {
             if (length.TryOfficialUnitsApi("METERS", out double officialValue))
             {
-                return officialValue * UnitConversions.CentimetersPerMeter;
+                return UnitsNet.Length.FromMeters(officialValue).Centimeters;
             }
 
             if (length.TryGetPropertyValue("value", out double value1))
             {
-                return value1 * UnitConversions.CentimetersPerMeter;
+                return UnitsNet.Length.FromMeters(value1).Centimeters;
             }
 
             if (length.TryGetPropertyValue("inMeters", out double value2))
             {
-                return value2 * UnitConversions.CentimetersPerMeter;
+                return UnitsNet.Length.FromMeters(value2).Centimeters;
             }
 
             if (length.TryCallMethod("inMeters", out double value3))
             {
-                return value3 * UnitConversions.CentimetersPerMeter;
+                return UnitsNet.Length.FromMeters(value3).Centimeters;
             }
 
             if (length.TryCallMethod("getValue", out double value4))
             {
-                return value4 * UnitConversions.CentimetersPerMeter;
+                return UnitsNet.Length.FromMeters(value4).Centimeters;
             }
 
             var stringValue = length.ToString();
             if (stringValue.TryParseFromString(out double value5))
             {
-                return value5 * UnitConversions.CentimetersPerMeter;
+                return UnitsNet.Length.FromMeters(value5).Centimeters;
             }
         }
         catch (Exception ex)
@@ -327,18 +331,18 @@ internal static class HealthRecordExtensions
 
             if (energy.TryGetPropertyValue("value", out double value4))
             {
-                return value4 / UnitConversions.CaloriesPerKilocalorie;
+                return UnitsNet.Energy.FromCalories(value4).Kilocalories;
             }
 
             if (energy.TryCallMethod("getValue", out double value5))
             {
-                return value5 / UnitConversions.CaloriesPerKilocalorie;
+                return UnitsNet.Energy.FromCalories(value5).Kilocalories;
             }
 
             var stringValue = energy.ToString();
             if (stringValue.TryParseFromString(out double value6))
             {
-                return value6 / UnitConversions.CaloriesPerKilocalorie;
+                return UnitsNet.Energy.FromCalories(value6).Kilocalories;
             }
         }
         catch (Exception ex)
@@ -493,9 +497,7 @@ internal static class HealthRecordExtensions
         try
         {
             var unitsNamespace = HealthConnectUnitsNamespace;
-            var className = unitName.Contains("KILOGRAM") ? "Mass"
-                : unitName.Contains("KILOCALORIE") || unitName.Contains("CALORIE") ? "Energy"
-                : "Length";
+            var className = GetHealthConnectUnitClassName(unitName);
             var fullClassName = $"{unitsNamespace}.{className}";
 
             var unitClass = Java.Lang.Class.ForName(fullClassName);
@@ -515,6 +517,19 @@ internal static class HealthRecordExtensions
             // Failed to get unit constant
         }
         return false;
+    }
+
+    private static string GetHealthConnectUnitClassName(string unitName)
+    {
+        return unitName switch
+        {
+            var u when u.Contains("KILOGRAM") || u.Contains("GRAM") || u.Contains("POUND") || u.Contains("OUNCE") => "Mass",
+            var u when u.Contains("CALORIE") || u.Contains("JOULE") => "Energy",
+            var u when u.Contains("METER") || u.Contains("MILE") || u.Contains("INCH") || u.Contains("FOOT") => "Length",
+            var u when u.Contains("PERCENT") => "Percentage",
+            var u when u.Contains("MERCURY") || u.Contains("PRESSURE") => "Pressure",
+            _ => "Length" // Default fallback
+        };
     }
 
     private static bool TryGetPropertyValue(this Java.Lang.Object obj, string propertyName, out double value)
@@ -687,7 +702,8 @@ internal static class HealthRecordExtensions
 
         var metersMethod = companion!.Class!.GetDeclaredMethod(Reflection.MetersMethodName, Java.Lang.Double.Type);
         metersMethod!.Accessible = true;
-        var lengthObj = metersMethod.Invoke(companion, new Java.Lang.Double(dto.Value / UnitConversions.CentimetersPerMeter)); // Convert cm to meters
+        var valueInMeters = UnitsNet.Length.FromCentimeters(dto.Value).Meters;
+        var lengthObj = metersMethod.Invoke(companion, new Java.Lang.Double(valueInMeters));
         var length = Java.Lang.Object.GetObject<Length>(lengthObj!.Handle, JniHandleOwnership.DoNotTransfer);
 
         var record = new HeightRecord(

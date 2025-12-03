@@ -2,6 +2,7 @@ using Foundation;
 using HealthKit;
 using Maui.Health.Constants;
 using Maui.Health.Models.Metrics;
+using UnitsNet;
 
 namespace Maui.Health.Platforms.iOS.Extensions;
 
@@ -42,7 +43,8 @@ internal static class HKQuantitySampleExtensions
 
     public static WeightDto ToWeightDto(this HKQuantitySample sample)
     {
-        var value = sample.Quantity.GetDoubleValue(HKUnit.Gram) / UnitConversions.GramsPerKilogram; // Convert grams to kg
+        var valueInGrams = sample.Quantity.GetDoubleValue(HKUnit.Gram);
+        var value = Mass.FromGrams(valueInGrams).Kilograms;
         var timestamp = sample.StartDate.ToDateTimeOffset();
 
         return new WeightDto
@@ -58,6 +60,7 @@ internal static class HKQuantitySampleExtensions
     public static HeightDto ToHeightDto(this HKQuantitySample sample)
     {
         var valueInMeters = sample.Quantity.GetDoubleValue(HKUnit.Meter);
+        var value = Length.FromMeters(valueInMeters).Centimeters;
         var timestamp = sample.StartDate.ToDateTimeOffset();
 
         return new HeightDto
@@ -65,7 +68,7 @@ internal static class HKQuantitySampleExtensions
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigins.HealthKit,
             Timestamp = timestamp,
-            Value = valueInMeters * UnitConversions.CentimetersPerMeter, // Convert to cm
+            Value = value,
             Unit = Units.Centimeter
         };
     }
@@ -105,7 +108,8 @@ internal static class HKQuantitySampleExtensions
 
     public static BodyFatDto ToBodyFatDto(this HKQuantitySample sample)
     {
-        var percentage = sample.Quantity.GetDoubleValue(HKUnit.Percent) * UnitConversions.PercentageMultiplier; // HKUnit.Percent is 0-1, convert to 0-100
+        var decimalValue = sample.Quantity.GetDoubleValue(HKUnit.Percent); // HKUnit.Percent is 0-1
+        var percentage = Ratio.FromDecimalFractions(decimalValue).Percent;
         var timestamp = sample.StartDate.ToDateTimeOffset();
 
         return new BodyFatDto
@@ -163,7 +167,7 @@ internal static class HKQuantitySampleExtensions
     public static HKQuantitySample ToHKQuantitySample(this WeightDto dto)
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.BodyMass)!;
-        var valueInGrams = dto.Value * UnitConversions.GramsPerKilogram; // Convert kg to grams
+        var valueInGrams = Mass.FromKilograms(dto.Value).Grams;
         var quantity = HKQuantity.FromQuantity(HKUnit.Gram, valueInGrams);
         var date = dto.Timestamp.ToNSDate();
 
@@ -173,7 +177,7 @@ internal static class HKQuantitySampleExtensions
     public static HKQuantitySample ToHKQuantitySample(this HeightDto dto)
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.Height)!;
-        var valueInMeters = dto.Value / UnitConversions.CentimetersPerMeter; // Convert cm to meters
+        var valueInMeters = Length.FromCentimeters(dto.Value).Meters;
         var quantity = HKQuantity.FromQuantity(HKUnit.Meter, valueInMeters);
         var date = dto.Timestamp.ToNSDate();
 
