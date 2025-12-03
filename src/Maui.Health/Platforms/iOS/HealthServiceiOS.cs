@@ -111,7 +111,15 @@ public partial class HealthService
         return new();
     }
 
-    public async partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    // Public generic method without async/await to avoid async state machine generation
+    public partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return GetHealthDataCoreAsync<TDto>(timeRange, cancellationToken);
+    }
+
+    // Private helper retains async/await, but is not the public generic API the linker trips on
+    private async Task<List<TDto>> GetHealthDataCoreAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (!IsSupported)
