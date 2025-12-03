@@ -8,102 +8,11 @@ namespace Maui.Health.Platforms.iOS.Extensions;
 internal static class HKWorkoutActivityTypeExtensions
 {
     /// <summary>
-    /// Bidirectional mapping between HKWorkoutActivityType and ActivityType.
-    /// Comments indicate where mappings are not 1:1.
+    /// Bidirectional mapping between ActivityType (key) and HKWorkoutActivityType (value).
+    /// To convert ActivityType -> HKWorkoutActivityType: lookup by key.
+    /// To convert HKWorkoutActivityType -> ActivityType: search by value.
     /// </summary>
-    private static readonly Dictionary<HKWorkoutActivityType, ActivityType> HKWorkoutToActivityMap = new()
-    {
-        { HKWorkoutActivityType.AmericanFootball, ActivityType.AmericanFootball },
-        { HKWorkoutActivityType.Archery, ActivityType.Archery },
-        { HKWorkoutActivityType.AustralianFootball, ActivityType.AustralianFootball },
-        { HKWorkoutActivityType.Badminton, ActivityType.Badminton },
-        { HKWorkoutActivityType.Baseball, ActivityType.Baseball },
-        { HKWorkoutActivityType.Basketball, ActivityType.Basketball },
-        { HKWorkoutActivityType.Bowling, ActivityType.Bowling },
-        { HKWorkoutActivityType.Boxing, ActivityType.Boxing },
-        { HKWorkoutActivityType.Climbing, ActivityType.Climbing },
-        { HKWorkoutActivityType.Cricket, ActivityType.Cricket },
-        { HKWorkoutActivityType.CrossTraining, ActivityType.CrossTraining },
-        { HKWorkoutActivityType.Curling, ActivityType.Curling },
-        { HKWorkoutActivityType.Cycling, ActivityType.Cycling },
-        { HKWorkoutActivityType.Dance, ActivityType.Dance },
-        { HKWorkoutActivityType.DanceInspiredTraining, ActivityType.DanceInspiredTraining },
-        { HKWorkoutActivityType.Elliptical, ActivityType.Elliptical },
-        { HKWorkoutActivityType.EquestrianSports, ActivityType.EquestrianSports },
-        { HKWorkoutActivityType.Fencing, ActivityType.Fencing },
-        { HKWorkoutActivityType.Fishing, ActivityType.Fishing },
-        { HKWorkoutActivityType.FunctionalStrengthTraining, ActivityType.Weightlifting }, // not 1:1 mapping
-        { HKWorkoutActivityType.Golf, ActivityType.Golf },
-        { HKWorkoutActivityType.Gymnastics, ActivityType.Gymnastics },
-        { HKWorkoutActivityType.Handball, ActivityType.Handball },
-        { HKWorkoutActivityType.Hiking, ActivityType.Hiking },
-        { HKWorkoutActivityType.Hockey, ActivityType.Hockey },
-        { HKWorkoutActivityType.Hunting, ActivityType.Hunting },
-        { HKWorkoutActivityType.Lacrosse, ActivityType.Lacrosse },
-        { HKWorkoutActivityType.MartialArts, ActivityType.MartialArts },
-        { HKWorkoutActivityType.MindAndBody, ActivityType.MindAndBody },
-        { HKWorkoutActivityType.MixedMetabolicCardioTraining, ActivityType.MixedMetabolicCardioTraining },
-        { HKWorkoutActivityType.PaddleSports, ActivityType.PaddleSports },
-        { HKWorkoutActivityType.Play, ActivityType.Play },
-        { HKWorkoutActivityType.PreparationAndRecovery, ActivityType.PreparationAndRecovery },
-        { HKWorkoutActivityType.Racquetball, ActivityType.Racquetball },
-        { HKWorkoutActivityType.Rowing, ActivityType.Rowing },
-        { HKWorkoutActivityType.Rugby, ActivityType.Rugby },
-        { HKWorkoutActivityType.Running, ActivityType.Running },
-        { HKWorkoutActivityType.Sailing, ActivityType.Sailing },
-        { HKWorkoutActivityType.SkatingSports, ActivityType.SkatingSports },
-        { HKWorkoutActivityType.SnowSports, ActivityType.SnowSports },
-        { HKWorkoutActivityType.Soccer, ActivityType.Soccer },
-        { HKWorkoutActivityType.Softball, ActivityType.Softball },
-        { HKWorkoutActivityType.Squash, ActivityType.Squash },
-        { HKWorkoutActivityType.StairClimbing, ActivityType.StairClimbing },
-        { HKWorkoutActivityType.SurfingSports, ActivityType.SurfingSports },
-        { HKWorkoutActivityType.Swimming, ActivityType.Swimming },
-        { HKWorkoutActivityType.TableTennis, ActivityType.TableTennis },
-        { HKWorkoutActivityType.Tennis, ActivityType.Tennis },
-        { HKWorkoutActivityType.TrackAndField, ActivityType.TrackAndField },
-        { HKWorkoutActivityType.TraditionalStrengthTraining, ActivityType.StrengthTraining }, // not 1:1 mapping
-        { HKWorkoutActivityType.Volleyball, ActivityType.Volleyball },
-        { HKWorkoutActivityType.Walking, ActivityType.Walking },
-        { HKWorkoutActivityType.WaterFitness, ActivityType.WaterFitness },
-        { HKWorkoutActivityType.WaterPolo, ActivityType.WaterPolo },
-        { HKWorkoutActivityType.WaterSports, ActivityType.WaterSports },
-        { HKWorkoutActivityType.Wrestling, ActivityType.Wrestling },
-        { HKWorkoutActivityType.Yoga, ActivityType.Yoga },
-        { HKWorkoutActivityType.Barre, ActivityType.Barre },
-        { HKWorkoutActivityType.CoreTraining, ActivityType.CoreTraining },
-        { HKWorkoutActivityType.CrossCountrySkiing, ActivityType.Skiing }, // not 1:1 mapping
-        { HKWorkoutActivityType.DownhillSkiing, ActivityType.Skiing }, // not 1:1 mapping
-        { HKWorkoutActivityType.Flexibility, ActivityType.Stretching }, // not 1:1 mapping
-        { HKWorkoutActivityType.HighIntensityIntervalTraining, ActivityType.HighIntensityIntervalTraining },
-        { HKWorkoutActivityType.JumpRope, ActivityType.JumpRope },
-        { HKWorkoutActivityType.Kickboxing, ActivityType.Kickboxing },
-        { HKWorkoutActivityType.Pilates, ActivityType.Pilates },
-        { HKWorkoutActivityType.Snowboarding, ActivityType.Snowboarding },
-        { HKWorkoutActivityType.Stairs, ActivityType.Stairs },
-        { HKWorkoutActivityType.StepTraining, ActivityType.StepTraining },
-        { HKWorkoutActivityType.WheelchairWalkPace, ActivityType.WheelchairWalkPace },
-        { HKWorkoutActivityType.WheelchairRunPace, ActivityType.WheelchairRunPace },
-        { HKWorkoutActivityType.TaiChi, ActivityType.TaiChi },
-        { HKWorkoutActivityType.MixedCardio, ActivityType.MixedCardio },
-        { HKWorkoutActivityType.HandCycling, ActivityType.HandCycling },
-        { HKWorkoutActivityType.DiscSports, ActivityType.DiscSports },
-        { HKWorkoutActivityType.FitnessGaming, ActivityType.FitnessGaming },
-        { HKWorkoutActivityType.CardioDance, ActivityType.Dance }, // not 1:1 mapping
-        { HKWorkoutActivityType.SocialDance, ActivityType.Dance }, // not 1:1 mapping
-        { HKWorkoutActivityType.Pickleball, ActivityType.Pickleball },
-        { HKWorkoutActivityType.Cooldown, ActivityType.Cooldown },
-        { HKWorkoutActivityType.SwimBikeRun, ActivityType.SwimBikeRun },
-        { HKWorkoutActivityType.Transition, ActivityType.Transition },
-        { HKWorkoutActivityType.UnderwaterDiving, ActivityType.UnderwaterDiving },
-        { HKWorkoutActivityType.Other, ActivityType.Unknown }
-    };
-
-    /// <summary>
-    /// Reverse mapping from ActivityType to HKWorkoutActivityType.
-    /// For ActivityTypes that map to multiple HKWorkoutActivityTypes, we pick the most common one.
-    /// </summary>
-    private static readonly Dictionary<ActivityType, HKWorkoutActivityType> ActivityToHKWorkoutMap = new()
+    private static readonly Dictionary<ActivityType, HKWorkoutActivityType> ActivityTypeMap = new()
     {
         { ActivityType.AmericanFootball, HKWorkoutActivityType.AmericanFootball },
         { ActivityType.Archery, HKWorkoutActivityType.Archery },
@@ -119,12 +28,12 @@ internal static class HKWorkoutActivityTypeExtensions
         { ActivityType.Curling, HKWorkoutActivityType.Curling },
         { ActivityType.Cycling, HKWorkoutActivityType.Cycling },
         { ActivityType.Dance, HKWorkoutActivityType.Dance },
-        { ActivityType.DanceInspiredTraining, HKWorkoutActivityType.DanceInspiredTraining },
+        { ActivityType.DanceInspiredTraining, HKWorkoutActivityType.Dance }, // not 1:1 mapping
         { ActivityType.Elliptical, HKWorkoutActivityType.Elliptical },
         { ActivityType.EquestrianSports, HKWorkoutActivityType.EquestrianSports },
         { ActivityType.Fencing, HKWorkoutActivityType.Fencing },
         { ActivityType.Fishing, HKWorkoutActivityType.Fishing },
-        { ActivityType.Weightlifting, HKWorkoutActivityType.FunctionalStrengthTraining },
+        { ActivityType.Weightlifting, HKWorkoutActivityType.FunctionalStrengthTraining }, // not 1:1 mapping
         { ActivityType.Golf, HKWorkoutActivityType.Golf },
         { ActivityType.Gymnastics, HKWorkoutActivityType.Gymnastics },
         { ActivityType.Handball, HKWorkoutActivityType.Handball },
@@ -134,7 +43,7 @@ internal static class HKWorkoutActivityTypeExtensions
         { ActivityType.Lacrosse, HKWorkoutActivityType.Lacrosse },
         { ActivityType.MartialArts, HKWorkoutActivityType.MartialArts },
         { ActivityType.MindAndBody, HKWorkoutActivityType.MindAndBody },
-        { ActivityType.MixedMetabolicCardioTraining, HKWorkoutActivityType.MixedMetabolicCardioTraining },
+        { ActivityType.MixedMetabolicCardioTraining, HKWorkoutActivityType.MixedCardio }, // not 1:1 mapping
         { ActivityType.PaddleSports, HKWorkoutActivityType.PaddleSports },
         { ActivityType.Play, HKWorkoutActivityType.Play },
         { ActivityType.PreparationAndRecovery, HKWorkoutActivityType.PreparationAndRecovery },
@@ -154,7 +63,7 @@ internal static class HKWorkoutActivityTypeExtensions
         { ActivityType.TableTennis, HKWorkoutActivityType.TableTennis },
         { ActivityType.Tennis, HKWorkoutActivityType.Tennis },
         { ActivityType.TrackAndField, HKWorkoutActivityType.TrackAndField },
-        { ActivityType.StrengthTraining, HKWorkoutActivityType.TraditionalStrengthTraining },
+        { ActivityType.StrengthTraining, HKWorkoutActivityType.TraditionalStrengthTraining }, // not 1:1 mapping
         { ActivityType.Volleyball, HKWorkoutActivityType.Volleyball },
         { ActivityType.Walking, HKWorkoutActivityType.Walking },
         { ActivityType.WaterFitness, HKWorkoutActivityType.WaterFitness },
@@ -164,8 +73,8 @@ internal static class HKWorkoutActivityTypeExtensions
         { ActivityType.Yoga, HKWorkoutActivityType.Yoga },
         { ActivityType.Barre, HKWorkoutActivityType.Barre },
         { ActivityType.CoreTraining, HKWorkoutActivityType.CoreTraining },
-        { ActivityType.Skiing, HKWorkoutActivityType.DownhillSkiing },
-        { ActivityType.Stretching, HKWorkoutActivityType.Flexibility },
+        { ActivityType.Skiing, HKWorkoutActivityType.DownhillSkiing }, // not 1:1 mapping
+        { ActivityType.Stretching, HKWorkoutActivityType.Flexibility }, // not 1:1 mapping
         { ActivityType.HighIntensityIntervalTraining, HKWorkoutActivityType.HighIntensityIntervalTraining },
         { ActivityType.JumpRope, HKWorkoutActivityType.JumpRope },
         { ActivityType.Kickboxing, HKWorkoutActivityType.Kickboxing },
@@ -180,20 +89,21 @@ internal static class HKWorkoutActivityTypeExtensions
         { ActivityType.HandCycling, HKWorkoutActivityType.HandCycling },
         { ActivityType.DiscSports, HKWorkoutActivityType.DiscSports },
         { ActivityType.FitnessGaming, HKWorkoutActivityType.FitnessGaming },
-        { ActivityType.Pickleball, HKWorkoutActivityType.Pickleball },
+        { ActivityType.Calisthenics, HKWorkoutActivityType.FunctionalStrengthTraining }, // not 1:1 mapping
         { ActivityType.Cooldown, HKWorkoutActivityType.Cooldown },
-        { ActivityType.SwimBikeRun, HKWorkoutActivityType.SwimBikeRun },
-        { ActivityType.Transition, HKWorkoutActivityType.Transition },
-        { ActivityType.UnderwaterDiving, HKWorkoutActivityType.UnderwaterDiving },
-        { ActivityType.Calisthenics, HKWorkoutActivityType.FunctionalStrengthTraining },
+        { ActivityType.Pickleball, HKWorkoutActivityType.Pickleball },
+        //{ ActivityType.SwimBikeRun, HKWorkoutActivityType.SwimBikeRun }, // iOS 16.0+
+        //{ ActivityType.Transition, HKWorkoutActivityType.Transition }, // iOS 16.0+
+        //{ ActivityType.UnderwaterDiving, HKWorkoutActivityType.UnderwaterDiving }, // iOS 17.0+
         { ActivityType.Unknown, HKWorkoutActivityType.Other }
     };
 
     internal static ActivityType ToActivityType(this HKWorkoutActivityType workoutActivityType)
     {
-        if (HKWorkoutToActivityMap.TryGetValue(workoutActivityType, out var activityType))
+        var entry = ActivityTypeMap.FirstOrDefault(kvp => kvp.Value == workoutActivityType);
+        if (!entry.Equals(default(KeyValuePair<ActivityType, HKWorkoutActivityType>)))
         {
-            return activityType;
+            return entry.Key;
         }
 
         return ActivityType.Unknown;
@@ -201,7 +111,7 @@ internal static class HKWorkoutActivityTypeExtensions
 
     internal static HKWorkoutActivityType ToHKWorkoutActivityType(this ActivityType activityType)
     {
-        if (ActivityToHKWorkoutMap.TryGetValue(activityType, out var workoutActivityType))
+        if (ActivityTypeMap.TryGetValue(activityType, out var workoutActivityType))
         {
             return workoutActivityType;
         }
@@ -216,7 +126,7 @@ internal static class HKWorkoutActivityTypeExtensions
         var activityType = workout.WorkoutActivityType.ToActivityType();
 
         double? energyBurned = null;
-        if (workout.TotalEnergyBurned != null)
+        if (workout.TotalEnergyBurned is not null)
         {
             energyBurned = workout.TotalEnergyBurned.GetDoubleValue(HKUnit.Kilocalorie);
         }
