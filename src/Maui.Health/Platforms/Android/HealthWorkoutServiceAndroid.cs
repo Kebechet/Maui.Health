@@ -279,16 +279,8 @@ public partial class HealthWorkoutService
             catch (Exception ex)
             {
                 // Handle common cases that might occur even when deletion succeeds
-                if (ex.Message?.Contains("not found", StringComparison.OrdinalIgnoreCase) == true ||
-                    ex.Message?.Contains("does not exist", StringComparison.OrdinalIgnoreCase) == true)
-                {
-                    _logger.LogWarning("Workout record not found (may have been already deleted): {Message}", ex.Message);
-                    // Don't throw - treat as successful deletion
-                    return;
-                }
-
                 _logger.LogError(ex, "Error during delete operation");
-                throw;
+                return;
             }
         }
         catch (Exception ex)
