@@ -118,7 +118,14 @@ public partial class HealthService
         }
     }
 
-    public async partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    // Public generic method without async/await to avoid async state machine generation
+    public partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return GetHealthDataCoreAsync<TDto>(timeRange, cancellationToken);
+    }
+
+    private async Task<List<TDto>> GetHealthDataCoreAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         try
