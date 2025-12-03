@@ -1,16 +1,12 @@
-using Android.Runtime;
 using AndroidX.Health.Connect.Client.Records;
 using AndroidX.Health.Connect.Client.Records.Metadata;
 using AndroidX.Health.Connect.Client.Units;
 using Java.Time;
 using Maui.Health.Constants;
 using Maui.Health.Models.Metrics;
+using Maui.Health.Platforms.Android.Helpers;
 using System.Diagnostics;
-using UnitsNet;
 using static Maui.Health.Platforms.Android.AndroidConstants;
-using Length = AndroidX.Health.Connect.Client.Units.Length;
-using Mass = AndroidX.Health.Connect.Client.Units.Mass;
-using Energy = AndroidX.Health.Connect.Client.Units.Energy;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
 using WeightRecord = AndroidX.Health.Connect.Client.Records.WeightRecord;
 using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;
@@ -450,180 +446,6 @@ internal static class HealthRecordExtensions
         return Defaults.FallbackValue;
     }
 
-    private static bool TryOfficialUnitsApi(this Java.Lang.Object obj, string unitName, out double value)
-    {
-        value = 0;
-        try
-        {
-            var objClass = obj.Class;
-
-            var inUnitMethod = objClass.GetDeclaredMethods()?.FirstOrDefault(m =>
-                m.Name.Equals("InUnit", StringComparison.OrdinalIgnoreCase) ||
-                m.Name.Equals("inUnit", StringComparison.OrdinalIgnoreCase));
-
-            if(inUnitMethod is null)
-            {
-                return false;
-            }
-
-            if (TryGetUnitConstant(unitName, out Java.Lang.Object? unitConstant))
-            {
-                inUnitMethod.Accessible = true;
-                var result = inUnitMethod.Invoke(obj, unitConstant!);
-
-                if (result is Java.Lang.Double javaDouble)
-                {
-                    value = javaDouble.DoubleValue();
-                    return true;
-                }
-                if (result is Java.Lang.Float javaFloat)
-                {
-                    value = javaFloat.DoubleValue();
-                    return true;
-                }
-            }
-        }
-        catch
-        {
-            // API call failed
-        }
-
-        return false;
-    }
-
-    private static bool TryGetUnitConstant(string unitName, out Java.Lang.Object? unitConstant)
-    {
-        unitConstant = null;
-        try
-        {
-            var unitsNamespace = HealthConnectUnitsNamespace;
-            var className = GetHealthConnectUnitClassName(unitName);
-            var fullClassName = $"{unitsNamespace}.{className}";
-
-            var unitClass = Java.Lang.Class.ForName(fullClassName);
-            if (unitClass != null)
-            {
-                var field = unitClass.GetDeclaredField(unitName);
-                if (field != null)
-                {
-                    field.Accessible = true;
-                    unitConstant = field.Get(null);
-                    return unitConstant != null;
-                }
-            }
-        }
-        catch
-        {
-            // Failed to get unit constant
-        }
-        return false;
-    }
-
-    private static string GetHealthConnectUnitClassName(string unitName)
-    {
-        return unitName switch
-        {
-            var u when u.Contains("KILOGRAM") || u.Contains("GRAM") || u.Contains("POUND") || u.Contains("OUNCE") => "Mass",
-            var u when u.Contains("CALORIE") || u.Contains("JOULE") => "Energy",
-            var u when u.Contains("METER") || u.Contains("MILE") || u.Contains("INCH") || u.Contains("FOOT") => "Length",
-            var u when u.Contains("PERCENT") => "Percentage",
-            var u when u.Contains("MERCURY") || u.Contains("PRESSURE") => "Pressure",
-            _ => "Length" // Default fallback
-        };
-    }
-
-    private static bool TryGetPropertyValue(this Java.Lang.Object obj, string propertyName, out double value)
-    {
-        value = 0;
-        try
-        {
-            var objClass = obj.Class;
-            var field = objClass.GetDeclaredField(propertyName);
-            if (field != null)
-            {
-                field.Accessible = true;
-                var fieldValue = field.Get(obj);
-
-                if (fieldValue is Java.Lang.Double javaDouble)
-                {
-                    value = javaDouble.DoubleValue();
-                    return true;
-                }
-                if (fieldValue is Java.Lang.Float javaFloat)
-                {
-                    value = javaFloat.DoubleValue();
-                    return true;
-                }
-                if (fieldValue is Java.Lang.Integer javaInt)
-                {
-                    value = javaInt.DoubleValue();
-                    return true;
-                }
-            }
-        }
-        catch
-        {
-            // Property access failed
-        }
-        return false;
-    }
-
-    private static bool TryCallMethod(this Java.Lang.Object obj, string methodName, out double value)
-    {
-        value = 0;
-        try
-        {
-            var objClass = obj.Class;
-            var method = objClass.GetDeclaredMethod(methodName);
-            if (method != null)
-            {
-                method.Accessible = true;
-                var result = method.Invoke(obj);
-
-                if (result is Java.Lang.Double javaDouble)
-                {
-                    value = javaDouble.DoubleValue();
-                    return true;
-                }
-                if (result is Java.Lang.Float javaFloat)
-                {
-                    value = javaFloat.DoubleValue();
-                    return true;
-                }
-                if (result is Java.Lang.Integer javaInt)
-                {
-                    value = javaInt.DoubleValue();
-                    return true;
-                }
-            }
-        }
-        catch
-        {
-            // Method call failed
-        }
-        return false;
-    }
-
-    private static bool TryParseFromString(this string stringValue, out double value)
-    {
-        value = 0;
-
-        if (string.IsNullOrEmpty(stringValue))
-        {
-            return false;
-        }
-
-        var numberPattern = Reflection.NumberExtractionPattern;
-        var match = System.Text.RegularExpressions.Regex.Match(stringValue, numberPattern);
-
-        if (match.Success && double.TryParse(match.Groups[1].Value, out value))
-        {
-            return true;
-        }
-
-        return false;
-    }
-
     public static Java.Lang.Object? ToAndroidRecord(this HealthMetricBase dto)
     {
         return dto switch
@@ -662,89 +484,45 @@ internal static class HealthRecordExtensions
     public static WeightRecord ToWeightRecord(this WeightDto dto)
     {
         var time = dto.Timestamp.ToJavaInstant();
-
         var metadata = new Metadata();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
-        // Create Mass from kilograms using Companion factory method via reflection
-        var massClass = Java.Lang.Class.ForName(Reflection.MassClassName);
-        var companionField = massClass!.GetDeclaredField(KotlinCompanionFieldName);
-        companionField!.Accessible = true;
-        var companion = companionField.Get(null);
+        var mass = JavaReflectionHelper.CreateUnitViaCompanion<Mass>(
+            Reflection.MassClassName,
+            Reflection.KilogramsMethodName,
+            dto.Value);
 
-        var kilogramsMethod = companion!.Class!.GetDeclaredMethod(Reflection.KilogramsMethodName, Java.Lang.Double.Type);
-        kilogramsMethod!.Accessible = true;
-        var massObj = kilogramsMethod.Invoke(companion, new Java.Lang.Double(dto.Value));
-        var mass = Java.Lang.Object.GetObject<Mass>(massObj!.Handle, JniHandleOwnership.DoNotTransfer);
-
-        var record = new WeightRecord(
-            time!,
-            offset,
-            mass!,
-            metadata
-        );
-
-        return record;
+        return new WeightRecord(time!, offset, mass!, metadata);
     }
 
     public static HeightRecord ToHeightRecord(this HeightDto dto)
     {
         var time = dto.Timestamp.ToJavaInstant();
-
         var metadata = new Metadata();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
-        // Create Length from meters using Companion factory method via reflection
-        var lengthClass = Java.Lang.Class.ForName(Reflection.LengthClassName);
-        var companionField = lengthClass!.GetDeclaredField(KotlinCompanionFieldName);
-        companionField!.Accessible = true;
-        var companion = companionField.Get(null);
-
-        var metersMethod = companion!.Class!.GetDeclaredMethod(Reflection.MetersMethodName, Java.Lang.Double.Type);
-        metersMethod!.Accessible = true;
         var valueInMeters = UnitsNet.Length.FromCentimeters(dto.Value).Meters;
-        var lengthObj = metersMethod.Invoke(companion, new Java.Lang.Double(valueInMeters));
-        var length = Java.Lang.Object.GetObject<Length>(lengthObj!.Handle, JniHandleOwnership.DoNotTransfer);
+        var length = JavaReflectionHelper.CreateUnitViaCompanion<Length>(
+            Reflection.LengthClassName,
+            Reflection.MetersMethodName,
+            valueInMeters);
 
-        var record = new HeightRecord(
-            time!,
-            offset,
-            length!,
-            metadata
-        );
-
-        return record;
+        return new HeightRecord(time!, offset, length!, metadata);
     }
 
     public static ActiveCaloriesBurnedRecord ToActiveCaloriesBurnedRecord(this ActiveCaloriesBurnedDto dto)
     {
         var startTime = dto.StartTime.ToJavaInstant();
         var endTime = dto.EndTime.ToJavaInstant();
-
         var metadata = new Metadata();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
-        // Create Energy from kilocalories using Companion factory method via reflection
-        var energyClass = Java.Lang.Class.ForName(Reflection.EnergyClassName);
-        var companionField = energyClass!.GetDeclaredField(KotlinCompanionFieldName);
-        companionField!.Accessible = true;
-        var companion = companionField.Get(null);
+        var energy = JavaReflectionHelper.CreateUnitViaCompanion<Energy>(
+            Reflection.EnergyClassName,
+            Reflection.KilocaloriesMethodName,
+            dto.Energy);
 
-        var kilocaloriesMethod = companion!.Class!.GetDeclaredMethod(Reflection.KilocaloriesMethodName, Java.Lang.Double.Type);
-        kilocaloriesMethod!.Accessible = true;
-        var energyObj = kilocaloriesMethod.Invoke(companion, new Java.Lang.Double(dto.Energy));
-        var energy = Java.Lang.Object.GetObject<Energy>(energyObj!.Handle, JniHandleOwnership.DoNotTransfer);
-
-        var record = new ActiveCaloriesBurnedRecord(
-            startTime!,
-            offset,
-            endTime!,
-            offset,
-            energy!,
-            metadata
-        );
-
-        return record;
+        return new ActiveCaloriesBurnedRecord(startTime!, offset, endTime!, offset, energy!, metadata);
     }
 
     public static HeartRateRecord ToHeartRateRecord(this HeartRateDto dto)
