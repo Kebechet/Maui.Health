@@ -6,7 +6,7 @@ namespace Maui.Health.Models.Metrics;
 /// Represents a workout/exercise session from health platforms.
 /// Standalone class for workout manipulation, independent of HealthMetricBase.
 /// </summary>
-public class WorkoutDto : IHealthTimeRange
+public class WorkoutDto
 {
     /// <summary>
     /// Unique identifier for this workout record
@@ -52,12 +52,6 @@ public class WorkoutDto : IHealthTimeRange
     /// End time of the workout session (null if session is still active)
     /// </summary>
     public DateTimeOffset? EndTime { get; init; }
-
-    /// <summary>
-    /// Explicit implementation of IHealthTimeRange.EndTime
-    /// Returns EndTime if available, otherwise returns current time for active sessions
-    /// </summary>
-    DateTimeOffset IHealthTimeRange.EndTime => EndTime ?? DateTimeOffset.UtcNow;
 
     /// <summary>
     /// Duration of the workout in seconds (calculated from current time if EndTime is null)
