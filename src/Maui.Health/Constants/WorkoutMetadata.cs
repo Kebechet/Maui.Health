@@ -8,20 +8,20 @@ public static class WorkoutMetadata
     /// <summary>
     /// Active duration in seconds.
     /// </summary>
-    public const string ActiveDurationSeconds = "ActiveDurationSeconds";
+    public const string ActiveDurationSeconds = nameof(ActiveDurationSeconds);
 
     /// <summary>
     /// Paused duration in seconds.
     /// </summary>
-    public const string PausedDurationSeconds = "PausedDurationSeconds";
+    public const string PausedDurationSeconds = nameof(PausedDurationSeconds);
 
     /// <summary>
     /// Number of pauses.
     /// </summary>
-    public const string PauseCount = "PauseCount";
+    public const string PauseCount = nameof(PauseCount);
 
     /// <summary>
     /// Pause intervals data.
     /// </summary>
-    public const string PauseIntervals = "PauseIntervals";
+    public const string PauseIntervals = nameof(PauseIntervals);
 }

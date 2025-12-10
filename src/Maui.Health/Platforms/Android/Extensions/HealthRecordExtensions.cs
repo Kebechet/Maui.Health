@@ -6,7 +6,7 @@ using Maui.Health.Constants;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android.Helpers;
 using System.Diagnostics;
-using static Maui.Health.Platforms.Android.AndroidConstants;
+using static Maui.Health.Platforms.Android.AndroidConstant;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
 using WeightRecord = AndroidX.Health.Connect.Client.Records.WeightRecord;
 using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;

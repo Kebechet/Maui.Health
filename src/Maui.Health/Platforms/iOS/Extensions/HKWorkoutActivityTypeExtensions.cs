@@ -140,74 +140,13 @@ internal static class HKWorkoutActivityTypeExtensions
         return new WorkoutDto
         {
             Id = workout.Uuid.ToString(),
-            DataOrigin = workout.SourceRevision?.Source?.Name ?? DataOrigins.Unknown,
+            DataOrigin = workout.SourceRevision?.Source?.Name ?? DataOrigin.Unknown,
             Timestamp = startTime,
             ActivityType = activityType,
             StartTime = startTime,
             EndTime = endTime,
             EnergyBurned = energyBurned,
             Distance = distance
-        };
-    }
-
-    internal static async Task<WorkoutDto> ToWorkoutDtoAsync(
-       this HKWorkout workout,
-       Func<HealthTimeRange, CancellationToken, Task<HeartRateDto[]>> queryHeartRateFunc,
-       CancellationToken cancellationToken)
-    {
-        var startTime = workout.StartDate.ToDateTimeOffset();
-        var endTime = workout.EndDate.ToDateTimeOffset();
-        var activityType = workout.WorkoutActivityType.ToActivityType();
-
-        // Extract energy burned from HKWorkout (iOS has this built-in)
-        double? energyBurned = null;
-        if (workout.TotalEnergyBurned != null)
-        {
-            energyBurned = workout.TotalEnergyBurned.GetDoubleValue(HKUnit.Kilocalorie);
-        }
-
-        // Extract distance from HKWorkout (iOS has this built-in)
-        double? distance = null;
-        if (workout.TotalDistance != null)
-        {
-            distance = workout.TotalDistance.GetDoubleValue(HKUnit.Meter);
-        }
-
-        // Fetch heart rate data during the workout
-        double? avgHeartRate = null;
-        double? minHeartRate = null;
-        double? maxHeartRate = null;
-
-        try
-        {
-            var workoutTimeRange = HealthTimeRange.FromDateTimeOffset(startTime, endTime);
-            var heartRateData = await queryHeartRateFunc(workoutTimeRange, cancellationToken);
-
-            if (heartRateData.Any())
-            {
-                avgHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
-                minHeartRate = heartRateData.Min(hr => hr.BeatsPerMinute);
-                maxHeartRate = heartRateData.Max(hr => hr.BeatsPerMinute);
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"iOS: Error fetching heart rate for workout: {ex.Message}");
-        }
-
-        return new WorkoutDto
-        {
-            Id = workout.Uuid.ToString(),
-            DataOrigin = workout.SourceRevision?.Source?.Name ?? DataOrigins.Unknown,
-            Timestamp = startTime,
-            ActivityType = activityType,
-            StartTime = startTime,
-            EndTime = endTime,
-            EnergyBurned = energyBurned,
-            Distance = distance,
-            AverageHeartRate = avgHeartRate,
-            MinHeartRate = minHeartRate,
-            MaxHeartRate = maxHeartRate
         };
     }
 }

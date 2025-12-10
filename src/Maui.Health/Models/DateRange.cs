@@ -18,7 +18,7 @@ public class DateRange
     /// <summary>
     /// Whether this range has been closed (has an end time)
     /// </summary>
-    public bool IsClosed => End.HasValue;
+    public bool IsClosed => End is not null;
 
     /// <summary>
     /// Gets the duration of this range. If not closed, calculates duration until now.

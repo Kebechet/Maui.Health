@@ -30,7 +30,7 @@ public static class DateRangeExtensions
     /// </summary>
     /// <param name="json">JSON string containing serialized date ranges</param>
     /// <returns>List of DateRange objects</returns>
-    public static List<DateRange> ParseDateRanges(this string json)
+    public static List<DateRange> ToDateRanges(this string json)
     {
         if (string.IsNullOrEmpty(json))
         {
@@ -80,11 +80,11 @@ public static class DateRangeExtensions
             return intervals
                 .Select(i =>
                 {
-                    var start = i.TryGetValue("Start", out var startMs) && startMs.HasValue
+                    var start = i.TryGetValue(nameof(DateRange.Start), out var startMs) && startMs.HasValue
                         ? DateTimeOffset.FromUnixTimeMilliseconds(startMs.Value)
                         : DateTimeOffset.UtcNow;
 
-                    var end = i.TryGetValue("End", out var endMs) && endMs.HasValue
+                    var end = i.TryGetValue(nameof(DateRange.End), out var endMs) && endMs.HasValue
                         ? DateTimeOffset.FromUnixTimeMilliseconds(endMs.Value)
                         : (DateTimeOffset?)null;
 

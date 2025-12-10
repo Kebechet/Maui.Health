@@ -1,9 +1,6 @@
 using Android.Content;
 using AndroidX.Health.Connect.Client;
 using AndroidX.Health.Connect.Client.Records;
-using AndroidX.Health.Connect.Client.Request;
-using AndroidX.Health.Connect.Client.Time;
-using Java.Time;
 using Maui.Health.Constants;
 using Maui.Health.Enums;
 using Maui.Health.Extensions;
@@ -12,6 +9,7 @@ using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android;
 using Maui.Health.Platforms.Android.Callbacks;
 using Maui.Health.Platforms.Android.Extensions;
+using Maui.Health.Platforms.Android.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace Maui.Health.Services;
@@ -38,28 +36,10 @@ public partial class HealthWorkoutService
             _logger.LogInformation("Android HealthWorkoutService Read: StartTime: {StartTime}, EndTime: {EndTime}",
                 activityTime.StartTime, activityTime.EndTime);
 
-#pragma warning disable CA1416
-            var timeRangeFilter = TimeRangeFilter.Between(
-                Instant.OfEpochMilli(activityTime.StartTime.ToUnixTimeMilliseconds())!,
-                Instant.OfEpochMilli(activityTime.EndTime.ToUnixTimeMilliseconds())!
-            );
-#pragma warning restore CA1416
-
             var recordClass = Kotlin.Jvm.JvmClassMappingKt.GetKotlinClass(
                 Java.Lang.Class.FromType(typeof(ExerciseSessionRecord)));
 
-            var request = new ReadRecordsRequest(
-                recordClass,
-                timeRangeFilter,
-                [],
-                true,
-                AndroidConstants.MaxRecordsPerRequest,
-                null
-            );
-
-            var response = await KotlinResolver.Process<AndroidX.Health.Connect.Client.Response.ReadRecordsResponse, ReadRecordsRequest>(
-                _healthConnectClient.ReadRecords, request);
-
+            var response = await _healthConnectClient.ReadHealthRecords(recordClass, activityTime);
             if (response is null)
             {
                 return [];
@@ -73,23 +53,7 @@ public partial class HealthWorkoutService
                     continue;
                 }
 
-                WorkoutDto? dto;
-                if (HeartRateQueryCallback != null || CaloriesQueryCallback != null)
-                {
-                    dto = await exerciseRecord.ToWorkoutDtoAsync(
-                        HeartRateQueryCallback != null
-                            ? async (range, ct) => (await HeartRateQueryCallback(range, ct)).ToArray()
-                            : null,
-                        CaloriesQueryCallback != null
-                            ? async (range, ct) => (await CaloriesQueryCallback(range, ct)).ToArray()
-                            : null,
-                        CancellationToken.None);
-                }
-                else
-                {
-                    dto = exerciseRecord.ToWorkoutDto();
-                }
-
+                var dto = exerciseRecord.ToWorkoutDto();
                 if (dto is not null)
                 {
                     results.Add(dto);
@@ -135,59 +99,11 @@ public partial class HealthWorkoutService
                 return;
             }
 
-            var recordsList = new Java.Util.ArrayList();
-            recordsList.Add(record);
-
-            var clientType = _healthConnectClient.GetType();
-            var handleField = clientType.GetField(AndroidConstants.JniHandleFieldName,
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-
-            if (handleField is null)
+            var success = await _healthConnectClient.InsertRecord(record);
+            if (!success)
             {
-                _logger.LogWarning("Failed to get handle field from Health Connect client");
+                _logger.LogWarning("Failed to insert workout record");
                 return;
-            }
-
-            var handle = handleField.GetValue(_healthConnectClient);
-            if (handle is not IntPtr jniHandle || jniHandle == IntPtr.Zero)
-            {
-                _logger.LogWarning("Failed to get JNI handle for Health Connect client");
-                return;
-            }
-
-            var classHandle = Android.Runtime.JNIEnv.GetObjectClass(jniHandle);
-            var clientClass = Java.Lang.Object.GetObject<Java.Lang.Class>(
-                classHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
-
-            var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(
-                jniHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
-
-            var insertMethod = clientClass?.GetDeclaredMethod("insertRecords",
-                Java.Lang.Class.FromType(typeof(Java.Util.IList)),
-                Java.Lang.Class.FromType(typeof(Kotlin.Coroutines.IContinuation)));
-
-            if (insertMethod is null || clientObject is null)
-            {
-                _logger.LogWarning("Failed to invoke insertRecords method");
-                return;
-            }
-
-            var taskCompletionSource = new TaskCompletionSource<Java.Lang.Object>();
-            var continuation = new Continuation(taskCompletionSource, default);
-
-            insertMethod.Accessible = true;
-            var result = insertMethod.Invoke(clientObject, recordsList, continuation);
-
-            if (result is not Java.Lang.Enum javaEnum)
-            {
-                _logger.LogInformation("Successfully wrote workout record to Health Connect");
-                return;
-            }
-
-            var currentState = Enum.Parse<CoroutineState>(javaEnum.ToString());
-            if (currentState == CoroutineState.COROUTINE_SUSPENDED)
-            {
-                await taskCompletionSource.Task;
             }
 
             _logger.LogInformation("Successfully wrote workout record to Health Connect");
@@ -195,99 +111,29 @@ public partial class HealthWorkoutService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Android HealthWorkoutService Write error");
-            throw; // Re-throw so caller knows it failed
+            throw;
         }
     }
 
-    // only aktivity created by your source can be deleted.
+    // only activity created by your source can be deleted.
     public async partial Task Delete(WorkoutDto workout)
     {
         try
         {
             _logger.LogInformation("Android HealthWorkoutService Delete: {WorkoutId}", workout.Id);
 
-            // Create a list with the workout ID to delete
-            var recordIdsList = new Java.Util.ArrayList();
-            recordIdsList.Add(workout.Id);
-
-            var clientType = _healthConnectClient.GetType();
-            var handleField = clientType.GetField(AndroidConstants.JniHandleFieldName,
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-
-            if (handleField is null)
+            var success = await _healthConnectClient.DeleteWorkoutRecord(workout.Id);
+            if (!success)
             {
-                _logger.LogWarning("Failed to get handle field from Health Connect client");
+                _logger.LogWarning("Failed to delete workout record");
                 return;
             }
 
-            var handle = handleField.GetValue(_healthConnectClient);
-            if (handle is not IntPtr jniHandle || jniHandle == IntPtr.Zero)
-            {
-                _logger.LogWarning("Failed to get JNI handle for Health Connect client");
-                return;
-            }
-
-            var classHandle = global::Android.Runtime.JNIEnv.GetObjectClass(jniHandle);
-            var clientClass = Java.Lang.Object.GetObject<Java.Lang.Class>(
-                classHandle, global::Android.Runtime.JniHandleOwnership.DoNotTransfer);
-
-            var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(
-                jniHandle, global::Android.Runtime.JniHandleOwnership.DoNotTransfer);
-
-            var recordClass = Kotlin.Jvm.JvmClassMappingKt.GetKotlinClass(
-                Java.Lang.Class.FromType(typeof(ExerciseSessionRecord)));
-
-            var deleteMethod = clientClass?.GetDeclaredMethod("deleteRecords",
-                Java.Lang.Class.FromType(typeof(Kotlin.Reflect.IKClass)),
-                Java.Lang.Class.FromType(typeof(Java.Util.IList)),
-                Java.Lang.Class.FromType(typeof(Java.Util.IList)),
-                Java.Lang.Class.FromType(typeof(Kotlin.Coroutines.IContinuation)));
-
-            if (deleteMethod is null || clientObject is null)
-            {
-                _logger.LogWarning("Failed to invoke deleteRecords method");
-                return;
-            }
-
-            var taskCompletionSource = new TaskCompletionSource<Java.Lang.Object>();
-            var continuation = new Continuation(taskCompletionSource, default);
-
-            deleteMethod.Accessible = true;
-            var emptyList = new Java.Util.ArrayList(); // Empty client record ID list
-
-            var recordClassObj = Java.Lang.Object.GetObject<Java.Lang.Object>(
-                recordClass.Handle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
-
-            var result = deleteMethod.Invoke(clientObject, recordClassObj, recordIdsList, emptyList, continuation);
-
-            if (result is not Java.Lang.Enum javaEnum)
-            {
-                return;
-            }
-
-            var currentState = Enum.Parse<CoroutineState>(javaEnum.ToString());
-            if (currentState != CoroutineState.COROUTINE_SUSPENDED)
-            {
-                return;
-            }
-
-            try
-            {
-                await taskCompletionSource.Task;
-                _logger.LogInformation("Successfully deleted workout record from Health Connect");
-            }
-            catch (Exception ex)
-            {
-                // Handle common cases that might occur even when deletion succeeds
-                _logger.LogError(ex, "Error during delete operation");
-                return;
-            }
+            _logger.LogInformation("Successfully deleted workout record from Health Connect");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Android HealthWorkoutService Delete error");
-            // Don't re-throw - log the error but allow the operation to complete
-            // This prevents crashes when the record was actually deleted successfully
         }
     }
 
@@ -319,7 +165,7 @@ public partial class HealthWorkoutService
 
             var startTime = DateTimeOffset.UtcNow;
             var id = Guid.NewGuid().ToString();
-            var origin = dataOrigin ?? _activityContext.PackageName ?? DataOrigins.Unknown;
+            var origin = dataOrigin ?? _activityContext.PackageName ?? DataOrigin.Unknown;
             var workoutTitle = title ?? activityType.ToString();
 
             _activeWorkoutSession = new WorkoutSession(

@@ -8,16 +8,6 @@ namespace Maui.Health.Services;
 
 public partial class HealthWorkoutService : IHealthWorkoutService
 {
-    /// <summary>
-    /// Callback to fetch heart rate data for a time range (set by HealthService)
-    /// </summary>
-    internal Func<HealthTimeRange, CancellationToken, Task<List<HeartRateDto>>>? HeartRateQueryCallback { get; set; }
-
-    /// <summary>
-    /// Callback to fetch active calories data for a time range (set by HealthService)
-    /// </summary>
-    internal Func<HealthTimeRange, CancellationToken, Task<List<ActiveCaloriesBurnedDto>>>? CaloriesQueryCallback { get; set; }
-
     public partial Task<List<WorkoutDto>> Read(HealthTimeRange activityTime);
 
     public partial Task Write(WorkoutDto workout);
@@ -126,31 +116,31 @@ public partial class HealthWorkoutService : IHealthWorkoutService
     /// <summary>
     /// Checks if two workouts are likely duplicates based on activity type, source, and time overlap.
     /// </summary>
-    private static bool AreWorkoutsDuplicates(WorkoutDto w1, WorkoutDto w2, int timeThresholdMinutes)
+    private static bool AreWorkoutsDuplicates(WorkoutDto workout1, WorkoutDto workout2, int timeThresholdMinutes)
     {
         // Must be same activity type
-        if(w1.ActivityType != w2.ActivityType)
+        if(workout1.ActivityType != workout2.ActivityType)
         {
             return false;
         }
 
         // Must be from different sources
-        if(w1.DataOrigin == w2.DataOrigin)
+        if(workout1.DataOrigin == workout2.DataOrigin)
         {
             return false;
         }
 
         // Check if start times are within threshold
-        var startDiff = Math.Abs((w1.StartTime - w2.StartTime).TotalMinutes);
+        var startDiff = Math.Abs((workout1.StartTime - workout2.StartTime).TotalMinutes);
         if(startDiff > timeThresholdMinutes)
         {
             return false;
         }
 
         // If both have end times, check those too
-        if (w1.EndTime.HasValue && w2.EndTime.HasValue)
+        if (workout1.EndTime.HasValue && workout2.EndTime.HasValue)
         {
-            var endDiff = Math.Abs((w1.EndTime.Value - w2.EndTime.Value).TotalMinutes);
+            var endDiff = Math.Abs((workout1.EndTime.Value - workout2.EndTime.Value).TotalMinutes);
             if (endDiff > timeThresholdMinutes)
             {
                 return false;
@@ -189,7 +179,7 @@ public partial class HealthWorkoutService : IHealthWorkoutService
         }
 
         // Parse pause intervals from JSON
-        var pauseIntervals = pauseIntervalsJson.ParseDateRanges();
+        var pauseIntervals = pauseIntervalsJson.ToDateRanges();
 
         return new WorkoutSession(
             activeSessionId,

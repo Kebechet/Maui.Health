@@ -248,7 +248,7 @@ public partial class HealthService
                     dto = new StepsDto
                     {
                         Id = Guid.NewGuid().ToString(),
-                        DataOrigin = DataOrigins.HealthKit,
+                        DataOrigin = DataOrigin.HealthKitOrigin,
                         Timestamp = timeRange.StartTime,
                         Count = (long)sum.GetDoubleValue(HKUnit.Count),
                         StartTime = timeRange.StartTime,
@@ -260,7 +260,7 @@ public partial class HealthService
                     dto = new ActiveCaloriesBurnedDto
                     {
                         Id = Guid.NewGuid().ToString(),
-                        DataOrigin = DataOrigins.HealthKit,
+                        DataOrigin = DataOrigin.HealthKitOrigin,
                         Timestamp = timeRange.StartTime,
                         Energy = sum.GetDoubleValue(HKUnit.Kilocalorie),
                         StartTime = timeRange.StartTime,

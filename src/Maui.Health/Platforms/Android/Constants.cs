@@ -3,7 +3,7 @@ namespace Maui.Health.Platforms.Android;
 /// <summary>
 /// Android-specific constants for Health Connect integration.
 /// </summary>
-public static class AndroidConstants
+public static class AndroidConstant
 {
     /// <summary>
     /// Minimum Android API version required for Health Connect SDK.
@@ -106,10 +106,5 @@ public static class AndroidConstants
         /// Percentage class full name for reflection.
         /// </summary>
         public const string PercentageClassName = "androidx.health.connect.client.units.Percentage";
-
-        /// <summary>
-        /// Percentage factory method name.
-        /// </summary>
-        public const string PercentageMethodName = "percentage";
     }
 }

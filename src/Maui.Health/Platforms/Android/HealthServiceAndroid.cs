@@ -1,24 +1,18 @@
 ﻿using Android.Content;
-using AndroidX.Health.Connect.Client;
-using AndroidX.Health.Connect.Client.Request;
-using AndroidX.Health.Connect.Client.Time;
-using Kotlin.Jvm;
-using Java.Time;
 using AndroidX.Activity;
 using AndroidX.Activity.Result;
+using AndroidX.Health.Connect.Client;
 using Java.Util;
-using Maui.Health.Platforms.Android.Extensions;
-using AndroidX.Health.Connect.Client.Response;
-using Maui.Health.Platforms.Android.Callbacks;
-using Maui.Health.Models;
-using Maui.Health.Enums.Errors;
-using Maui.Health.Models.Metrics;
-using Maui.Health.Extensions;
-using Microsoft.Extensions.Logging;
-using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
-using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
 using Maui.Health.Enums;
+using Maui.Health.Enums.Errors;
+using Maui.Health.Extensions;
+using Maui.Health.Models;
+using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android;
+using Maui.Health.Platforms.Android.Callbacks;
+using Maui.Health.Platforms.Android.Extensions;
+using Maui.Health.Platforms.Android.Helpers;
+using Microsoft.Extensions.Logging;
 
 namespace Maui.Health.Services;
 
@@ -51,7 +45,7 @@ public partial class HealthService
             if (canRequestFullHistoryPermission)
             {
                 //https://developer.android.com/health-and-fitness/guides/health-connect/plan/data-types#alpha10
-                permissionsToGrant.Add(AndroidConstants.FullHistoryReadPermission);
+                permissionsToGrant.Add(AndroidConstant.FullHistoryReadPermission);
             }
 
             var grantedPermissions = await KotlinResolver.ProcessList<Java.Lang.String>(_healthConnectClient.PermissionController.GetGrantedPermissions);
@@ -143,23 +137,7 @@ public partial class HealthService
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
             var recordClass = healthDataType.ToKotlinClass();
 
-#pragma warning disable CA1416
-            var timeRangeFilter = TimeRangeFilter.Between(
-                Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
-                Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
-            );
-#pragma warning restore CA1416
-
-            var request = new ReadRecordsRequest(
-                recordClass,
-                timeRangeFilter,
-                [],
-                true,
-                AndroidConstants.MaxRecordsPerRequest,
-                null
-            );
-
-            var response = await KotlinResolver.Process<ReadRecordsResponse, ReadRecordsRequest>(_healthConnectClient.ReadRecords, request);
+            var response = await _healthConnectClient.ReadHealthRecords(recordClass, timeRange);
             if (response is null)
             {
                 return [];
@@ -215,64 +193,17 @@ public partial class HealthService
             }
 
             var record = data.ToAndroidRecord();
-            if (record == null)
+            if (record is null)
             {
                 _logger.LogWarning("Failed to convert {DtoName} to Android record", typeof(TDto).Name);
                 return false;
             }
 
-            // Create a Java ArrayList with the record
-            var recordsList = new Java.Util.ArrayList();
-            recordsList.Add(record);
-
-            // Call InsertRecords - it's a suspend function
-            // Use reflection to get the Java class from the interface implementation
-            var clientType = _healthConnectClient.GetType();
-            var handleField = clientType.GetField(AndroidConstants.JniHandleFieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-
-            if(handleField is null)
+            var success = await _healthConnectClient.InsertRecord(record);
+            if (!success)
             {
-                _logger.LogWarning("Could not find InsertRecords method via reflection");
+                _logger.LogWarning("Failed to insert {DtoName} record via reflection", typeof(TDto).Name);
                 return false;
-            }
-
-            var handle = handleField.GetValue(_healthConnectClient);
-            if (handle is not IntPtr jniHandle || jniHandle == IntPtr.Zero)
-            {
-                _logger.LogWarning("Invalid JNI handle for Health Connect client");
-                return false;
-            }
-
-            // Get the Java class
-            var classHandle = Android.Runtime.JNIEnv.GetObjectClass(jniHandle);
-            var clientClass = Java.Lang.Object.GetObject<Java.Lang.Class>(classHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
-
-            // Get the client as a Java.Lang.Object for method invocation
-            var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(jniHandle, Android.Runtime.JniHandleOwnership.DoNotTransfer);
-
-            var insertMethod = clientClass?.GetDeclaredMethod("insertRecords",
-                Java.Lang.Class.FromType(typeof(Java.Util.IList)),
-                Java.Lang.Class.FromType(typeof(Kotlin.Coroutines.IContinuation)));
-
-            if (insertMethod is null || clientObject is null)
-            {
-                _logger.LogWarning("Could not find insertRecords method or client object");
-                return false;
-            }
-
-            var taskCompletionSource = new TaskCompletionSource<Java.Lang.Object>();
-            var continuation = new Continuation(taskCompletionSource, default);
-
-            insertMethod.Accessible = true;
-            var result = insertMethod.Invoke(clientObject, recordsList, continuation);
-
-            if (result is Java.Lang.Enum javaEnum)
-            {
-                var currentState = Enum.Parse<CoroutineState>(javaEnum.ToString());
-                if (currentState == CoroutineState.COROUTINE_SUSPENDED)
-                {
-                    await taskCompletionSource.Task;
-                }
             }
 
             _logger.LogInformation("Successfully wrote {DtoName} record", typeof(TDto).Name);
@@ -284,58 +215,5 @@ public partial class HealthService
             return false;
         }
     }
-    private Result<SdkCheckError> IsSdkAvailable()
-    {
-        try
-        {
-            var availabilityStatus = HealthConnectClient.GetSdkStatus(_activityContext);
-            if (availabilityStatus == HealthConnectClient.SdkUnavailable)
-            {
-                return new()
-                {
-                    Error = SdkCheckError.SdkUnavailable
-                };
-            }
-
-            if (availabilityStatus == HealthConnectClient.SdkUnavailableProviderUpdateRequired)
-            {
-                string providerPackageName = AndroidConstants.HealthConnectPackage;
-                // Optionally redirect to package installer to find a provider, for example:
-                var uriString = string.Format(AndroidConstants.PlayStoreUriTemplate, providerPackageName);
-
-                var intent = new Intent(Intent.ActionView);
-                intent.SetPackage(AndroidConstants.PlayStorePackage);
-                intent.SetData(global::Android.Net.Uri.Parse(uriString));
-                intent.PutExtra(AndroidConstants.IntentExtraOverlay, true);
-                intent.PutExtra(AndroidConstants.IntentExtraCaller, _activityContext.PackageName);
-
-                _activityContext.StartActivity(intent);
-
-                return new()
-                {
-                    Error = SdkCheckError.SdkUnavailableProviderUpdateRequired
-                };
-            }
-
-            //The Health Connect SDK supports Android 8(API level 26) or higher, while the Health Connect app is only compatible with Android 9(API level 28) or higher.
-            //This means that third-party apps can support users with Android 8, but only users with Android 9 or higher can use Health Connect.
-            //https://developer.android.com/health-and-fitness/guides/health-connect/develop/get-started#:~:text=the%20latest%20version.-,Note,-%3A%20The%20Health
-            if (!OperatingSystem.IsAndroidVersionAtLeast(AndroidConstants.MinimumApiVersionRequired))
-            {
-                return new()
-                {
-                    Error = SdkCheckError.AndroidVersionNotSupported
-                };
-            }
-
-            return new();
-        }
-        catch (Exception ex)
-        {
-            return new()
-            {
-                ErrorException = ex
-            };
-        }
-    }
+    private Result<SdkCheckError> IsSdkAvailable() => JavaReflectionHelper.CheckSdkAvailability(_activityContext);
 }

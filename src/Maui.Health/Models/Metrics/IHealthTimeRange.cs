@@ -8,15 +8,15 @@ public interface IHealthTimeRange
     /// <summary>
     /// Start time of the measurement period
     /// </summary>
-    DateTimeOffset StartTime { get; }
-    
+    public DateTimeOffset StartTime { get; }
+
     /// <summary>
     /// End time of the measurement period
     /// </summary>
-    DateTimeOffset EndTime { get; }
-    
+    public DateTimeOffset EndTime { get; }
+
     /// <summary>
     /// Duration of the measurement period
     /// </summary>
-    TimeSpan Duration => EndTime - StartTime;
+    public TimeSpan Duration => EndTime - StartTime;
 }

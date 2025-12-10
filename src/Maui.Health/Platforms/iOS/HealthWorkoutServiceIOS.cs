@@ -14,7 +14,6 @@ public partial class HealthWorkoutService
 {
     private WorkoutSession? _activeWorkoutSession;
     private readonly ILogger<HealthWorkoutService> _logger;
-    private nuint _healthRateLimit { get; set; } = Defaults.HeartRateLimit;
 
     public HealthWorkoutService(ILogger<HealthWorkoutService> logger)
     {
@@ -33,7 +32,6 @@ public partial class HealthWorkoutService
             _logger.LogInformation("iOS HealthWorkoutService Read: StartTime: {StartTime}, EndTime: {EndTime}",
                 activityTime.StartTime, activityTime.EndTime);
 
-            // Request read permission for workouts before querying
             var permissionGranted = await RequestWorkoutReadPermission();
             if (!permissionGranted)
             {
@@ -41,53 +39,13 @@ public partial class HealthWorkoutService
                 return [];
             }
 
-            // Use DateTimeOffset.UtcDateTime for correct timezone handling
-            var predicate = HKQuery.GetPredicateForSamples(
-                activityTime.StartTime.ToNSDate(),
-                activityTime.EndTime.ToNSDate(),
-                HKQueryOptions.StrictStartDate
-            );
-
-            var tcs = new TaskCompletionSource<HKWorkout[]>();
-            var workoutType = HKWorkoutType.WorkoutType;
-
-            var query = new HKSampleQuery(
-                workoutType,
-                predicate,
-                _healthRateLimit,
-                [new NSSortDescriptor(HKSample.SortIdentifierStartDate, false)],
-                (sampleQuery, results, error) =>
-                {
-                    if (error != null)
-                    {
-                        tcs.TrySetResult([]);
-                        return;
-                    }
-
-                    var workouts = results?.OfType<HKWorkout>().ToArray();
-                    tcs.TrySetResult(workouts ?? []);
-                }
-            );
-
             using var store = new HKHealthStore();
-            store.ExecuteQuery(query);
-            var workouts = await tcs.Task;
+            var workouts = await store.ReadWorkouts(activityTime);
 
             var dtos = new List<WorkoutDto>();
             foreach (var workout in workouts)
             {
-                WorkoutDto? dto;
-                if (HeartRateQueryCallback != null)
-                {
-                    dto = await workout.ToWorkoutDtoAsync(
-                        async (range, ct) => (await HeartRateQueryCallback(range, ct)).ToArray(),
-                        CancellationToken.None);
-                }
-                else
-                {
-                    dto = workout.ToWorkoutDto();
-                }
-
+                var dto = workout.ToWorkoutDto();
                 if (dto is not null)
                 {
                     dtos.Add(dto);
@@ -132,29 +90,22 @@ public partial class HealthWorkoutService
             _logger.LogInformation("iOS HealthWorkoutService Write: {ActivityType}", workout.ActivityType);
 
             var hkWorkout = workout.ToHKWorkout();
-            if (hkWorkout == null)
+            if (hkWorkout is null)
             {
                 _logger.LogWarning("Failed to convert WorkoutDto to HKWorkout");
                 return;
             }
 
             using var healthStore = new HKHealthStore();
-            var tcs = new TaskCompletionSource<bool>();
+            var success = await healthStore.Save(hkWorkout);
 
-            healthStore.SaveObject(hkWorkout, (success, error) =>
+            if (!success)
             {
-                if (error != null)
-                {
-                    _logger.LogError("iOS HealthWorkoutService Write Error: {Error}", error.LocalizedDescription);
-                    tcs.TrySetResult(false);
-                    return;
-                }
+                _logger.LogWarning("iOS HealthWorkoutService: Failed to write workout");
+                return;
+            }
 
-                _logger.LogInformation("iOS HealthWorkoutService: Successfully wrote workout");
-                tcs.TrySetResult(success);
-            });
-
-            await tcs.Task;
+            _logger.LogInformation("iOS HealthWorkoutService: Successfully wrote workout");
         }
         catch (Exception ex)
         {
@@ -173,68 +124,28 @@ public partial class HealthWorkoutService
 
             _logger.LogInformation("iOS HealthWorkoutService Delete: {WorkoutId}", workout.Id);
 
-            // To delete a workout from HealthKit, we need to query for it first using its UUID
-            // The workout.Id should be the UUID string from HealthKit
-            if (!Guid.TryParse(workout.Id, out var workoutGuid))
-            {
-                _logger.LogWarning("Invalid workout ID format for deletion: {WorkoutId}", workout.Id);
-                return;
-            }
-
-            var uuid = new NSUuid(workoutGuid.ToString());
-            var predicate = HKQuery.GetPredicateForObject(uuid);
-            var workoutType = HKWorkoutType.WorkoutType;
-
-            var tcs = new TaskCompletionSource<HKWorkout?>();
-            var query = new HKSampleQuery(
-                workoutType,
-                predicate,
-                Defaults.SingleRecordLimit,
-                null,
-                (sampleQuery, results, error) =>
-                {
-                    if (error != null)
-                    {
-                        _logger.LogError("iOS HealthWorkoutService Delete query error: {Error}", error.LocalizedDescription);
-                        tcs.TrySetResult(null);
-                        return;
-                    }
-
-                    var workoutToDelete = results?.FirstOrDefault() as HKWorkout;
-                    tcs.TrySetResult(workoutToDelete);
-                }
-            );
-
             using var healthStore = new HKHealthStore();
-            healthStore.ExecuteQuery(query);
-            var hkWorkout = await tcs.Task;
 
-            if (hkWorkout == null)
+            var hkWorkout = await healthStore.FindWorkoutById(workout.Id);
+            if (hkWorkout is null)
             {
                 _logger.LogWarning("Workout not found for deletion: {WorkoutId}", workout.Id);
                 return;
             }
 
-            var deleteTcs = new TaskCompletionSource<bool>();
-            healthStore.DeleteObject(hkWorkout, (success, error) =>
+            var success = await healthStore.Delete(hkWorkout);
+            if (!success)
             {
-                if (error != null)
-                {
-                    _logger.LogError("iOS HealthWorkoutService Delete error: {Error}", error.LocalizedDescription);
-                    deleteTcs.TrySetResult(false);
-                    return;
-                }
+                _logger.LogWarning("iOS HealthWorkoutService: Failed to delete workout");
+                return;
+            }
 
-                _logger.LogInformation("iOS HealthWorkoutService: Successfully deleted workout");
-                deleteTcs.TrySetResult(success);
-            });
-
-            await deleteTcs.Task;
+            _logger.LogInformation("iOS HealthWorkoutService: Successfully deleted workout");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "iOS HealthWorkoutService Delete error");
-            throw; // Re-throw so caller knows it failed
+            throw;
         }
     }
 
@@ -270,17 +181,12 @@ public partial class HealthWorkoutService
                 return Task.CompletedTask;
             }
 
-            var startTime = DateTimeOffset.UtcNow;
-            var id = Guid.NewGuid().ToString();
-            var origin = dataOrigin ?? DataOrigins.HealthKit;
-            var workoutTitle = title ?? activityType.ToString();
-
             _activeWorkoutSession = new WorkoutSession(
-                id,
+                Guid.NewGuid().ToString(),
                 activityType,
-                workoutTitle,
-                origin,
-                startTime,
+                title ?? activityType.ToString(),
+                dataOrigin ?? DataOrigin.HealthKitOrigin,
+                DateTimeOffset.UtcNow,
                 WorkoutSessionState.Running
             );
 

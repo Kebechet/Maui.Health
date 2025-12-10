@@ -4,8 +4,27 @@ namespace Maui.Health.Models;
 
 /// <summary>
 /// Represents a group of workouts that are potential duplicates
-/// (same activity type, overlapping times, different sources)
+/// (same activity type, overlapping times, different sources).
 /// </summary>
+/// <remarks>
+/// <para>
+/// This class is used to detect and merge duplicate workout sessions that occur when a user
+/// stops a workout on both their phone and watch (or other wearable device) simultaneously.
+/// </para>
+/// <para>
+/// <b>Usage scenario:</b> When a user ends a workout session, you can query health data with a
+/// configurable time threshold (e.g., 10 minutes) to detect if multiple workout records exist
+/// from different data sources (your app vs. watch/wearable) for the same exercise session.
+/// </para>
+/// <para>
+/// <b>Merge strategy:</b> When duplicates are detected, the recommended approach is to:
+/// <list type="number">
+///   <item>Keep the external workout (from watch/wearable) as it typically contains richer health data (heart rate, GPS, etc.)</item>
+///   <item>Delete your app's workout record to avoid duplication</item>
+///   <item>Optionally mark/tag the external workout to indicate it was associated with your app's session</item>
+/// </list>
+/// </para>
+/// </remarks>
 public class DuplicateWorkoutGroup
 {
     /// <summary>

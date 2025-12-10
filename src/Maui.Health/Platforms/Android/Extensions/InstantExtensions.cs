@@ -4,7 +4,7 @@ namespace Maui.Health.Platforms.Android.Extensions;
 
 public static class InstantExtensions
 {
-    public static DateTimeOffset ToDateTimeOffset(this Java.Time.Instant instant)
+    internal static DateTimeOffset ToDateTimeOffset(this Java.Time.Instant instant)
     {
 #pragma warning disable CA1416
         var dateTime = DateTimeOffset.FromUnixTimeMilliseconds(instant.ToEpochMilli());

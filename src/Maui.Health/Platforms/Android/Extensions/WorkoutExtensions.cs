@@ -4,7 +4,6 @@ using Java.Time;
 using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android.Enums;
-using System.Diagnostics;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
@@ -34,80 +33,6 @@ internal static class WorkoutExtensions
             Title = title,
             StartTime = startTime,
             EndTime = endTime
-        };
-    }
-
-    /// <summary>
-    /// Converts an ExerciseSessionRecord to a WorkoutDto with heart rate and calories data (async)
-    /// </summary>
-    public static async Task<WorkoutDto> ToWorkoutDtoAsync(
-        this ExerciseSessionRecord exerciseRecord,
-        Func<HealthTimeRange, CancellationToken, Task<HeartRateDto[]>>? queryHeartRateFunc,
-        Func<HealthTimeRange, CancellationToken, Task<ActiveCaloriesBurnedDto[]>>? queryCaloriesFunc,
-        CancellationToken cancellationToken)
-    {
-        var startTime = exerciseRecord.StartTime.ToDateTimeOffset();
-        var endTime = exerciseRecord.EndTime.ToDateTimeOffset();
-        var activityType = ((ExerciseType)exerciseRecord.ExerciseType).ToActivityType();
-        string? title = exerciseRecord.Title;
-        var workoutTimeRange = HealthTimeRange.FromDateTimeOffset(startTime, endTime);
-
-        double? avgHeartRate = null;
-        double? minHeartRate = null;
-        double? maxHeartRate = null;
-        double? energyBurned = null;
-
-        // Query heart rate
-        if (queryHeartRateFunc != null)
-        {
-            try
-            {
-                var heartRateData = await queryHeartRateFunc(workoutTimeRange, cancellationToken);
-
-                if (heartRateData.Length > 0)
-                {
-                    avgHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
-                    minHeartRate = heartRateData.Min(hr => hr.BeatsPerMinute);
-                    maxHeartRate = heartRateData.Max(hr => hr.BeatsPerMinute);
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error fetching heart rate for workout: {ex.Message}");
-            }
-        }
-
-        // Query calories
-        if (queryCaloriesFunc != null)
-        {
-            try
-            {
-                var caloriesData = await queryCaloriesFunc(workoutTimeRange, cancellationToken);
-
-                if (caloriesData.Length > 0)
-                {
-                    energyBurned = caloriesData.Sum(c => c.Energy);
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Error fetching calories for workout: {ex.Message}");
-            }
-        }
-
-        return new WorkoutDto
-        {
-            Id = exerciseRecord.Metadata.Id,
-            DataOrigin = exerciseRecord.Metadata.DataOrigin.PackageName,
-            Timestamp = startTime,
-            ActivityType = activityType,
-            Title = title,
-            StartTime = startTime,
-            EndTime = endTime,
-            AverageHeartRate = avgHeartRate,
-            MinHeartRate = minHeartRate,
-            MaxHeartRate = maxHeartRate,
-            EnergyBurned = energyBurned
         };
     }
 
