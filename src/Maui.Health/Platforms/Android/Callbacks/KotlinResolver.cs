@@ -84,6 +84,12 @@ internal static class KotlinResolver
             return javaSet?.ToList<TResult?>();
         }
 
+        if (result is Java.Util.AbstractSet abstractSet)
+        {
+            var javaSet = abstractSet.JavaCast<Java.Util.ISet>();
+            return javaSet?.ToList<TResult?>();
+        }
+
         return null;
     }
 }
