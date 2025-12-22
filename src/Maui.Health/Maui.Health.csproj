@@ -46,11 +46,11 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-android'">
-	  <PackageReference Include="Xamarin.AndroidX.Health.Connect.ConnectClient" Version="1.1.0-alpha07" />
+	  <PackageReference Include="Xamarin.AndroidX.Health.Connect.ConnectClient" Version="1.1.0" />
 
     <!--underlying libraries have different versions than MAUI itself-->
-    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core" VersionOverride="2.8.7.3" NoWarn="NU1608" />
-    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" VersionOverride="2.8.7.3" NoWarn="NU1608" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core" VersionOverride="2.10.0" NoWarn="NU1608" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" VersionOverride="2.10.0" NoWarn="NU1608" />
 	</ItemGroup>
 
 

@@ -466,7 +466,7 @@ internal static class HealthRecordExtensions
         var startTime = dto.StartTime.ToJavaInstant();
         var endTime = dto.EndTime.ToJavaInstant();
 
-        var metadata = new Metadata();
+        var metadata = Metadata.ManualEntry();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
         var record = new StepsRecord(
@@ -484,7 +484,7 @@ internal static class HealthRecordExtensions
     public static WeightRecord ToWeightRecord(this WeightDto dto)
     {
         var time = dto.Timestamp.ToJavaInstant();
-        var metadata = new Metadata();
+        var metadata = Metadata.ManualEntry();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
         var mass = JavaReflectionHelper.CreateUnitViaCompanion<Mass>(
@@ -498,7 +498,7 @@ internal static class HealthRecordExtensions
     public static HeightRecord ToHeightRecord(this HeightDto dto)
     {
         var time = dto.Timestamp.ToJavaInstant();
-        var metadata = new Metadata();
+        var metadata = Metadata.ManualEntry();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
         var valueInMeters = UnitsNet.Length.FromCentimeters(dto.Value).Meters;
@@ -514,7 +514,7 @@ internal static class HealthRecordExtensions
     {
         var startTime = dto.StartTime.ToJavaInstant();
         var endTime = dto.EndTime.ToJavaInstant();
-        var metadata = new Metadata();
+        var metadata = Metadata.ManualEntry();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
         var energy = JavaReflectionHelper.CreateUnitViaCompanion<Energy>(
@@ -529,7 +529,7 @@ internal static class HealthRecordExtensions
     {
         var time = dto.Timestamp.ToJavaInstant();
 
-        var metadata = new Metadata();
+        var metadata = Metadata.ManualEntry();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
         var sample = new HeartRateRecord.Sample(time!, (long)dto.BeatsPerMinute);
@@ -551,7 +551,7 @@ internal static class HealthRecordExtensions
     {
         var time = dto.Timestamp.ToJavaInstant();
 
-        var metadata = new Metadata();
+        var metadata = Metadata.ManualEntry();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
         // Percentage is a simple value class, create directly
@@ -571,7 +571,7 @@ internal static class HealthRecordExtensions
     {
         var time = dto.Timestamp.ToJavaInstant();
 
-        var metadata = new Metadata();
+        var metadata = Metadata.ManualEntry();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
         // MeasurementMethod constants: 0 = Other, 1 = Metabolic cart, 2 = Heart rate ratio, 3 = Cooper test, 4 = Multistage fitness test, 5 = Rockport fitness test
@@ -580,9 +580,9 @@ internal static class HealthRecordExtensions
         var record = new Vo2MaxRecord(
             time!,
             offset,
+            metadata,
             dto.Value,
-            measurementMethodOther,
-            metadata
+            measurementMethodOther
         );
 
         return record;
