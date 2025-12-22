@@ -48,7 +48,7 @@ internal static class WorkoutExtensions
             return null;
         }
 
-        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+        var offset = ZoneOffsetExtensions.GetCurrent();
 
         return new ExerciseSessionRecord(
             dto.StartTime.ToJavaInstant()!,

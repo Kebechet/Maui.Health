@@ -463,7 +463,7 @@ internal static class HealthRecordExtensions
 
     public static StepsRecord ToStepsRecord(this StepsDto dto)
     {
-        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+        var offset = ZoneOffsetExtensions.GetCurrent();
 
         return new StepsRecord(
             dto.StartTime.ToJavaInstant()!,
@@ -484,7 +484,7 @@ internal static class HealthRecordExtensions
 
         return new WeightRecord(
             dto.Timestamp.ToJavaInstant()!,
-            ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now()),
+            ZoneOffsetExtensions.GetCurrent(),
             mass!,
             Metadata.ManualEntry()
         );
@@ -501,7 +501,7 @@ internal static class HealthRecordExtensions
 
         return new HeightRecord(
             dto.Timestamp.ToJavaInstant()!,
-            ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now()),
+            ZoneOffsetExtensions.GetCurrent(),
             length!,
             Metadata.ManualEntry()
         );
@@ -509,7 +509,7 @@ internal static class HealthRecordExtensions
 
     public static ActiveCaloriesBurnedRecord ToActiveCaloriesBurnedRecord(this ActiveCaloriesBurnedDto dto)
     {
-        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+        var offset = ZoneOffsetExtensions.GetCurrent();
         var energy = JavaReflectionHelper.CreateUnitViaCompanion<Energy>(
             Reflection.EnergyClassName,
             Reflection.KilocaloriesMethodName,
@@ -528,7 +528,7 @@ internal static class HealthRecordExtensions
     public static HeartRateRecord ToHeartRateRecord(this HeartRateDto dto)
     {
         var time = dto.Timestamp.ToJavaInstant();
-        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+        var offset = ZoneOffsetExtensions.GetCurrent();
 
         return new HeartRateRecord(
             time!,
@@ -544,7 +544,7 @@ internal static class HealthRecordExtensions
     {
         return new BodyFatRecord(
             dto.Timestamp.ToJavaInstant()!,
-            ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now()),
+            ZoneOffsetExtensions.GetCurrent(),
             new Percentage(dto.Percentage),
             Metadata.ManualEntry()
         );
@@ -557,7 +557,7 @@ internal static class HealthRecordExtensions
 
         return new Vo2MaxRecord(
             dto.Timestamp.ToJavaInstant()!,
-            ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now()),
+            ZoneOffsetExtensions.GetCurrent(),
             Metadata.ManualEntry(),
             dto.Value,
             measurementMethodOther
