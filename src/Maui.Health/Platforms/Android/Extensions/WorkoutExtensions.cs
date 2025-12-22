@@ -43,7 +43,7 @@ internal static class WorkoutExtensions
     public static ExerciseSessionRecord? ToExerciseSessionRecord(this WorkoutDto dto)
     {
         // Can only write completed workouts (with EndTime) to Health Connect
-        if (!dto.EndTime.HasValue)
+        if (dto.EndTime is null)
         {
             return null;
         }

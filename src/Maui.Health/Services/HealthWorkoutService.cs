@@ -70,7 +70,7 @@ public partial class HealthWorkoutService : IHealthWorkoutService
         var processed = new HashSet<string>();
 
         // Filter workouts by activity type if specified
-        var workoutsToCheck = activityType.HasValue
+        var workoutsToCheck = activityType is not null
             ? workouts.Where(w => w.ActivityType == activityType.Value).ToList()
             : workouts;
 
@@ -138,7 +138,7 @@ public partial class HealthWorkoutService : IHealthWorkoutService
         }
 
         // If both have end times, check those too
-        if (workout1.EndTime.HasValue && workout2.EndTime.HasValue)
+        if (workout1.EndTime is not null && workout2.EndTime is not null)
         {
             var endDiff = Math.Abs((workout1.EndTime.Value - workout2.EndTime.Value).TotalMinutes);
             if (endDiff > timeThresholdMinutes)

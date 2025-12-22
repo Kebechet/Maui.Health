@@ -47,7 +47,7 @@ public static class DateRangeExtensions
 
             return intervals.Select(i => new DateRange(
                 DateTimeOffset.FromUnixTimeMilliseconds(i.Item1),
-                i.Item2.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(i.Item2.Value) : null
+                i.Item2 is not null ? DateTimeOffset.FromUnixTimeMilliseconds(i.Item2.Value) : null
             )).ToList();
         }
         catch
@@ -80,11 +80,11 @@ public static class DateRangeExtensions
             return intervals
                 .Select(i =>
                 {
-                    var start = i.TryGetValue(nameof(DateRange.Start), out var startMs) && startMs.HasValue
+                    var start = i.TryGetValue(nameof(DateRange.Start), out var startMs) && startMs is not null
                         ? DateTimeOffset.FromUnixTimeMilliseconds(startMs.Value)
                         : DateTimeOffset.UtcNow;
 
-                    var end = i.TryGetValue(nameof(DateRange.End), out var endMs) && endMs.HasValue
+                    var end = i.TryGetValue(nameof(DateRange.End), out var endMs) && endMs is not null
                         ? DateTimeOffset.FromUnixTimeMilliseconds(endMs.Value)
                         : (DateTimeOffset?)null;
 

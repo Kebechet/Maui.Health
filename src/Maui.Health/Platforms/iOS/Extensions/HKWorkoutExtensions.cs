@@ -22,7 +22,7 @@ internal static class HKWorkoutExtensions
     public static HKWorkout? ToHKWorkout(this WorkoutDto dto)
     {
         // Can only write completed workouts (with EndTime) to HealthKit
-        if (!dto.EndTime.HasValue)
+        if (dto.EndTime is null)
         {
             return null;
         }
@@ -33,13 +33,13 @@ internal static class HKWorkoutExtensions
         var duration = (dto.EndTime.Value - dto.StartTime).TotalSeconds;
 
         HKQuantity? totalEnergyBurned = null;
-        if (dto.EnergyBurned.HasValue)
+        if (dto.EnergyBurned is not null)
         {
             totalEnergyBurned = HKQuantity.FromQuantity(HKUnit.Kilocalorie, dto.EnergyBurned.Value);
         }
 
         HKQuantity? totalDistance = null;
-        if (dto.Distance.HasValue)
+        if (dto.Distance is not null)
         {
             totalDistance = HKQuantity.FromQuantity(HKUnit.Meter, dto.Distance.Value);
         }

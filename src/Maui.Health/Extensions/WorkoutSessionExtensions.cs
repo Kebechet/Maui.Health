@@ -68,7 +68,7 @@ public static class WorkoutSessionExtensions
     /// <returns>A WorkoutSession if the workout has session metadata, otherwise null</returns>
     public static WorkoutSession? ToWorkoutSession(this WorkoutDto workout)
     {
-        var state = workout.EndTime.HasValue
+        var state = workout.EndTime is not null
             ? WorkoutSessionState.Ended
             : WorkoutSessionState.Running;
 
