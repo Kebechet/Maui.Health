@@ -1,5 +1,6 @@
 using HealthKit;
 using Maui.Health.Enums;
+using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Platforms.iOS.Extensions;
@@ -35,7 +36,9 @@ internal static class HKQuantitySampleExtensions
             Timestamp = startTime, // Use start time as the representative timestamp
             Count = (long)value,
             StartTime = startTime,
-            EndTime = endTime
+            EndTime = endTime,
+            RecordingMethod = GetRecordingMethod(sample.Metadata.WasUserEntered),
+            DeviceDetails = CreateDeviceDetails(sample.Device)
         };
     }
 
@@ -50,7 +53,9 @@ internal static class HKQuantitySampleExtensions
             DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
             Timestamp = timestamp,
             Value = value,
-            Unit = "kg"
+            Unit = "kg",
+            RecordingMethod = GetRecordingMethod(sample.Metadata.WasUserEntered),
+            DeviceDetails = CreateDeviceDetails(sample.Device)
         };
     }
 
@@ -65,7 +70,9 @@ internal static class HKQuantitySampleExtensions
             DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
             Timestamp = timestamp,
             Value = valueInMeters * 100, // Convert to cm
-            Unit = "cm"
+            Unit = "cm",
+            RecordingMethod = GetRecordingMethod(sample.Metadata.WasUserEntered),
+            DeviceDetails = CreateDeviceDetails(sample.Device)
         };
     }
 
@@ -83,7 +90,9 @@ internal static class HKQuantitySampleExtensions
             Energy = valueInKilocalories,
             Unit = "kcal",
             StartTime = startTime,
-            EndTime = endTime
+            EndTime = endTime,
+            RecordingMethod = GetRecordingMethod(sample.Metadata.WasUserEntered),
+            DeviceDetails = CreateDeviceDetails(sample.Device)
         };
     }
 
@@ -98,7 +107,9 @@ internal static class HKQuantitySampleExtensions
             DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
             Timestamp = timestamp,
             BeatsPerMinute = beatsPerMinute,
-            Unit = "BPM"
+            Unit = "BPM",
+            RecordingMethod = GetRecordingMethod(sample.Metadata.WasUserEntered),
+            DeviceDetails = CreateDeviceDetails(sample.Device)
         };
     }
 
@@ -113,7 +124,9 @@ internal static class HKQuantitySampleExtensions
             DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
             Timestamp = timestamp,
             Percentage = percentage,
-            Unit = "%"
+            Unit = "%",
+            RecordingMethod = GetRecordingMethod(sample.Metadata.WasUserEntered),
+            DeviceDetails = CreateDeviceDetails(sample.Device)
         };
     }
 
@@ -128,8 +141,31 @@ internal static class HKQuantitySampleExtensions
             DataOrigin = sample.SourceRevision?.Source?.Name ?? "Unknown",
             Timestamp = timestamp,
             Value = value,
-            Unit = "ml/kg/min"
+            Unit = "ml/kg/min",
+            RecordingMethod = GetRecordingMethod(sample.Metadata.WasUserEntered),
+            DeviceDetails = CreateDeviceDetails(sample.Device)
         };
     }
 
+    private static string? GetRecordingMethod(bool? metadataWasUserEntered)
+    {
+        return metadataWasUserEntered == true ? "Manual" : "Automatic";
+    }
+
+    private static DeviceDetails? CreateDeviceDetails(HKDevice? sampleDevice)
+    {
+        if (sampleDevice == null)
+        {
+            return null;
+        }
+        return new DeviceDetails
+        {
+            Name = sampleDevice?.Name ?? "Unknown",
+            Manufacturer = sampleDevice?.Manufacturer ?? "Unknown",
+            Model = sampleDevice?.Model ?? "Unknown",
+            Id = sampleDevice?.UdiDeviceIdentifier ?? "Unknown",
+            HardwareVersion = sampleDevice?.HardwareVersion ?? "Unknown",
+            SoftwareVersion = sampleDevice?.SoftwareVersion ?? "Unknown",
+        };
+    }
 }

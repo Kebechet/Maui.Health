@@ -65,6 +65,11 @@ internal static class KotlinResolver
             }
         }
 
+        if (string.Equals(result?.Class?.CanonicalName, "kotlin.collections.EmptySet", StringComparison.Ordinal))
+        {
+            return new List<TResult?>();
+        }
+
         if (result is JavaList javaList)
         {
             var aggregationResults = new List<AggregationResultGroupedByDuration>();

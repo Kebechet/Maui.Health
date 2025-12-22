@@ -5,6 +5,8 @@ using Maui.Health.Enums.Errors;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Extensions;
+using Maui.Health.Models.Requests;
+using Maui.Health.Models.Responses;
 using Maui.Health.Platforms.iOS.Extensions;
 using Microsoft.Extensions.Logging;
 
@@ -15,11 +17,26 @@ public partial class HealthService
     public partial bool IsSupported => HKHealthStore.IsHealthDataAvailable;
     private nuint _healthRateLimit { get; set; } = 0;
 
+    //not sure how to do this in iOS yet
+    public async partial Task<RequestPermissionResult> CheckPermissionStatusAsync(
+        IList<HealthPermissionDto> healthPermissions,
+        bool canRequestReadInBackgroundPermission,
+        bool canRequestFullHistoryPermission,
+        CancellationToken cancellationToken)
+    {
+        return await RequestPermissions(
+            healthPermissions,
+            canRequestReadInBackgroundPermission,
+            canRequestFullHistoryPermission,
+            cancellationToken);
+    }
+
     /// <summary>
     /// <param name="canRequestFullHistoryPermission">iOS has this by default as TRUE</param>
     /// <returns></returns>
     public async partial Task<RequestPermissionResult> RequestPermissions(
         IList<HealthPermissionDto> healthPermissions,
+        bool canRequestReadInBackgroundPermission,
         bool canRequestFullHistoryPermission,
         CancellationToken cancellationToken)
     {
@@ -201,6 +218,20 @@ public partial class HealthService
             _logger.LogError(ex, "Error fetching health data for {DtoName}", typeof(TDto).Name);
             return [];
         }
+    }
+
+    public partial Task<ReadHealthDataResponse<TDto>> GetHealthDataAsync<TDto>(ReadHealthDataRequest request,
+        CancellationToken cancellationToken) where TDto : HealthMetricBase
+    {
+        //TODO implement HKAnchoredQuery Here, probably needs predicate added to ReadHealthDataRequest
+        throw new PlatformNotSupportedException();
+    }
+
+    public partial Task<GetChangesResponse<TDto>> GetHealthDataChangesAsync<TDto>(GetChangesRequest request,
+        CancellationToken cancellationToken) where TDto : HealthMetricBase
+    {
+        //TODO implement HKAnchoredObjectQuery Here
+        throw new NotImplementedException();
     }
 
     private async Task<List<TDto>> GetWorkoutsAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)

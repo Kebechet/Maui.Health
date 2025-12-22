@@ -1,6 +1,9 @@
 using AndroidX.Health.Connect.Client.Records;
 using Maui.Health.Models.Metrics;
 using System.Diagnostics;
+using Android.Runtime;
+using AndroidX.Health.Connect.Client.Changes;
+using Maui.Health.Models;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
 using WeightRecord = AndroidX.Health.Connect.Client.Records.WeightRecord;
 using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;
@@ -8,6 +11,7 @@ using ActiveCaloriesBurnedRecord = AndroidX.Health.Connect.Client.Records.Active
 using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
 using Maui.Health.Platforms.Android.Enums;
+using Device = AndroidX.Health.Connect.Client.Records.Metadata.Device;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
@@ -16,6 +20,11 @@ internal static class HealthRecordExtensions
     public static TDto? ConvertToDto<TDto>(this Java.Lang.Object record)
         where TDto : HealthMetricBase
     {
+        if (record is UpsertionChange change)
+        {
+            record = (Java.Lang.Object)change.Record;
+        }
+
         return typeof(TDto).Name switch
         {
             nameof(StepsDto) => record.ToStepsDto() as TDto,
@@ -33,7 +42,11 @@ internal static class HealthRecordExtensions
 
     public static StepsDto? ToStepsDto(this Java.Lang.Object record)
     {
-        if (record is not StepsRecord stepsRecord)
+        StepsRecord? stepsRecord =
+            record as StepsRecord ??
+            record.TryJavaCast<StepsRecord>();
+
+        if (stepsRecord is null)
         {
             return null;
         }
@@ -48,13 +61,19 @@ internal static class HealthRecordExtensions
             Timestamp = startTime,
             Count = stepsRecord.Count,
             StartTime = startTime,
-            EndTime = endTime
+            EndTime = endTime,
+            RecordingMethod = GetRecordingMethod(stepsRecord.Metadata.RecordingMethod),
+            DeviceDetails = CreateDeviceDetails(stepsRecord.Metadata.Device)
         };
     }
 
     public static WeightDto? ToWeightDto(this Java.Lang.Object record)
     {
-        if (record is not WeightRecord weightRecord)
+        var weightRecord =
+            record as WeightRecord ??
+            record.TryJavaCast<WeightRecord>();
+
+        if (weightRecord is null)
         {
             return null;
         }
@@ -68,13 +87,19 @@ internal static class HealthRecordExtensions
             DataOrigin = weightRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Value = weightValue,
-            Unit = "kg"
+            Unit = "kg",
+            RecordingMethod = GetRecordingMethod(weightRecord.Metadata.RecordingMethod),
+            DeviceDetails = CreateDeviceDetails(weightRecord.Metadata.Device)
         };
     }
 
     public static HeightDto? ToHeightDto(this Java.Lang.Object record)
     {
-        if (record is not HeightRecord heightRecord)
+        var heightRecord =
+            record as HeightRecord ??
+            record.TryJavaCast<HeightRecord>();
+
+        if (heightRecord is null)
         {
             return null;
         }
@@ -88,13 +113,19 @@ internal static class HealthRecordExtensions
             DataOrigin = heightRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Value = heightValue,
-            Unit = "cm"
+            Unit = "cm",
+            RecordingMethod = GetRecordingMethod(heightRecord.Metadata.RecordingMethod),
+            DeviceDetails = CreateDeviceDetails(heightRecord.Metadata.Device)
         };
     }
 
     public static ActiveCaloriesBurnedDto? ToActiveCaloriesBurnedDto(this Java.Lang.Object record)
     {
-        if (record is not ActiveCaloriesBurnedRecord caloriesRecord)
+        var caloriesRecord =
+            record as ActiveCaloriesBurnedRecord ??
+            record.TryJavaCast<ActiveCaloriesBurnedRecord>();
+
+        if (caloriesRecord is null)
         {
             return null;
         }
@@ -111,13 +142,19 @@ internal static class HealthRecordExtensions
             Energy = energyValue,
             Unit = "kcal",
             StartTime = startTime,
-            EndTime = endTime
+            EndTime = endTime,
+            RecordingMethod = GetRecordingMethod(caloriesRecord.Metadata.RecordingMethod),
+            DeviceDetails = CreateDeviceDetails(caloriesRecord.Metadata.Device)
         };
     }
 
     public static HeartRateDto? ToHeartRateDto(this Java.Lang.Object record)
     {
-        if (record is not HeartRateRecord heartRateRecord)
+        var heartRateRecord =
+            record as HeartRateRecord ??
+            record.TryJavaCast<HeartRateRecord>();
+
+        if (heartRateRecord is null)
         {
             return null;
         }
@@ -140,13 +177,19 @@ internal static class HealthRecordExtensions
             DataOrigin = heartRateRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             BeatsPerMinute = beatsPerMinute,
-            Unit = "BPM"
+            Unit = "BPM",
+            RecordingMethod = GetRecordingMethod(heartRateRecord.Metadata.RecordingMethod),
+            DeviceDetails = CreateDeviceDetails(heartRateRecord.Metadata.Device)
         };
     }
 
     public static WorkoutDto? ToWorkoutDto(this Java.Lang.Object record)
     {
-        if (record is not ExerciseSessionRecord exerciseRecord)
+        var exerciseRecord =
+            record as ExerciseSessionRecord ??
+            record.TryJavaCast<ExerciseSessionRecord>();
+
+        if (exerciseRecord is null)
         {
             return null;
         }
@@ -164,7 +207,9 @@ internal static class HealthRecordExtensions
             ActivityType = activityType,
             Title = title,
             StartTime = startTime,
-            EndTime = endTime
+            EndTime = endTime,
+            RecordingMethod = GetRecordingMethod(exerciseRecord.Metadata.RecordingMethod),
+            DeviceDetails = CreateDeviceDetails(exerciseRecord.Metadata.Device)
         };
     }
 
@@ -218,13 +263,19 @@ internal static class HealthRecordExtensions
             EndTime = endTime,
             AverageHeartRate = avgHeartRate,
             MinHeartRate = minHeartRate,
-            MaxHeartRate = maxHeartRate
+            MaxHeartRate = maxHeartRate,
+            RecordingMethod = GetRecordingMethod(exerciseRecord.Metadata.RecordingMethod),
+            DeviceDetails = CreateDeviceDetails(exerciseRecord.Metadata.Device)
         };
     }
 
     public static BodyFatDto? ToBodyFatDto(this Java.Lang.Object record)
     {
-        if (record is not BodyFatRecord bodyFatRecord)
+        var bodyFatRecord =
+            record as BodyFatRecord ??
+            record.TryJavaCast<BodyFatRecord>();
+
+        if (bodyFatRecord is null)
         {
             return null;
         }
@@ -238,13 +289,19 @@ internal static class HealthRecordExtensions
             DataOrigin = bodyFatRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Percentage = percentage,
-            Unit = "%"
+            Unit = "%",
+            RecordingMethod = GetRecordingMethod(bodyFatRecord.Metadata.RecordingMethod),
+            DeviceDetails = CreateDeviceDetails(bodyFatRecord.Metadata.Device)
         };
     }
 
     public static Vo2MaxDto? ToVo2MaxDto(this Java.Lang.Object record)
     {
-        if (record is not Vo2MaxRecord vo2MaxRecord)
+        var vo2MaxRecord =
+            record as Vo2MaxRecord ??
+            record.TryJavaCast<Vo2MaxRecord>();
+
+        if (vo2MaxRecord is null)
         {
             return null;
         }
@@ -258,7 +315,43 @@ internal static class HealthRecordExtensions
             DataOrigin = vo2MaxRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Value = value,
-            Unit = "ml/kg/min"
+            Unit = "ml/kg/min",
+            RecordingMethod = GetRecordingMethod(vo2MaxRecord.Metadata.RecordingMethod),
+            DeviceDetails = CreateDeviceDetails(vo2MaxRecord.Metadata.Device)
+        };
+    }
+
+    private static string? GetRecordingMethod(int metadataRecordingMethod)
+    {
+        var recordingMethod = "Unknown";
+        if (Enum.IsDefined(typeof(global::Android.Health.Connect.DataTypes.HealthRecordingMethod), metadataRecordingMethod))
+        {
+            var healthRecordingMethod = (global::Android.Health.Connect.DataTypes.HealthRecordingMethod)metadataRecordingMethod;
+            recordingMethod = healthRecordingMethod.ToString();
+        }
+
+        return recordingMethod;
+    }
+
+    private static DeviceDetails? CreateDeviceDetails(Device? metadataDevice)
+    {
+        if (metadataDevice == null)
+        {
+            return null;
+        }
+
+        var deviceType = "Unknown";
+        if (Enum.IsDefined(typeof(global::Android.Health.Connect.DataTypes.HealthDeviceType), metadataDevice.Type))
+        {
+            var healthDeviceType = (global::Android.Health.Connect.DataTypes.HealthDeviceType)metadataDevice.Type;
+            deviceType = healthDeviceType.ToString();
+        }
+
+        return new DeviceDetails
+        {
+            DeviceType = deviceType,
+            Manufacturer = metadataDevice.Manufacturer,
+            Model = metadataDevice.Model
         };
     }
 
@@ -730,4 +823,17 @@ internal static class HealthRecordExtensions
     }
 
     #endregion
+
+    private static T? TryJavaCast<T>(this Java.Lang.Object obj)
+        where T : Java.Lang.Object
+    {
+        try
+        {
+            return obj.JavaCast<T>();
+        }
+        catch (InvalidCastException e)
+        {
+            return null;
+        }
+    }
 }

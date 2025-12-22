@@ -5,5 +5,6 @@ public enum RequestPermissionError
     IsNotSupported,
     ProblemWhileFetchingAlreadyGrantedPermissions,
     ProblemWhileGrantingPermissions,
-    MissingPermissions
+    MissingPermissions,
+    AndroidSdkUnavailableProviderUpdateRequired
 }
