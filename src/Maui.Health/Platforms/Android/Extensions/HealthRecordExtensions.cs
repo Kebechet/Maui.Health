@@ -463,128 +463,104 @@ internal static class HealthRecordExtensions
 
     public static StepsRecord ToStepsRecord(this StepsDto dto)
     {
-        var startTime = dto.StartTime.ToJavaInstant();
-        var endTime = dto.EndTime.ToJavaInstant();
-
-        var metadata = Metadata.ManualEntry();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
-        var record = new StepsRecord(
-            startTime!,
+        return new StepsRecord(
+            dto.StartTime.ToJavaInstant()!,
             offset,
-            endTime!,
+            dto.EndTime.ToJavaInstant()!,
             offset,
             dto.Count,
-            metadata
+            Metadata.ManualEntry()
         );
-
-        return record;
     }
 
     public static WeightRecord ToWeightRecord(this WeightDto dto)
     {
-        var time = dto.Timestamp.ToJavaInstant();
-        var metadata = Metadata.ManualEntry();
-        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
-
         var mass = JavaReflectionHelper.CreateUnitViaCompanion<Mass>(
             Reflection.MassClassName,
             Reflection.KilogramsMethodName,
             dto.Value);
 
-        return new WeightRecord(time!, offset, mass!, metadata);
+        return new WeightRecord(
+            dto.Timestamp.ToJavaInstant()!,
+            ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now()),
+            mass!,
+            Metadata.ManualEntry()
+        );
     }
 
     public static HeightRecord ToHeightRecord(this HeightDto dto)
     {
-        var time = dto.Timestamp.ToJavaInstant();
-        var metadata = Metadata.ManualEntry();
-        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
-
         var valueInMeters = UnitsNet.Length.FromCentimeters(dto.Value).Meters;
+
         var length = JavaReflectionHelper.CreateUnitViaCompanion<Length>(
             Reflection.LengthClassName,
             Reflection.MetersMethodName,
             valueInMeters);
 
-        return new HeightRecord(time!, offset, length!, metadata);
+        return new HeightRecord(
+            dto.Timestamp.ToJavaInstant()!,
+            ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now()),
+            length!,
+            Metadata.ManualEntry()
+        );
     }
 
     public static ActiveCaloriesBurnedRecord ToActiveCaloriesBurnedRecord(this ActiveCaloriesBurnedDto dto)
     {
-        var startTime = dto.StartTime.ToJavaInstant();
-        var endTime = dto.EndTime.ToJavaInstant();
-        var metadata = Metadata.ManualEntry();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
-
         var energy = JavaReflectionHelper.CreateUnitViaCompanion<Energy>(
             Reflection.EnergyClassName,
             Reflection.KilocaloriesMethodName,
             dto.Energy);
 
-        return new ActiveCaloriesBurnedRecord(startTime!, offset, endTime!, offset, energy!, metadata);
+        return new ActiveCaloriesBurnedRecord(
+            dto.StartTime.ToJavaInstant()!,
+            offset,
+            dto.EndTime.ToJavaInstant()!,
+            offset,
+            energy!,
+            Metadata.ManualEntry()
+        );
     }
 
     public static HeartRateRecord ToHeartRateRecord(this HeartRateDto dto)
     {
         var time = dto.Timestamp.ToJavaInstant();
-
-        var metadata = Metadata.ManualEntry();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
-        var sample = new HeartRateRecord.Sample(time!, (long)dto.BeatsPerMinute);
-        var samplesList = new List<HeartRateRecord.Sample> { sample };
-
-        var record = new HeartRateRecord(
+        return new HeartRateRecord(
             time!,
             offset,
             time!,
             offset,
-            samplesList,
-            metadata
+            [new(time!, (long)dto.BeatsPerMinute)],
+            Metadata.ManualEntry()
         );
-
-        return record;
     }
 
     public static BodyFatRecord ToBodyFatRecord(this BodyFatDto dto)
     {
-        var time = dto.Timestamp.ToJavaInstant();
-
-        var metadata = Metadata.ManualEntry();
-        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
-
-        // Percentage is a simple value class, create directly
-        var percentage = new Percentage(dto.Percentage);
-
-        var record = new BodyFatRecord(
-            time!,
-            offset,
-            percentage,
-            metadata
+        return new BodyFatRecord(
+            dto.Timestamp.ToJavaInstant()!,
+            ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now()),
+            new Percentage(dto.Percentage),
+            Metadata.ManualEntry()
         );
-
-        return record;
     }
 
     public static Vo2MaxRecord ToVo2MaxRecord(this Vo2MaxDto dto)
     {
-        var time = dto.Timestamp.ToJavaInstant();
-
-        var metadata = Metadata.ManualEntry();
-        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
-
         // MeasurementMethod constants: 0 = Other, 1 = Metabolic cart, 2 = Heart rate ratio, 3 = Cooper test, 4 = Multistage fitness test, 5 = Rockport fitness test
         const int measurementMethodOther = 0;
 
-        var record = new Vo2MaxRecord(
-            time!,
-            offset,
-            metadata,
+        return new Vo2MaxRecord(
+            dto.Timestamp.ToJavaInstant()!,
+            ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now()),
+            Metadata.ManualEntry(),
             dto.Value,
             measurementMethodOther
         );
-
-        return record;
     }
 }

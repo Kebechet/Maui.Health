@@ -48,25 +48,17 @@ internal static class WorkoutExtensions
             return null;
         }
 
-        var startTime = dto.StartTime.ToJavaInstant();
-        var endTime = dto.EndTime.Value.ToJavaInstant();
-
-        var metadata = Metadata.ManualEntry();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
-        var exerciseType = (int)dto.ActivityType.ToExerciseType();
-
-        var record = new ExerciseSessionRecord(
-            startTime!,
+        return new ExerciseSessionRecord(
+            dto.StartTime.ToJavaInstant()!,
             offset,
-            endTime!,
+            dto.EndTime.Value.ToJavaInstant()!,
             offset,
-            metadata,
-            exerciseType,
+            Metadata.ManualEntry(),
+            (int)dto.ActivityType.ToExerciseType(),
             !string.IsNullOrEmpty(dto.Title) ? dto.Title : null,
             null
         );
-
-        return record;
     }
 }
