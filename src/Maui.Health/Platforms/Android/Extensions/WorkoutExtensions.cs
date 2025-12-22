@@ -51,7 +51,7 @@ internal static class WorkoutExtensions
         var startTime = dto.StartTime.ToJavaInstant();
         var endTime = dto.EndTime.Value.ToJavaInstant();
 
-        var metadata = new Metadata();
+        var metadata = Metadata.ManualEntry();
         var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
         var exerciseType = (int)dto.ActivityType.ToExerciseType();
@@ -61,10 +61,10 @@ internal static class WorkoutExtensions
             offset,
             endTime!,
             offset,
+            metadata,
             exerciseType,
             !string.IsNullOrEmpty(dto.Title) ? dto.Title : null,
-            null,
-            metadata
+            null
         );
 
         return record;
