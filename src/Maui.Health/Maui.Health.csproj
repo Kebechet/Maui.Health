@@ -36,8 +36,8 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>2.0.0-preview1</Version>
-    <PackageReleaseNotes>Extended support for new health metrics and complete refactor</PackageReleaseNotes>
+    <Version>2.0.0-preview2</Version>
+    <PackageReleaseNotes>Added session related tracking and stability improvements</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
