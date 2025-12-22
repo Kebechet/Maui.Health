@@ -4,8 +4,16 @@ using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Extensions;
 
-internal static class MetricDtoExtensions
+public static class MetricDtoExtensions
 {
+    /// <summary>
+    /// Calculates the total calories from a collection of ActiveCaloriesBurnedDto records
+    /// </summary>
+    public static double TotalCalories(this IEnumerable<ActiveCaloriesBurnedDto> calories)
+    {
+        return calories.Sum(c => c.Energy);
+    }
+
     /// <summary>
     /// Maps a DTO type to its corresponding HealthDataType enum value
     /// </summary>
@@ -25,7 +33,7 @@ internal static class MetricDtoExtensions
             _ => throw new NotSupportedException($"DTO type {typeof(TDto).Name} is not supported")
         };
     }
-    
+
     /// <summary>
     /// Gets the permission required for a specific DTO type
     /// </summary>

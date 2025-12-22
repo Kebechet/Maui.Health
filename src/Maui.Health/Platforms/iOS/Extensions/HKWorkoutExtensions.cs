@@ -1,76 +1,57 @@
-﻿using HealthKit;
+using Foundation;
+using HealthKit;
+using Maui.Health.Enums;
 using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Platforms.iOS.Extensions;
 
 internal static class HKWorkoutExtensions
 {
-    internal static async Task<WorkoutDto> ToWorkoutDtoAsync(
-        this HKWorkout workout,
-        Func<HealthTimeRange, CancellationToken, Task<HeartRateDto[]>> queryHeartRateFunc,
-        CancellationToken cancellationToken)
+    /// <summary>
+    /// Converts a WorkoutDto to an HKObject (HKWorkout) for writing to HealthKit
+    /// </summary>
+    public static HKObject? ToHKObject(this WorkoutDto workoutDto)
     {
-        var startTime = new DateTimeOffset(workout.StartDate.ToDateTime());
-        var endTime = new DateTimeOffset(workout.EndDate.ToDateTime());
-        var activityType = workout.WorkoutActivityType.ToActivityType();
+        return workoutDto.ToHKWorkout();
+    }
 
-        // Extract energy burned
-        double? energyBurned = null;
-        if (workout.TotalEnergyBurned != null)
+    /// <summary>
+    /// Converts a WorkoutDto to an HKWorkout for writing to HealthKit
+    /// Note: EndTime must not be null (only for completed workouts)
+    /// </summary>
+    public static HKWorkout? ToHKWorkout(this WorkoutDto dto)
+    {
+        // Can only write completed workouts (with EndTime) to HealthKit
+        if (!dto.EndTime.HasValue)
         {
-            energyBurned = workout.TotalEnergyBurned.GetDoubleValue(HKUnit.Kilocalorie);
+            return null;
         }
 
-        // Extract distance
-        double? distance = null;
-        if (workout.TotalDistance != null)
+        var activityType = dto.ActivityType.ToHKWorkoutActivityType();
+        var startDate = dto.StartTime.ToNSDate();
+        var endDate = dto.EndTime.Value.ToNSDate();
+        var duration = (dto.EndTime.Value - dto.StartTime).TotalSeconds;
+
+        HKQuantity? totalEnergyBurned = null;
+        if (dto.EnergyBurned.HasValue)
         {
-            distance = workout.TotalDistance.GetDoubleValue(HKUnit.Meter);
+            totalEnergyBurned = HKQuantity.FromQuantity(HKUnit.Kilocalorie, dto.EnergyBurned.Value);
         }
 
-        // Fetch heart rate data during the workout
-        double? avgHeartRate = null;
-        double? minHeartRate = null;
-        double? maxHeartRate = null;
-
-        try
+        HKQuantity? totalDistance = null;
+        if (dto.Distance.HasValue)
         {
-            System.Diagnostics.Debug.WriteLine($"iOS: Querying HR for workout {startTime:HH:mm} to {endTime:HH:mm}");
-            var workoutTimeRange = HealthTimeRange.FromDateTimeOffset(startTime, endTime);
-            var heartRateData = await queryHeartRateFunc(workoutTimeRange, cancellationToken);
-            System.Diagnostics.Debug.WriteLine($"iOS: Found {heartRateData.Length} HR samples for workout");
-
-            if (heartRateData.Any())
-            {
-                avgHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
-                minHeartRate = heartRateData.Min(hr => hr.BeatsPerMinute);
-                maxHeartRate = heartRateData.Max(hr => hr.BeatsPerMinute);
-                System.Diagnostics.Debug.WriteLine($"iOS: Workout HR - Avg: {avgHeartRate:F0}, Min: {minHeartRate:F0}, Max: {maxHeartRate:F0}");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"iOS: No HR data found for workout period");
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"iOS: Error fetching heart rate for workout: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"iOS: Stack trace: {ex.StackTrace}");
+            totalDistance = HKQuantity.FromQuantity(HKUnit.Meter, dto.Distance.Value);
         }
 
-        return new WorkoutDto
-        {
-            Id = workout.Uuid.ToString(),
-            DataOrigin = workout.SourceRevision?.Source?.Name ?? "Unknown",
-            Timestamp = startTime,
-            ActivityType = activityType,
-            StartTime = startTime,
-            EndTime = endTime,
-            EnergyBurned = energyBurned,
-            Distance = distance,
-            AverageHeartRate = avgHeartRate,
-            MinHeartRate = minHeartRate,
-            MaxHeartRate = maxHeartRate
-        };
+        return HKWorkout.Create(
+            activityType,
+            startDate,
+            endDate,
+            duration,
+            totalEnergyBurned,
+            totalDistance,
+            (NSDictionary?)null
+        );
     }
 }

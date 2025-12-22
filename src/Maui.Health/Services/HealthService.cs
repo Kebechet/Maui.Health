@@ -6,10 +6,14 @@ namespace Maui.Health.Services;
 
 public partial class HealthService : IHealthService
 {
-    private readonly ILogger<HealthService> _logger;
+    public IHealthWorkoutService Activity => _activityService;
 
-    public HealthService(ILogger<HealthService> logger)
+    private readonly HealthWorkoutService _activityService;
+    protected readonly ILogger<HealthService> _logger;
+
+    public HealthService(HealthWorkoutService activityService, ILogger<HealthService> logger)
     {
+        _activityService = activityService;
         _logger = logger;
     }
 
@@ -22,6 +26,9 @@ public partial class HealthService : IHealthService
 
     public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
 
-    public partial Task<List<TDto>> GetHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase;
+
+    public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 }

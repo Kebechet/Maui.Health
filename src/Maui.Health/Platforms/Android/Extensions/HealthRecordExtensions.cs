@@ -1,13 +1,18 @@
 using AndroidX.Health.Connect.Client.Records;
+using AndroidX.Health.Connect.Client.Records.Metadata;
+using AndroidX.Health.Connect.Client.Units;
+using Java.Time;
+using Maui.Health.Constants;
 using Maui.Health.Models.Metrics;
+using Maui.Health.Platforms.Android.Helpers;
 using System.Diagnostics;
+using static Maui.Health.Platforms.Android.AndroidConstant;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
 using WeightRecord = AndroidX.Health.Connect.Client.Records.WeightRecord;
 using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;
 using ActiveCaloriesBurnedRecord = AndroidX.Health.Connect.Client.Records.ActiveCaloriesBurnedRecord;
 using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
-using Maui.Health.Platforms.Android.Enums;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
@@ -23,7 +28,6 @@ internal static class HealthRecordExtensions
             nameof(HeightDto) => record.ToHeightDto() as TDto,
             nameof(ActiveCaloriesBurnedDto) => record.ToActiveCaloriesBurnedDto() as TDto,
             nameof(HeartRateDto) => record.ToHeartRateDto() as TDto,
-            nameof(WorkoutDto) => record.ToWorkoutDto() as TDto,
             nameof(BodyFatDto) => record.ToBodyFatDto() as TDto,
             nameof(Vo2MaxDto) => record.ToVo2MaxDto() as TDto,
             //nameof(BloodPressureDto) => record.ToBloodPressureDto() as TDto,
@@ -68,7 +72,7 @@ internal static class HealthRecordExtensions
             DataOrigin = weightRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Value = weightValue,
-            Unit = "kg"
+            Unit = Units.Kilogram
         };
     }
 
@@ -88,7 +92,7 @@ internal static class HealthRecordExtensions
             DataOrigin = heightRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Value = heightValue,
-            Unit = "cm"
+            Unit = Units.Centimeter
         };
     }
 
@@ -109,7 +113,7 @@ internal static class HealthRecordExtensions
             DataOrigin = caloriesRecord.Metadata.DataOrigin.PackageName,
             Timestamp = startTime,
             Energy = energyValue,
-            Unit = "kcal",
+            Unit = Units.Kilocalorie,
             StartTime = startTime,
             EndTime = endTime
         };
@@ -140,87 +144,10 @@ internal static class HealthRecordExtensions
             DataOrigin = heartRateRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             BeatsPerMinute = beatsPerMinute,
-            Unit = "BPM"
+            Unit = Units.BeatsPerMinute
         };
     }
 
-    public static WorkoutDto? ToWorkoutDto(this Java.Lang.Object record)
-    {
-        if (record is not ExerciseSessionRecord exerciseRecord)
-        {
-            return null;
-        }
-
-        var startTime = exerciseRecord.StartTime.ToDateTimeOffset();
-        var endTime = exerciseRecord.EndTime.ToDateTimeOffset();
-        var activityType = ((ExerciseType)exerciseRecord.ExerciseType).ToActivityType();
-        string? title = exerciseRecord.Title;
-
-        return new WorkoutDto
-        {
-            Id = exerciseRecord.Metadata.Id,
-            DataOrigin = exerciseRecord.Metadata.DataOrigin.PackageName,
-            Timestamp = startTime,
-            ActivityType = activityType,
-            Title = title,
-            StartTime = startTime,
-            EndTime = endTime
-        };
-    }
-
-    public static async Task<WorkoutDto> ToWorkoutDtoAsync(
-        this ExerciseSessionRecord exerciseRecord,
-        Func<HealthTimeRange, CancellationToken, Task<HeartRateDto[]>> queryHeartRateFunc,
-        CancellationToken cancellationToken)
-    {
-        var startTime = exerciseRecord.StartTime.ToDateTimeOffset();
-        var endTime = exerciseRecord.EndTime.ToDateTimeOffset();
-        var activityType = ((ExerciseType)exerciseRecord.ExerciseType).ToActivityType();
-        string? title = exerciseRecord.Title;
-
-        double? avgHeartRate = null;
-        double? minHeartRate = null;
-        double? maxHeartRate = null;
-
-        try
-        {
-            Debug.WriteLine($"Android: Querying HR for workout {startTime:HH:mm} to {endTime:HH:mm}");
-            var workoutTimeRange = HealthTimeRange.FromDateTimeOffset(startTime, endTime);
-            var heartRateData = await queryHeartRateFunc(workoutTimeRange, cancellationToken);
-            Debug.WriteLine($"Android: Found {heartRateData.Length} HR samples for workout");
-
-            if (heartRateData.Any())
-            {
-                avgHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
-                minHeartRate = heartRateData.Min(hr => hr.BeatsPerMinute);
-                maxHeartRate = heartRateData.Max(hr => hr.BeatsPerMinute);
-                Debug.WriteLine($"Android: Workout HR - Avg: {avgHeartRate:F0}, Min: {minHeartRate:F0}, Max: {maxHeartRate:F0}");
-            }
-            else
-            {
-                Debug.WriteLine($"Android: No HR data found for workout period");
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Android: Error fetching heart rate for workout: {ex.Message}");
-            Debug.WriteLine($"Android: Stack trace: {ex.StackTrace}");
-        }
-
-        return new WorkoutDto
-        {
-            Id = exerciseRecord.Metadata.Id,
-            DataOrigin = exerciseRecord.Metadata.DataOrigin.PackageName,
-            Timestamp = startTime,
-            ActivityType = activityType,
-            Title = title,
-            StartTime = startTime,
-            EndTime = endTime,
-            AverageHeartRate = avgHeartRate,
-            MinHeartRate = minHeartRate,
-            MaxHeartRate = maxHeartRate
-        };
-    }
 
     public static BodyFatDto? ToBodyFatDto(this Java.Lang.Object record)
     {
@@ -238,7 +165,7 @@ internal static class HealthRecordExtensions
             DataOrigin = bodyFatRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Percentage = percentage,
-            Unit = "%"
+            Unit = Units.Percent
         };
     }
 
@@ -250,7 +177,8 @@ internal static class HealthRecordExtensions
         }
 
         var timestamp = vo2MaxRecord.Time.ToDateTimeOffset();
-        var value = vo2MaxRecord.ExtractVo2MaxValue();
+        // Extract VO2Max value using reflection - try common property names
+        var value = ((Java.Lang.Object)vo2MaxRecord).ExtractVo2MaxValue();
 
         return new Vo2MaxDto
         {
@@ -258,7 +186,7 @@ internal static class HealthRecordExtensions
             DataOrigin = vo2MaxRecord.Metadata.DataOrigin.PackageName,
             Timestamp = timestamp,
             Value = value,
-            Unit = "ml/kg/min"
+            Unit = Units.Vo2Max
         };
     }
 
@@ -282,452 +210,381 @@ internal static class HealthRecordExtensions
     //    };
     //}
 
-    #region Value Extraction Helpers
-
     public static double ExtractMassValue(this Java.Lang.Object mass)
     {
         try
         {
-            Debug.WriteLine($"Mass object type: {mass.GetType().Name}");
-            Debug.WriteLine($"Mass object class: {mass.Class.Name}");
-
             if (mass.TryOfficialUnitsApi("KILOGRAMS", out double officialValue))
             {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
                 return officialValue;
             }
 
-            if (mass.TryGetPropertyValue("value", out double value1))
+            if (mass.TryGetPropertyValue("inKilograms", out double value1))
             {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
                 return value1;
             }
 
-            if (mass.TryGetPropertyValue("inKilograms", out double value2))
+            if (mass.TryCallMethod("inKilograms", out double value2))
             {
-                Debug.WriteLine($"Found value via 'inKilograms' property: {value2}");
                 return value2;
             }
 
-            if (mass.TryCallMethod("inKilograms", out double value3))
+            if (mass.TryCallMethod("getInKilograms", out double value3))
             {
-                Debug.WriteLine($"Found value via 'inKilograms()' method: {value3}");
                 return value3;
             }
 
-            if (mass.TryCallMethod("getValue", out double value4))
+            if (mass.TryGetPropertyValue("value", out double value4))
             {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
-                return value4;
+                return UnitsNet.Mass.FromGrams(value4).Kilograms;
+            }
+
+            if (mass.TryCallMethod("getValue", out double value5))
+            {
+                return UnitsNet.Mass.FromGrams(value5).Kilograms;
             }
 
             var stringValue = mass.ToString();
-            Debug.WriteLine($"Mass toString(): {stringValue}");
-
-            if (stringValue.TryParseFromString(out double value5))
+            if (stringValue.TryParseFromString(out double value6))
             {
-                Debug.WriteLine($"Found value via string parsing: {value5}");
-                return value5;
+                return UnitsNet.Mass.FromGrams(value6).Kilograms;
             }
-
-            Debug.WriteLine("All approaches failed for Mass extraction");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting mass value: {ex}");
+            Debug.WriteLine($"Error extracting mass value: {ex.Message}");
         }
 
-        return 70.0; // Default fallback value
+        return Defaults.FallbackWeightKg;
     }
 
     public static double ExtractLengthValue(this Java.Lang.Object length)
     {
         try
         {
-            Debug.WriteLine($"Length object type: {length.GetType().Name}");
-            Debug.WriteLine($"Length object class: {length.Class.Name}");
-
             if (length.TryOfficialUnitsApi("METERS", out double officialValue))
             {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
-                return officialValue * 100; // Convert meters to cm
+                return UnitsNet.Length.FromMeters(officialValue).Centimeters;
             }
 
             if (length.TryGetPropertyValue("value", out double value1))
             {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
-                return value1 * 100;
+                return UnitsNet.Length.FromMeters(value1).Centimeters;
             }
 
             if (length.TryGetPropertyValue("inMeters", out double value2))
             {
-                Debug.WriteLine($"Found value via 'inMeters' property: {value2}");
-                return value2 * 100;
+                return UnitsNet.Length.FromMeters(value2).Centimeters;
             }
 
             if (length.TryCallMethod("inMeters", out double value3))
             {
-                Debug.WriteLine($"Found value via 'inMeters()' method: {value3}");
-                return value3 * 100;
+                return UnitsNet.Length.FromMeters(value3).Centimeters;
             }
 
             if (length.TryCallMethod("getValue", out double value4))
             {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
-                return value4 * 100;
+                return UnitsNet.Length.FromMeters(value4).Centimeters;
             }
 
             var stringValue = length.ToString();
-            Debug.WriteLine($"Length toString(): {stringValue}");
-
             if (stringValue.TryParseFromString(out double value5))
             {
-                Debug.WriteLine($"Found value via string parsing: {value5}");
-                return value5 * 100;
+                return UnitsNet.Length.FromMeters(value5).Centimeters;
             }
-
-            Debug.WriteLine("All approaches failed for Length extraction");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting length value: {ex}");
+            Debug.WriteLine($"Error extracting length value: {ex.Message}");
         }
 
-        return 175.0; // Default fallback value in cm
+        return Defaults.FallbackHeightCm;
     }
 
     public static double ExtractEnergyValue(this Java.Lang.Object energy)
     {
         try
         {
-            Debug.WriteLine($"Energy object type: {energy.GetType().Name}");
-            Debug.WriteLine($"Energy object class: {energy.Class.Name}");
-
             if (energy.TryOfficialUnitsApi("KILOCALORIES", out double officialValue))
             {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
                 return officialValue;
             }
 
-            if (energy.TryGetPropertyValue("value", out double value1))
+            if (energy.TryGetPropertyValue("inKilocalories", out double value1))
             {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
                 return value1;
             }
 
-            if (energy.TryGetPropertyValue("inKilocalories", out double value2))
+            if (energy.TryCallMethod("inKilocalories", out double value2))
             {
-                Debug.WriteLine($"Found value via 'inKilocalories' property: {value2}");
                 return value2;
             }
 
-            if (energy.TryCallMethod("inKilocalories", out double value3))
+            if (energy.TryCallMethod("getInKilocalories", out double value3))
             {
-                Debug.WriteLine($"Found value via 'inKilocalories()' method: {value3}");
                 return value3;
             }
 
-            if (energy.TryCallMethod("getValue", out double value4))
+            if (energy.TryGetPropertyValue("value", out double value4))
             {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
-                return value4;
+                return UnitsNet.Energy.FromCalories(value4).Kilocalories;
+            }
+
+            if (energy.TryCallMethod("getValue", out double value5))
+            {
+                return UnitsNet.Energy.FromCalories(value5).Kilocalories;
             }
 
             var stringValue = energy.ToString();
-            Debug.WriteLine($"Energy toString(): {stringValue}");
-
-            if (stringValue.TryParseFromString(out double value5))
+            if (stringValue.TryParseFromString(out double value6))
             {
-                Debug.WriteLine($"Found value via string parsing: {value5}");
-                return value5;
+                return UnitsNet.Energy.FromCalories(value6).Kilocalories;
             }
-
-            Debug.WriteLine("All approaches failed for Energy extraction");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting energy value: {ex}");
+            Debug.WriteLine($"Error extracting energy value: {ex.Message}");
         }
 
-        return 0.0; // Default fallback value
+        return Defaults.FallbackValue;
     }
 
     public static double ExtractPercentageValue(this Java.Lang.Object percentage)
     {
         try
         {
-            Debug.WriteLine($"Percentage object type: {percentage.GetType().Name}");
-            Debug.WriteLine($"Percentage object class: {percentage.Class.Name}");
-
             if (percentage.TryOfficialUnitsApi("PERCENT", out double officialValue))
             {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
                 return officialValue;
             }
 
             if (percentage.TryGetPropertyValue("value", out double value1))
             {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
                 return value1;
             }
 
             if (percentage.TryCallMethod("getValue", out double value2))
             {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value2}");
                 return value2;
             }
-
-            Debug.WriteLine("All approaches failed for Percentage extraction");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting percentage value: {ex}");
+            Debug.WriteLine($"Error extracting percentage value: {ex.Message}");
         }
 
-        return 0.0; // Default fallback value
+        return Defaults.FallbackValue;
     }
 
     public static double ExtractVo2MaxValue(this Java.Lang.Object vo2Max)
     {
         try
         {
-            Debug.WriteLine($"VO2Max object type: {vo2Max.GetType().Name}");
-            Debug.WriteLine($"VO2Max object class: {vo2Max.Class.Name}");
-
-            if (vo2Max.TryOfficialUnitsApi("MILLILITERS_PER_MINUTE_KILOGRAM", out double officialValue))
+            // Field name is vo2MillilitersPerMinuteKilogram (not vo2MaxMillilitersPerMinuteKilogram)
+            if (vo2Max.TryGetPropertyValue("vo2MillilitersPerMinuteKilogram", out double vo2Value))
             {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
-                return officialValue;
+                return vo2Value;
+            }
+
+            if (vo2Max.TryCallMethod("getVo2MillilitersPerMinuteKilogram", out double vo2Value2))
+            {
+                return vo2Value2;
             }
 
             if (vo2Max.TryGetPropertyValue("value", out double value1))
             {
-                Debug.WriteLine($"Found value via 'value' property: {value1}");
                 return value1;
             }
 
             if (vo2Max.TryCallMethod("getValue", out double value2))
             {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value2}");
                 return value2;
             }
-
-            Debug.WriteLine("All approaches failed for VO2Max extraction");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting VO2Max value: {ex}");
+            Debug.WriteLine($"Error extracting VO2Max value: {ex.Message}");
         }
 
-        return 0.0; // Default fallback value
+        return Defaults.FallbackValue;
     }
 
     public static double ExtractPressureValue(this Java.Lang.Object pressure)
     {
         try
         {
-            Debug.WriteLine($"Pressure object type: {pressure.GetType().Name}");
-            Debug.WriteLine($"Pressure object class: {pressure.Class.Name}");
-
             if (pressure.TryOfficialUnitsApi("MILLIMETERS_OF_MERCURY", out double officialValue))
             {
-                Debug.WriteLine($"Found value via official Units API: {officialValue}");
                 return officialValue;
             }
 
             if (pressure.TryGetPropertyValue("inMillimetersOfMercury", out double value1))
             {
-                Debug.WriteLine($"Found value via 'inMillimetersOfMercury' property: {value1}");
                 return value1;
             }
 
             if (pressure.TryCallMethod("inMillimetersOfMercury", out double value2))
             {
-                Debug.WriteLine($"Found value via 'inMillimetersOfMercury()' method: {value2}");
                 return value2;
             }
 
             if (pressure.TryGetPropertyValue("value", out double value3))
             {
-                Debug.WriteLine($"Found value via 'value' property: {value3}");
                 return value3;
             }
 
             if (pressure.TryCallMethod("getValue", out double value4))
             {
-                Debug.WriteLine($"Found value via 'getValue()' method: {value4}");
                 return value4;
             }
-
-            Debug.WriteLine("All approaches failed for Pressure extraction");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error extracting pressure value: {ex}");
+            Debug.WriteLine($"Error extracting pressure value: {ex.Message}");
         }
 
-        return 0.0; // Default fallback value
+        return Defaults.FallbackValue;
     }
 
-    private static bool TryOfficialUnitsApi(this Java.Lang.Object obj, string unitName, out double value)
+    public static Java.Lang.Object? ToAndroidRecord(this HealthMetricBase dto)
     {
-        value = 0;
-        try
+        return dto switch
         {
-            var objClass = obj.Class;
-
-            var inUnitMethod = objClass.GetDeclaredMethods()?.FirstOrDefault(m =>
-                m.Name.Equals("InUnit", StringComparison.OrdinalIgnoreCase) ||
-                m.Name.Equals("inUnit", StringComparison.OrdinalIgnoreCase));
-
-            if (inUnitMethod != null)
-            {
-                Debug.WriteLine($"Found InUnit method: {inUnitMethod.Name}");
-
-                if (TryGetUnitConstant(unitName, out Java.Lang.Object? unitConstant))
-                {
-                    inUnitMethod.Accessible = true;
-                    var result = inUnitMethod.Invoke(obj, unitConstant!);
-
-                    if (result is Java.Lang.Double javaDouble)
-                    {
-                        value = javaDouble.DoubleValue();
-                        return true;
-                    }
-                    if (result is Java.Lang.Float javaFloat)
-                    {
-                        value = javaFloat.DoubleValue();
-                        return true;
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error trying official Units API: {ex.Message}");
-        }
-        return false;
+            StepsDto stepsDto => stepsDto.ToStepsRecord(),
+            WeightDto weightDto => weightDto.ToWeightRecord(),
+            HeightDto heightDto => heightDto.ToHeightRecord(),
+            ActiveCaloriesBurnedDto caloriesDto => caloriesDto.ToActiveCaloriesBurnedRecord(),
+            HeartRateDto heartRateDto => heartRateDto.ToHeartRateRecord(),
+            BodyFatDto bodyFatDto => bodyFatDto.ToBodyFatRecord(),
+            Vo2MaxDto vo2MaxDto => vo2MaxDto.ToVo2MaxRecord(),
+            _ => null
+        };
     }
 
-    private static bool TryGetUnitConstant(string unitName, out Java.Lang.Object? unitConstant)
+    public static StepsRecord ToStepsRecord(this StepsDto dto)
     {
-        unitConstant = null;
-        try
-        {
-            var unitsNamespace = "AndroidX.Health.Connect.Client.Units";
-            var className = unitName.Contains("KILOGRAM") ? "Mass" : "Length";
-            var fullClassName = $"{unitsNamespace}.{className}";
+        var startTime = dto.StartTime.ToJavaInstant();
+        var endTime = dto.EndTime.ToJavaInstant();
 
-            var unitClass = Java.Lang.Class.ForName(fullClassName);
-            if (unitClass != null)
-            {
-                var field = unitClass.GetDeclaredField(unitName);
-                if (field != null)
-                {
-                    field.Accessible = true;
-                    unitConstant = field.Get(null);
-                    return unitConstant != null;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error getting unit constant '{unitName}': {ex.Message}");
-        }
-        return false;
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        var record = new StepsRecord(
+            startTime!,
+            offset,
+            endTime!,
+            offset,
+            dto.Count,
+            metadata
+        );
+
+        return record;
     }
 
-    private static bool TryGetPropertyValue(this Java.Lang.Object obj, string propertyName, out double value)
+    public static WeightRecord ToWeightRecord(this WeightDto dto)
     {
-        value = 0;
-        try
-        {
-            var objClass = obj.Class;
-            var field = objClass.GetDeclaredField(propertyName);
-            if (field != null)
-            {
-                field.Accessible = true;
-                var fieldValue = field.Get(obj);
+        var time = dto.Timestamp.ToJavaInstant();
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
-                if (fieldValue is Java.Lang.Double javaDouble)
-                {
-                    value = javaDouble.DoubleValue();
-                    return true;
-                }
-                if (fieldValue is Java.Lang.Float javaFloat)
-                {
-                    value = javaFloat.DoubleValue();
-                    return true;
-                }
-                if (fieldValue is Java.Lang.Integer javaInt)
-                {
-                    value = javaInt.DoubleValue();
-                    return true;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error getting property '{propertyName}': {ex.Message}");
-        }
-        return false;
+        var mass = JavaReflectionHelper.CreateUnitViaCompanion<Mass>(
+            Reflection.MassClassName,
+            Reflection.KilogramsMethodName,
+            dto.Value);
+
+        return new WeightRecord(time!, offset, mass!, metadata);
     }
 
-    private static bool TryCallMethod(this Java.Lang.Object obj, string methodName, out double value)
+    public static HeightRecord ToHeightRecord(this HeightDto dto)
     {
-        value = 0;
-        try
-        {
-            var objClass = obj.Class;
-            var method = objClass.GetDeclaredMethod(methodName);
-            if (method != null)
-            {
-                method.Accessible = true;
-                var result = method.Invoke(obj);
+        var time = dto.Timestamp.ToJavaInstant();
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
-                if (result is Java.Lang.Double javaDouble)
-                {
-                    value = javaDouble.DoubleValue();
-                    return true;
-                }
-                if (result is Java.Lang.Float javaFloat)
-                {
-                    value = javaFloat.DoubleValue();
-                    return true;
-                }
-                if (result is Java.Lang.Integer javaInt)
-                {
-                    value = javaInt.DoubleValue();
-                    return true;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error calling method '{methodName}': {ex.Message}");
-        }
-        return false;
+        var valueInMeters = UnitsNet.Length.FromCentimeters(dto.Value).Meters;
+        var length = JavaReflectionHelper.CreateUnitViaCompanion<Length>(
+            Reflection.LengthClassName,
+            Reflection.MetersMethodName,
+            valueInMeters);
+
+        return new HeightRecord(time!, offset, length!, metadata);
     }
 
-    private static bool TryParseFromString(this string stringValue, out double value)
+    public static ActiveCaloriesBurnedRecord ToActiveCaloriesBurnedRecord(this ActiveCaloriesBurnedDto dto)
     {
-        value = 0;
+        var startTime = dto.StartTime.ToJavaInstant();
+        var endTime = dto.EndTime.ToJavaInstant();
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
 
-        if (string.IsNullOrEmpty(stringValue))
-        {
-            return false;
-        }
+        var energy = JavaReflectionHelper.CreateUnitViaCompanion<Energy>(
+            Reflection.EnergyClassName,
+            Reflection.KilocaloriesMethodName,
+            dto.Energy);
 
-        var numberPattern = @"(\d+\.?\d*)";
-        var match = System.Text.RegularExpressions.Regex.Match(stringValue, numberPattern);
-
-        if (match.Success && double.TryParse(match.Groups[1].Value, out value))
-        {
-            return true;
-        }
-
-        return false;
+        return new ActiveCaloriesBurnedRecord(startTime!, offset, endTime!, offset, energy!, metadata);
     }
 
-    #endregion
+    public static HeartRateRecord ToHeartRateRecord(this HeartRateDto dto)
+    {
+        var time = dto.Timestamp.ToJavaInstant();
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        var sample = new HeartRateRecord.Sample(time!, (long)dto.BeatsPerMinute);
+        var samplesList = new List<HeartRateRecord.Sample> { sample };
+
+        var record = new HeartRateRecord(
+            time!,
+            offset,
+            time!,
+            offset,
+            samplesList,
+            metadata
+        );
+
+        return record;
+    }
+
+    public static BodyFatRecord ToBodyFatRecord(this BodyFatDto dto)
+    {
+        var time = dto.Timestamp.ToJavaInstant();
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        // Percentage is a simple value class, create directly
+        var percentage = new Percentage(dto.Percentage);
+
+        var record = new BodyFatRecord(
+            time!,
+            offset,
+            percentage,
+            metadata
+        );
+
+        return record;
+    }
+
+    public static Vo2MaxRecord ToVo2MaxRecord(this Vo2MaxDto dto)
+    {
+        var time = dto.Timestamp.ToJavaInstant();
+
+        var metadata = new Metadata();
+        var offset = ZoneOffset.SystemDefault().Rules!.GetOffset(Instant.Now());
+
+        // MeasurementMethod constants: 0 = Other, 1 = Metabolic cart, 2 = Heart rate ratio, 3 = Cooper test, 4 = Multistage fitness test, 5 = Rockport fitness test
+        const int measurementMethodOther = 0;
+
+        var record = new Vo2MaxRecord(
+            time!,
+            offset,
+            dto.Value,
+            measurementMethodOther,
+            metadata
+        );
+
+        return record;
+    }
 }

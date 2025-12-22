@@ -1,80 +1,222 @@
-﻿@page "/"
+@page "/"
 
-<h1>Number of steps:</h1>
-@_steps
+<!-- Tab Navigation -->
+<div style="border-bottom: 2px solid #dee2e6; margin-bottom: 20px;">
+    <div style="display: flex; gap: 10px;">
+        <button @onclick="() => _activeTab = 0"
+                style="padding: 10px 20px; background-color: @(_activeTab == 0 ? "#007bff" : "transparent"); color: @(_activeTab == 0 ? "white" : "#007bff"); border: none; border-bottom: 3px solid @(_activeTab == 0 ? "#007bff" : "transparent"); cursor: pointer; font-weight: @(_activeTab == 0 ? "bold" : "normal");">
+            📊 Measurements
+        </button>
+        <button @onclick="() => _activeTab = 1"
+                style="padding: 10px 20px; background-color: @(_activeTab == 1 ? "#007bff" : "transparent"); color: @(_activeTab == 1 ? "white" : "#007bff"); border: none; border-bottom: 3px solid @(_activeTab == 1 ? "#007bff" : "transparent"); cursor: pointer; font-weight: @(_activeTab == 1 ? "bold" : "normal");">
+            🏃 Sessions
+        </button>
+    </div>
+</div>
 
-<h1>Weight (kg):</h1>
-@_weight
-
-<h1>Active Calories Burned (kcal):</h1>
-@_calories
-
-<h1>Body Fat (%):</h1>
-@if (_bodyFat > 0)
+@if (_activeTab == 0)
 {
-    <p>@_bodyFat.ToString("F1")%</p>
-}
-else
-{
-    <p>No body fat data available</p>
-}
-
-<h1>VO2 Max (ml/kg/min):</h1>
-@if (_vo2Max > 0)
-{
-    <p>@_vo2Max.ToString("F1")</p>
-}
-else
-{
-    <p>No VO2 Max data available</p>
-}
-
-<h1>Average Heart Rate during Exercise (14:00-17:00):</h1>
-@if (_heartRateCount > 0)
-{
-    <p>@_averageHeartRate.ToString("F1") BPM (based on @_heartRateCount measurements)</p>
-}
-else
-{
-    <p>No heart rate data available for this time period</p>
-}
-
-<hr style="margin: 20px 0;" />
-
-<h1>Today's Workouts:</h1>
-@if (_workouts.Any())
-{
-    <ul>
-        @foreach (var workout in _workouts)
+    <!-- Measurements Tab -->
+    <div style="margin-bottom: 20px;">
+        <button @onclick="PopulateDemoData" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Populate Demo Data
+        </button>
+        @if (!string.IsNullOrEmpty(_demoDataMessage))
         {
-            var distanceKm = workout.Distance.HasValue ? (workout.Distance.Value / 1000.0).ToString("F2") : null;
-            var calories = workout.EnergyBurned.HasValue ? workout.EnergyBurned.Value.ToString("F0") : null;
-            var avgHR = workout.AverageHeartRate.HasValue ? workout.AverageHeartRate.Value.ToString("F0") : null;
-
-            <li>
-                <strong>@workout.ActivityType</strong> -
-                @workout.StartTime.ToLocalTime().ToString("HH:mm") to @workout.EndTime.ToLocalTime().ToString("HH:mm")
-                (@((int)workout.DurationSeconds / 60) minutes)
-                @if (distanceKm != null)
-                {
-                    <span> - @distanceKm km</span>
-                }
-                @if (calories != null)
-                {
-                    <span> - @calories kcal</span>
-                }
-                @if (avgHR != null)
-                {
-                    <span> - Avg HR: @avgHR BPM</span>
-                }
-
-                <br/>
-                <small>Source: @workout.DataOrigin</small>
-            </li>
+            <p style="color: @(_demoDataSuccess ? "green" : "red"); margin-top: 10px;">@_demoDataMessage</p>
         }
-    </ul>
+    </div>
+
+    <hr style="margin: 20px 0;" />
+
+    <h1>Number of steps:</h1>
+    @_steps
+
+    <h1>Weight (kg):</h1>
+    @_weight
+
+    <h1>Active Calories Burned (kcal):</h1>
+    @_calories
+
+    <h1>Average Heart Rate during Exercise (14:00-17:00):</h1>
+    @if (_heartRateCount > 0)
+    {
+        <p>@_averageHeartRate.ToString("F1") BPM (based on @_heartRateCount measurements)</p>
+    }
+    else
+    {
+        <p>No heart rate data available for this time period</p>
+    }
+
+    <h1>VO2 Max (ml/kg/min):</h1>
+    @if (_vo2Max > 0)
+    {
+        <p>@_vo2Max.ToString("F1") ml/kg/min</p>
+    }
+    else
+    {
+        <p>No VO2 Max data available</p>
+    }
+
+    <h1>Body Fat (%):</h1>
+    @if (_bodyFat > 0)
+    {
+        <p>@_bodyFat.ToString("F1")%</p>
+    }
+    else
+    {
+        <p>No body fat data available</p>
+    }
 }
-else
+else if (_activeTab == 1)
 {
-    <p>No workouts found for today</p>
+    <!-- Sessions Tab -->
+    <h1>Workout Session Management:</h1>
+    <div style="margin-bottom: 20px;">
+        <!-- Active Session Display -->
+        @if (_isSessionRunning)
+        {
+            <div style="padding: 15px; background-color: @(_isSessionPaused ? "#fff3cd" : "#d4edda"); border: 1px solid @(_isSessionPaused ? "#ffc107" : "#c3e6cb"); border-radius: 4px; margin-bottom: 15px;">
+                <strong style="color: @(_isSessionPaused ? "#856404" : "#155724");">
+                    @(_isSessionPaused ? "⏸ Active Session Paused" : "🏃 Active Session Running")
+                </strong>
+                @if (_activeSession != null)
+                {
+                    <div style="margin-top: 10px;">
+                        <p style="margin: 5px 0;"><strong>Activity:</strong> @_activeSession.ActivityType</p>
+                        <p style="margin: 5px 0;"><strong>Started:</strong> @_activeSession.StartTime.ToLocalTime().ToString("HH:mm:ss")</p>
+                        <p style="margin: 5px 0;"><strong>Duration:</strong> @((int)(DateTimeOffset.Now - _activeSession.StartTime).TotalMinutes) minutes</p>
+                        <p style="margin: 5px 0; font-size: 0.9em; color: #666;">ID: @_activeSession.Id</p>
+                    </div>
+                }
+            </div>
+            @if (_isSessionPaused)
+            {
+                <button @onclick="ResumeWorkoutSession" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                    ▶ Resume
+                </button>
+            }
+            else
+            {
+                <button @onclick="PauseWorkoutSession" style="padding: 10px 20px; background-color: #ffc107; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                    ⏸ Pause
+                </button>
+            }
+            <button @onclick="StopWorkoutSession" style="padding: 10px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                ⏹ Stop Session
+            </button>
+        }
+        else
+        {
+            <button @onclick="StartWorkoutSession" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
+                ▶ Start New Session
+            </button>
+        }
+
+        <button @onclick="WriteManualWorkout" style="padding: 10px 20px; background-color: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            ✍ Write Manual Workout
+        </button>
+
+        @if (!string.IsNullOrEmpty(_sessionMessage))
+        {
+            <p style="color: @(_sessionSuccess ? "green" : "red"); margin-top: 10px;">@_sessionMessage</p>
+        }
+    </div>
+
+    <hr style="margin: 20px 0;" />
+
+    <h1>Today's Workouts:</h1>
+
+    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+        <label>Duplicate threshold (minutes):</label>
+        <input type="number" @bind="_duplicateThresholdMinutes" min="1" max="60" style="width: 60px; padding: 5px;" />
+        <button @onclick="LoadHealthDataAsync" style="padding: 5px 10px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Refresh
+        </button>
+    </div>
+
+    @if (_duplicateGroups.Any())
+    {
+        <div style="padding: 15px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; margin-bottom: 15px;">
+            <strong style="color: #856404;">⚠️ Duplicate workouts detected!</strong>
+            <p style="margin: 10px 0 0 0; color: #856404;">
+                Found @_duplicateGroups.Count duplicate group(s). These workouts have matching activity types and overlapping times (within @_duplicateThresholdMinutes min) from different sources.
+                Consider deleting duplicates to keep your data clean.
+            </p>
+        </div>
+    }
+
+    @if (_workouts.Any())
+    {
+        <ul style="list-style: none; padding: 0;">
+            @foreach (var workout in _workouts)
+            {
+                var distanceKm = workout.Distance.HasValue ? (workout.Distance.Value / 1000.0).ToString("F2") : null;
+                var calories = workout.EnergyBurned.HasValue ? workout.EnergyBurned.Value.ToString("F0") : null;
+                var avgHR = workout.AverageHeartRate.HasValue ? workout.AverageHeartRate.Value.ToString("F0") : null;
+
+                // Extract pause metadata
+                var hasPauseData = workout.Metadata?.ContainsKey("ActiveDurationSeconds") == true;
+                var activeDuration = hasPauseData && workout.Metadata!.TryGetValue("ActiveDurationSeconds", out var ad) ? Convert.ToDouble(ad) : 0;
+                var pausedDuration = hasPauseData && workout.Metadata!.TryGetValue("PausedDurationSeconds", out var pd) ? Convert.ToDouble(pd) : 0;
+                var pauseCount = hasPauseData && workout.Metadata!.TryGetValue("PauseCount", out var pc) ? Convert.ToInt32(pc) : 0;
+
+                // Check for duplicates
+                var isDuplicate = IsDuplicate(workout);
+                var duplicateGroup = isDuplicate ? GetDuplicateGroup(workout) : null;
+                var matchingWorkout = duplicateGroup?.Workouts.FirstOrDefault(w => w.Id != workout.Id);
+
+                <li style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 10px; border-radius: 4px; background-color: @(isDuplicate ? "#fff3cd" : "transparent"); border: @(isDuplicate ? "1px solid #ffc107" : "1px solid #dee2e6");">
+                    <div>
+                        @if (isDuplicate)
+                        {
+                            <span style="background-color: #ffc107; color: #856404; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-right: 5px;">DUPLICATE</span>
+                        }
+                        <strong>@workout.ActivityType</strong> -
+                        @workout.StartTime.ToLocalTime().ToString("HH:mm") to @(workout.EndTime.HasValue ? workout.EndTime.Value.ToLocalTime().ToString("HH:mm") : "ACTIVE")
+                        @if (hasPauseData && pausedDuration > 0)
+                        {
+                            <span>(@((int)activeDuration / 60) min active / @((int)workout.DurationSeconds / 60) min total)</span>
+                        }
+                        else
+                        {
+                            <span>(@((int)workout.DurationSeconds / 60) minutes)</span>
+                        }
+                        @if (distanceKm != null)
+                        {
+                            <span> - @distanceKm km</span>
+                        }
+                        @if (calories != null)
+                        {
+                            <span> - @calories kcal</span>
+                        }
+                        @if (avgHR != null)
+                        {
+                            <span> - Avg HR: @avgHR BPM</span>
+                        }
+
+                        <br/>
+                        <small>Source: @workout.DataOrigin</small>
+                        @if (hasPauseData && pauseCount > 0)
+                        {
+                            <br/>
+                            <small style="color: #6c757d;">⏸ @pauseCount pause(s), @((int)pausedDuration / 60) min @((int)pausedDuration % 60) sec paused</small>
+                        }
+                        @if (isDuplicate && matchingWorkout != null)
+                        {
+                            <br/>
+                            <small style="color: #856404;">↔️ Matches with: @matchingWorkout.DataOrigin (@matchingWorkout.StartTime.ToLocalTime().ToString("HH:mm"))</small>
+                        }
+                    </div>
+                    <button @onclick="() => DeleteWorkout(workout)" style="padding: 5px 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-left: 10px;">
+                        🗑️ Delete
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>No workouts found for today</p>
+    }
 }

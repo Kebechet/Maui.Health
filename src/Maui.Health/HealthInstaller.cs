@@ -6,6 +6,7 @@ public static class HealthInstaller
 {
     public static IServiceCollection AddHealth(this IServiceCollection services)
     {
+        services.AddSingleton<HealthWorkoutService>();
         services.AddSingleton<IHealthService, HealthService>();
         //services.AddSingleton<HealthService>();//for testing
 
@@ -13,5 +14,4 @@ public static class HealthInstaller
 
         return services;
     }
-
 }
