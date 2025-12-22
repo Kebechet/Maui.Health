@@ -165,7 +165,7 @@ public partial class HealthService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching health data for {DtoName}", typeof(TDto).Name);
-            return new List<TDto>();
+            return [];
         }
     }
 

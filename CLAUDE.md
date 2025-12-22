@@ -58,3 +58,6 @@ Platform-specific conversions use extension methods in `Platforms/{Platform}/Ext
 - Private fields prefixed with underscore (`_fieldName`)
 - Use `var` for type inference
 - Always use braces for control flow statements
+- Collection expressions:
+  - Use `[]` for return statements: `return [];`
+  - Keep `var x = new List<T>();` for variable declarations (to preserve `var`)

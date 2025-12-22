@@ -10,11 +10,11 @@ public partial class HealthWorkoutService
     {
         try
         {
-            return Task.FromResult(new List<WorkoutDto>());
+            return Task.FromResult<List<WorkoutDto>>([]);
         }
         catch (Exception)
         {
-            return Task.FromResult(new List<WorkoutDto>());
+            return Task.FromResult<List<WorkoutDto>>([]);
         }
     }
 
