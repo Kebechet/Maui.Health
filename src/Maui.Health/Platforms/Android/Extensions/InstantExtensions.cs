@@ -2,7 +2,7 @@
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
-public static class InstantExtensions
+internal static class InstantExtensions
 {
     internal static DateTimeOffset ToDateTimeOffset(this Java.Time.Instant instant)
     {
@@ -12,7 +12,7 @@ public static class InstantExtensions
         return dateTime;
     }
 
-    public static Java.Time.Instant ToJavaInstant(this DateTimeOffset dateTimeOffset)
+    internal static Java.Time.Instant ToJavaInstant(this DateTimeOffset dateTimeOffset)
     {
 #pragma warning disable CA1416
         return Java.Time.Instant.Parse(dateTimeOffset.ToUniversalTime().ToString(DataFormats.Iso8601Utc))!;
