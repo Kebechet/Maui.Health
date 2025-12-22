@@ -176,7 +176,7 @@ public partial class HealthService
                     var dtos = new List<TDto>();
                     foreach (var sample in results?.OfType<HKQuantitySample>() ?? [])
                     {
-                        var dto = sample.ConvertToDto<TDto>();
+                        var dto = sample.ToDto<TDto>();
                         if (dto is not null)
                         {
                             dtos.Add(dto);

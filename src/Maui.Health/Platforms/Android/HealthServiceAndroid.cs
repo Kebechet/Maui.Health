@@ -143,21 +143,7 @@ public partial class HealthService
                 return [];
             }
 
-            var results = new List<TDto>();
-            for (int i = 0; i < response.Records.Count; i++)
-            {
-                var record = response.Records[i];
-                if (record is not Java.Lang.Object javaObject)
-                {
-                    continue;
-                }
-
-                var dto = javaObject.ConvertToDto<TDto>();
-                if (dto is not null)
-                {
-                    results.Add(dto);
-                }
-            }
+            var results = response.Records.ToDtoList<TDto>();
 
             _logger.LogInformation("Found {Count} {DtoName} records", results.Count, typeof(TDto).Name);
             return results;

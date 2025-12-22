@@ -18,7 +18,29 @@ namespace Maui.Health.Platforms.Android.Extensions;
 
 internal static class HealthRecordExtensions
 {
-    public static TDto? ConvertToDto<TDto>(this Java.Lang.Object record)
+    public static List<TDto> ToDtoList<TDto>(this IList<Record> records)
+        where TDto : HealthMetricBase
+    {
+        var results = new List<TDto>();
+
+        foreach (var record in records)
+        {
+            if (record is not Java.Lang.Object javaObject)
+            {
+                continue;
+            }
+
+            var dto = javaObject.ToDto<TDto>();
+            if (dto is not null)
+            {
+                results.Add(dto);
+            }
+        }
+
+        return results;
+    }
+
+    public static TDto? ToDto<TDto>(this Java.Lang.Object record)
         where TDto : HealthMetricBase
     {
         return typeof(TDto).Name switch
