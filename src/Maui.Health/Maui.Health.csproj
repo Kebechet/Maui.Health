@@ -36,7 +36,7 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>2.0.0-preview3</Version>
+    <Version>2.0.0-preview4</Version>
     <PackageReleaseNotes>Extended support for new health metrics and complete refactor</PackageReleaseNotes>
   </PropertyGroup>
 
@@ -46,8 +46,8 @@
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-android'">
 	  <PackageReference Include="Xamarin.AndroidX.Health.Connect.ConnectClient" Version="1.1.0" />
-	  <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core" Version="2.10.0" />
-	  <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" Version="2.10.0" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core" Version="2.10.0" />
+<!--	  <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" Version="2.10.0" />-->
 
     <!--underlying libraries have different versions than MAUI itself-->
 	</ItemGroup>
@@ -68,5 +68,10 @@
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <Folder Include="obj\" />
   </ItemGroup>
 </Project>
