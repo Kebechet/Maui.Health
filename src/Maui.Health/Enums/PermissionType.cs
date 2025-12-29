@@ -1,8 +1,8 @@
-﻿namespace Maui.Health.Enums;
+namespace Maui.Health.Enums;
 
-[Flags]
 public enum PermissionType
 {
     Read,
-    Write
+    Write,
+    ReadWrite
 }
