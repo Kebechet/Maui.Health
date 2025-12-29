@@ -65,6 +65,8 @@ public partial class HealthService
                         readTypes.Add(type);
                         writeTypes.Add(type);
                         break;
+                    default:
+                        throw new ArgumentException($"Unknown permission type: {permission.PermissionType}");
                 }
             }
         }

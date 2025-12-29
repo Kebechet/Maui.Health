@@ -32,6 +32,8 @@ internal static class HealthPermissionExtensions
                 partialPermissionNames.Add($"READ_{permissionNameWithoutPrefix}");
                 partialPermissionNames.Add($"WRITE_{permissionNameWithoutPrefix}");
                 break;
+            default:
+                throw new ArgumentException($"Unknown permission type: {healthPermission.PermissionType}");
         }
 
         return partialPermissionNames
