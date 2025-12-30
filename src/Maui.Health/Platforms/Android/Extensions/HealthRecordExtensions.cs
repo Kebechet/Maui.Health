@@ -18,7 +18,7 @@ namespace Maui.Health.Platforms.Android.Extensions;
 
 internal static class HealthRecordExtensions
 {
-    public static List<TDto> ToDtoList<TDto>(this IList<Record> records)
+    public static List<TDto> ToDtoList<TDto>(this IEnumerable<IRecord> records)
         where TDto : HealthMetricBase
     {
         var results = new List<TDto>();

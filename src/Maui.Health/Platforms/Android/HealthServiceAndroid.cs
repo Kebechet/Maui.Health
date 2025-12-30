@@ -2,6 +2,7 @@
 using AndroidX.Activity;
 using AndroidX.Activity.Result;
 using AndroidX.Health.Connect.Client;
+using AndroidX.Health.Connect.Client.Records;
 using Java.Util;
 using Maui.Health.Enums;
 using Maui.Health.Enums.Errors;
@@ -143,7 +144,7 @@ public partial class HealthService
                 return [];
             }
 
-            var results = response.Records.ToDtoList<TDto>();
+            var results = response.Records.Cast<IRecord>().ToDtoList<TDto>();
 
             _logger.LogInformation("Found {Count} {DtoName} records", results.Count, typeof(TDto).Name);
             return results;
