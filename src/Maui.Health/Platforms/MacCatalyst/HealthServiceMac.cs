@@ -3,7 +3,7 @@ using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Services;
 
-public partial class HealthService
+public partial class HealthService : IHealthService
 {
     public partial bool IsSupported => false;
 

@@ -9,11 +9,10 @@ using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.iOS.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Platform;
-using System.Collections.Generic;
 
 namespace Maui.Health.Services;
 
-public partial class HealthService
+public partial class HealthService : IHealthService
 {
     public partial bool IsSupported => HKHealthStore.IsHealthDataAvailable;
     private nuint _healthRateLimit { get; set; } = Defaults.HeartRateLimit;
