@@ -11,6 +11,16 @@ public interface IHealthService
     IHealthWorkoutService Activity { get; }
 
     /// <summary>
+    /// Request a single health permission
+    /// </summary>
+    Task<RequestPermissionResult> RequestPermission(HealthPermissionDto healthPermission, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Request multiple health permissions
+    /// </summary>
+    Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Get health data for a specific metric type within a time range
     /// </summary>
     /// <typeparam name="TDto">The type of health metric DTO to retrieve</typeparam>
@@ -29,7 +39,4 @@ public interface IHealthService
     /// <returns>True if successful, false otherwise</returns>
     Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
-
-    Task<RequestPermissionResult> RequestPermission(HealthPermissionDto healthPermission, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
-    Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
 }
