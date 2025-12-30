@@ -80,4 +80,23 @@
       <PackagePath>\</PackagePath>
     </None>
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- Embedded linker descriptor to prevent trimming issues -->
+    <EmbeddedResource Include="LinkerConfig.xml">
+      <LogicalName>$(AssemblyName).xml</LogicalName>
+    </EmbeddedResource>
+
+    <!-- Include in NuGet package for consuming apps -->
+    <None Include="LinkerConfig.xml">
+      <Pack>True</Pack>
+      <PackagePath>build\$(PackageId).xml</PackagePath>
+    </None>
+
+    <!-- Create props file to reference the linker config -->
+    <None Include="Build\$(PackageId).props">
+      <Pack>True</Pack>
+      <PackagePath>build\$(PackageId).props;buildTransitive\$(PackageId).props</PackagePath>
+    </None>
+  </ItemGroup>
 </Project>

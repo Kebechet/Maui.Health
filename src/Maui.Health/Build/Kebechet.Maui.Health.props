@@ -1,0 +1,6 @@
+<Project>
+  <ItemGroup>
+    <!-- Reference the embedded linker descriptor to prevent trimming issues -->
+    <TrimmerRootDescriptor Include="$(MSBuildThisFileDirectory)Kebechet.Maui.Health.xml" />
+  </ItemGroup>
+</Project>
