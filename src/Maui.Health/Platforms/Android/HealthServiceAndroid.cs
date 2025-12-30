@@ -1,4 +1,5 @@
 ﻿using Android.Content;
+using Android.Health.Connect.DataTypes;
 using AndroidX.Activity;
 using AndroidX.Activity.Result;
 using AndroidX.Health.Connect.Client;
@@ -144,7 +145,7 @@ public partial class HealthService
                 return [];
             }
 
-            var results = response.Records.Cast<IRecord>().ToDtoList<TDto>();
+            var results = response.Records.ToDtoList<TDto>();
 
             _logger.LogInformation("Found {Count} {DtoName} records", results.Count, typeof(TDto).Name);
             return results;

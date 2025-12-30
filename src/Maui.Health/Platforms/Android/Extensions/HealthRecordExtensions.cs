@@ -13,12 +13,13 @@ using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;
 using ActiveCaloriesBurnedRecord = AndroidX.Health.Connect.Client.Records.ActiveCaloriesBurnedRecord;
 using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
+using System.Collections;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
 internal static class HealthRecordExtensions
 {
-    public static List<TDto> ToDtoList<TDto>(this IEnumerable<IRecord> records)
+    public static List<TDto> ToDtoList<TDto>(this IList records)
         where TDto : HealthMetricBase
     {
         var results = new List<TDto>();
