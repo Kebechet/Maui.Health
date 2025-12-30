@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<linker>
-  <!-- Preserve all types and members in Kebechet.Maui.Health assembly -->
-  <assembly fullname="Kebechet.Maui.Health" preserve="all" />
-</linker>

@@ -1,6 +1,6 @@
 <Project>
   <ItemGroup>
-    <!-- Reference the embedded linker descriptor to prevent trimming issues -->
-    <TrimmerRootDescriptor Include="$(MSBuildThisFileDirectory)Kebechet.Maui.Health.xml" />
+    <!-- Skip trimming analysis entirely for this assembly to avoid IL Linker crashes with async generics -->
+    <TrimmerRootAssembly Include="Kebechet.Maui.Health" />
   </ItemGroup>
 </Project>

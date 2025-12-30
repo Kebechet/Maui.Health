@@ -41,7 +41,7 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>2.0.0-preview7</Version>
+    <Version>2.0.0-preview8</Version>
     <PackageReleaseNotes>Disabled trimming of library code</PackageReleaseNotes>
   </PropertyGroup>
 
@@ -82,18 +82,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Embedded linker descriptor to prevent trimming issues -->
-    <EmbeddedResource Include="LinkerConfig.xml">
-      <LogicalName>$(AssemblyName).xml</LogicalName>
-    </EmbeddedResource>
-
-    <!-- Include linker config in both build and buildTransitive folders -->
-    <None Include="LinkerConfig.xml">
-      <Pack>True</Pack>
-      <PackagePath>build\$(PackageId).xml;buildTransitive\$(PackageId).xml</PackagePath>
-    </None>
-
-    <!-- Create props file to reference the linker config -->
+    <!-- Include props file to automatically add assembly to TrimmerRootAssembly -->
     <None Include="Build\$(PackageId).props">
       <Pack>True</Pack>
       <PackagePath>build\$(PackageId).props;buildTransitive\$(PackageId).props</PackagePath>
