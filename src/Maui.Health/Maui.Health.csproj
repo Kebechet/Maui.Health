@@ -15,6 +15,7 @@
     <!--Also iOS release builds fail when this is set to true-->
     <IsAotCompatible>false</IsAotCompatible>
     <IsTrimmable>false</IsTrimmable>
+    <PublishTrimmed>false</PublishTrimmed>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">15.0</SupportedOSPlatformVersion>
@@ -41,7 +42,7 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>2.0.0-preview9</Version>
+    <Version>2.0.0-preview10</Version>
     <PackageReleaseNotes>Disabled trimming of library code</PackageReleaseNotes>
   </PropertyGroup>
 
