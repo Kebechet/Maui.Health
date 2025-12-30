@@ -41,7 +41,7 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>2.0.0-preview8</Version>
+    <Version>2.0.0-preview9</Version>
     <PackageReleaseNotes>Disabled trimming of library code</PackageReleaseNotes>
   </PropertyGroup>
 
