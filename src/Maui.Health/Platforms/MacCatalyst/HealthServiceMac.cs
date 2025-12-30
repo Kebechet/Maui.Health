@@ -15,7 +15,7 @@ public partial class HealthService
     public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return Task.FromResult(new List<TDto>());
+        return Task.FromResult<List<TDto>>([]);
     }
 
     public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken)

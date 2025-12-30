@@ -1,7 +1,9 @@
 ﻿using Android.Content;
+using Android.Health.Connect.DataTypes;
 using AndroidX.Activity;
 using AndroidX.Activity.Result;
 using AndroidX.Health.Connect.Client;
+using AndroidX.Health.Connect.Client.Records;
 using Java.Util;
 using Maui.Health.Enums;
 using Maui.Health.Enums.Errors;
@@ -143,21 +145,7 @@ public partial class HealthService
                 return [];
             }
 
-            var results = new List<TDto>();
-            for (int i = 0; i < response.Records.Count; i++)
-            {
-                var record = response.Records[i];
-                if (record is not Java.Lang.Object javaObject)
-                {
-                    continue;
-                }
-
-                var dto = javaObject.ConvertToDto<TDto>();
-                if (dto is not null)
-                {
-                    results.Add(dto);
-                }
-            }
+            var results = response.Records.ToDtoList<TDto>();
 
             _logger.LogInformation("Found {Count} {DtoName} records", results.Count, typeof(TDto).Name);
             return results;
@@ -165,7 +153,7 @@ public partial class HealthService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching health data for {DtoName}", typeof(TDto).Name);
-            return new List<TDto>();
+            return [];
         }
     }
 
