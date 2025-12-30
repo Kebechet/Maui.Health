@@ -51,6 +51,11 @@
     <!--underlying libraries have different versions than MAUI itself-->
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core" VersionOverride="2.10.0" NoWarn="NU1608" />
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" VersionOverride="2.10.0" NoWarn="NU1608" />
+
+    <!--Fragment.Ktx 1.8.8 bug requires this: https://github.com/dotnet/android-libraries/issues/1186-->
+    <!--https://github.com/dotnet/android-libraries/issues/1181#issuecomment-3053297891-->
+    <PackageReference Include="Xamarin.AndroidX.SavedState" VersionOverride="1.4.0" />
+    <PackageReference Include="Xamarin.AndroidX.Fragment.Ktx" VersionOverride="1.8.9" />
 	</ItemGroup>
 
 
