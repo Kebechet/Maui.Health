@@ -42,8 +42,8 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>2.0.0-preview10</Version>
-    <PackageReleaseNotes>Disabled trimming of library code</PackageReleaseNotes>
+    <Version>2.0.0-preview11</Version>
+    <PackageReleaseNotes>Removed redundant trimming options</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -79,14 +79,6 @@
     <None Include="..\..\icon.png">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Include props file to automatically add assembly to TrimmerRootAssembly -->
-    <None Include="Build\$(PackageId).props">
-      <Pack>True</Pack>
-      <PackagePath>build\$(PackageId).props;buildTransitive\$(PackageId).props</PackagePath>
     </None>
   </ItemGroup>
 </Project>

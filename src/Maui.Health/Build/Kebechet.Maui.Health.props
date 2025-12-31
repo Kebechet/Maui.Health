@@ -1,6 +1,0 @@
-<Project>
-  <ItemGroup>
-    <!-- Skip trimming analysis entirely for this assembly to avoid IL Linker crashes with async generics -->
-    <TrimmerRootAssembly Include="Maui.Health" />
-  </ItemGroup>
-</Project>
