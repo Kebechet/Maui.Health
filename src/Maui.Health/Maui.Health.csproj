@@ -42,8 +42,8 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>2.0.0-preview12</Version>
-    <PackageReleaseNotes>NET10 bump</PackageReleaseNotes>
+    <Version>2.0.0-preview13</Version>
+    <PackageReleaseNotes>Added trimmer workaround from @osyyyS</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
