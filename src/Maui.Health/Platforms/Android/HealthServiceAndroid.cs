@@ -165,7 +165,15 @@ public partial class HealthService : IHealthService
         }
     }
 
-    public async partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken) where TDto : HealthMetricBase
+    //https://github.com/Kebechet/Maui.Health/pull/8/files
+    //Split to `public partial` and `private async` method because of trimmer/linker issue
+    public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return WriteHealthDataInternal(data, cancellationToken);
+    }
+
+    private async Task<bool> WriteHealthDataInternal<TDto>(TDto data, CancellationToken cancellationToken) where TDto : HealthMetricBase
     {
         try
         {
@@ -211,5 +219,6 @@ public partial class HealthService : IHealthService
             return false;
         }
     }
+
     private Result<SdkCheckError> IsSdkAvailable() => JavaReflectionHelper.CheckSdkAvailability(_activityContext);
 }

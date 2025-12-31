@@ -214,6 +214,76 @@ public partial class HealthService : IHealthService
         }
     }
 
+    //https://github.com/Kebechet/Maui.Health/pull/8/files
+    //Split to `public partial` and `private async` method because of trimmer/linker issue
+    public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return WriteHealthDataInternal(data, cancellationToken);
+    }
+
+    private async Task<bool> WriteHealthDataInternal<TDto>(TDto data, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        if (!IsSupported)
+        {
+            return false;
+        }
+
+        try
+        {
+            _logger.LogInformation("iOS WriteHealthDataAsync<{DtoName}>", typeof(TDto).Name);
+
+            // Request write permission for the specific metric
+            var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+            var writePermission = new HealthPermissionDto
+            {
+                HealthDataType = readPermission.HealthDataType,
+                PermissionType = PermissionType.Write
+            };
+            var permissionResult = await RequestPermissions([writePermission], cancellationToken: cancellationToken);
+            if (!permissionResult.IsSuccess)
+            {
+                _logger.LogWarning("iOS Write: Permission denied for {DtoName}", typeof(TDto).Name);
+                return false;
+            }
+
+            // Convert DTO to HKObject (HKQuantitySample or HKWorkout)
+            HKObject? sample = data.ToHKObject();
+            if (sample == null)
+            {
+                _logger.LogWarning("iOS Write: Failed to convert {DtoName} to HKObject", typeof(TDto).Name);
+                return false;
+            }
+
+            // Save to HealthKit
+            using var healthStore = new HKHealthStore();
+            var tcs = new TaskCompletionSource<bool>();
+
+            healthStore.SaveObject(sample, (success, error) =>
+            {
+                if (error != null)
+                {
+                    _logger.LogError("iOS Write Error: {Error}", error.LocalizedDescription);
+                    tcs.TrySetResult(false);
+                }
+                else
+                {
+                    _logger.LogInformation("iOS Write: Successfully wrote {DtoName}", typeof(TDto).Name);
+                    tcs.TrySetResult(success);
+                }
+            });
+
+            using var ct = cancellationToken.Register(() => tcs.TrySetCanceled());
+            return await tcs.Task;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "iOS Write Exception for {DtoName}", typeof(TDto).Name);
+            return false;
+        }
+    }
+
     private static bool IsCumulativeType<TDto>() where TDto : HealthMetricBase
     {
         return typeof(TDto) == typeof(StepsDto) ||
@@ -225,7 +295,8 @@ public partial class HealthService : IHealthService
         NSPredicate predicate,
         HealthTimeRange timeRange,
         HealthDataType healthDataType,
-        CancellationToken cancellationToken) where TDto : HealthMetricBase
+        CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
     {
         var tcs = new TaskCompletionSource<TDto[]>();
 
@@ -299,66 +370,4 @@ public partial class HealthService : IHealthService
 
         return results.ToList();
     }
-
-    public async partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken) where TDto : HealthMetricBase
-    {
-        if (!IsSupported)
-        {
-            return false;
-        }
-
-        try
-        {
-            _logger.LogInformation("iOS WriteHealthDataAsync<{DtoName}>", typeof(TDto).Name);
-
-            // Request write permission for the specific metric
-            var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var writePermission = new HealthPermissionDto
-            {
-                HealthDataType = readPermission.HealthDataType,
-                PermissionType = PermissionType.Write
-            };
-            var permissionResult = await RequestPermissions([writePermission], cancellationToken: cancellationToken);
-            if (!permissionResult.IsSuccess)
-            {
-                _logger.LogWarning("iOS Write: Permission denied for {DtoName}", typeof(TDto).Name);
-                return false;
-            }
-
-            // Convert DTO to HKObject (HKQuantitySample or HKWorkout)
-            HKObject? sample = data.ToHKObject();
-            if (sample == null)
-            {
-                _logger.LogWarning("iOS Write: Failed to convert {DtoName} to HKObject", typeof(TDto).Name);
-                return false;
-            }
-
-            // Save to HealthKit
-            using var healthStore = new HKHealthStore();
-            var tcs = new TaskCompletionSource<bool>();
-
-            healthStore.SaveObject(sample, (success, error) =>
-            {
-                if (error != null)
-                {
-                    _logger.LogError("iOS Write Error: {Error}", error.LocalizedDescription);
-                    tcs.TrySetResult(false);
-                }
-                else
-                {
-                    _logger.LogInformation("iOS Write: Successfully wrote {DtoName}", typeof(TDto).Name);
-                    tcs.TrySetResult(success);
-                }
-            });
-
-            using var ct = cancellationToken.Register(() => tcs.TrySetCanceled());
-            return await tcs.Task;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "iOS Write Exception for {DtoName}", typeof(TDto).Name);
-            return false;
-        }
-    }
-
 }
