@@ -51,6 +51,7 @@ public partial class HealthService : IHealthService
         ReadHealthDataRequest request,
         CancellationToken cancellationToken = default) where TDto : HealthMetricBase;
 
-    public partial Task<GetChangesResponse<TDto>> GetHealthDataChangesAsync<TDto>(GetChangesRequest request,
+    public partial Task<GetChangesResponse<TDto>> GetHealthDataChangesAsync<TDto>(
+        GetChangesRequest request,
         CancellationToken cancellationToken) where TDto : HealthMetricBase;
 }

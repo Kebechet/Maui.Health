@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Maui.Health.Services;
 
+[Preserve(AllMembers = true)]
 public partial class HealthService
 {
     public partial bool IsSupported => HKHealthStore.IsHealthDataAvailable;
@@ -34,6 +35,7 @@ public partial class HealthService
     /// <summary>
     /// <param name="canRequestFullHistoryPermission">iOS has this by default as TRUE</param>
     /// <returns></returns>
+    /// </summary>
     public async partial Task<RequestPermissionResult> RequestPermissions(
         IList<HealthPermissionDto> healthPermissions,
         bool canRequestReadInBackgroundPermission,
@@ -231,7 +233,7 @@ public partial class HealthService
         CancellationToken cancellationToken) where TDto : HealthMetricBase
     {
         //TODO implement HKAnchoredObjectQuery Here
-        throw new NotImplementedException();
+        throw new PlatformNotSupportedException();
     }
 
     private async Task<List<TDto>> GetWorkoutsAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
