@@ -36,7 +36,7 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>2.0.0-preview4</Version>
+    <Version>2.0.0-preview5</Version>
     <PackageReleaseNotes>Extended support for new health metrics and complete refactor</PackageReleaseNotes>
   </PropertyGroup>
 
