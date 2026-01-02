@@ -52,13 +52,20 @@ public partial class HealthService : IHealthService
 
             if (type != null)
             {
-                if (permission.PermissionType.HasFlag(PermissionType.Read))
+                switch (permission.PermissionType)
                 {
-                    readTypes.Add(type);
-                }
-                if (permission.PermissionType.HasFlag(PermissionType.Write))
-                {
-                    writeTypes.Add(type);
+                    case PermissionType.Read:
+                        readTypes.Add(type);
+                        break;
+                    case PermissionType.Write:
+                        writeTypes.Add(type);
+                        break;
+                    case PermissionType.ReadWrite:
+                        readTypes.Add(type);
+                        writeTypes.Add(type);
+                        break;
+                    default:
+                        throw new ArgumentException($"Unknown permission type: {permission.PermissionType}");
                 }
             }
         }
