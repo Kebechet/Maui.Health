@@ -83,14 +83,14 @@ jobs:
 
       - name: Publish to NuGet
         run: >
-          dotnet nuget push "${{env.ARTIFACT_FOLDER}}\*.nupkg"
+          dotnet nuget push "${{env.ARTIFACT_FOLDER}}/*.nupkg"
           --api-key ${{ secrets.NUGET_API_KEY }}
           --source https://api.nuget.org/v3/index.json
           --skip-duplicate
 
       - name: Publish to GitHub Packages
         run: >
-          dotnet nuget push "${{env.ARTIFACT_FOLDER}}\*.nupkg"
+          dotnet nuget push "${{env.ARTIFACT_FOLDER}}/*.nupkg"
           --api-key ${{ secrets.GITHUB_TOKEN }}
           --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
           --skip-duplicate
@@ -113,7 +113,7 @@ jobs:
             ### Links
             - [NuGet Package](https://www.nuget.org/packages/${{ env.PACKAGE_NAME }}/${{ steps.get_version.outputs.VERSION }})
             - [GitHub Repository](https://github.com/Kebechet/Maui.Health)
-          files: ${{env.ARTIFACT_FOLDER}}\*.nupkg
+          files: ${{env.ARTIFACT_FOLDER}}/*.nupkg
           draft: false
           prerelease: false
           generate_release_notes: true
