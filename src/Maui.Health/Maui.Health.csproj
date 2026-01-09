@@ -29,7 +29,7 @@
     <Authors>Kebechet</Authors>
     <IsPackable>true</IsPackable>
     <PackageId>Kebechet.Maui.Health</PackageId>
-    <Description>Cross-platform .NET MAUI library providing a unified API for Android Health Connect and iOS HealthKit. Features include: generic DTO-based API for type-safe health data access, support for steps, weight, heart rate, workouts, and more, write/delete operations, live workout tracking with pause/resume, and automatic duplicate detection.</Description>
+    <Description>Android Health Connect and iOS HealthKit wrapper. Read/write health data including steps, weight, heart rate, workouts, and more. Live workout tracking with pause/resume and automatic duplicate detection.</Description>
     <RepositoryUrl>https://github.com/Kebechet/Maui.Health</RepositoryUrl>
     <PackageProjectUrl>https://github.com/Kebechet/Maui.Health</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -43,7 +43,7 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
     <Version>2.0.0</Version>
-    <PackageReleaseNotes>v2.0.0 Stable Release - Production ready with comprehensive health data support, workout tracking, and cross-platform compatibility for Android Health Connect and iOS HealthKit.</PackageReleaseNotes>
+    <PackageReleaseNotes>Production ready with comprehensive health data support, workout tracking, and cross-platform compatibility for Android Health Connect and iOS HealthKit.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
