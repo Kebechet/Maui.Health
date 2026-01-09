@@ -1,0 +1,121 @@
+name: Publish to NuGet
+
+on:
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: true                     # Disable the .NET logo
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true # Disable the .NET first time experience
+  DOTNET_CLI_TELEMETRY_OPTOUT: true       # Disable sending .NET CLI telemetry
+
+  DOTNET_SDK_VERSION: 10.0.101
+  BUILD_CONFIGURATION: Release
+
+  PROJECT_PATH: src/Maui.Health/Maui.Health.csproj
+  PACKAGE_NAME: Kebechet.Maui.Health
+
+  ARTIFACT_FOLDER: D:\a\artifacts
+
+jobs:
+  publish:
+    name: Build and publish package
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'microsoft'
+          java-version: '17'
+
+      - name: Create global.json to specify .NET version
+        run: |
+          echo '{"sdk":{"version":"${{ env.DOTNET_SDK_VERSION }}"}}' > ${{github.workspace}}/global.json
+
+      - name: Setup .NET Core SDK ${{ env.DOTNET_SDK_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install MAUI workloads
+        run: dotnet workload install maui-android maui-ios maui-maccatalyst maui-windows --ignore-failed-sources --version ${{ env.DOTNET_SDK_VERSION }}
+
+      - name: Restore NuGet packages
+        run: dotnet restore ${{ env.PROJECT_PATH }} --ignore-failed-sources
+
+      - name: Build MAUI Library
+        run: >
+          dotnet build ${{ env.PROJECT_PATH }}
+          -c ${{ env.BUILD_CONFIGURATION }}
+          --no-restore
+
+      - name: Pack NuGet Package
+        run: >
+          dotnet pack ${{ env.PROJECT_PATH }}
+          -c ${{ env.BUILD_CONFIGURATION }}
+          -o ${{env.ARTIFACT_FOLDER}}
+          --no-build
+          --no-restore
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: ${{env.ARTIFACT_FOLDER}}/*.nupkg
+
+      - name: Extract version from csproj
+        id: get_version
+        shell: pwsh
+        run: |
+          [xml]$csproj = Get-Content "${{ env.PROJECT_PATH }}"
+          $versionGroup = $csproj.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1
+          if ($null -eq $versionGroup) {
+            throw "No Version element found in ${{ env.PROJECT_PATH }}"
+          }
+          $version = $versionGroup.Version.Trim()
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          $releaseNotesGroup = $csproj.Project.PropertyGroup | Where-Object { $_.PackageReleaseNotes } | Select-Object -First 1
+          $releaseNotes = if ($releaseNotesGroup) { $releaseNotesGroup.PackageReleaseNotes } else { "" }
+          echo "RELEASE_NOTES=$releaseNotes" >> $env:GITHUB_OUTPUT
+
+      - name: Publish to NuGet
+        run: >
+          dotnet nuget push "${{env.ARTIFACT_FOLDER}}/*.nupkg"
+          --api-key ${{ secrets.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+      - name: Publish to GitHub Packages
+        run: >
+          dotnet nuget push "${{env.ARTIFACT_FOLDER}}/*.nupkg"
+          --api-key ${{ secrets.GITHUB_TOKEN }}
+          --source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json
+          --skip-duplicate
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          name: Release v${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## ${{ env.PACKAGE_NAME }} v${{ steps.get_version.outputs.VERSION }}
+
+            ${{ steps.get_version.outputs.RELEASE_NOTES }}
+
+            ### Installation
+            ```bash
+            dotnet add package ${{ env.PACKAGE_NAME }} --version ${{ steps.get_version.outputs.VERSION }}
+            ```
+
+            ### Links
+            - [NuGet Package](https://www.nuget.org/packages/${{ env.PACKAGE_NAME }}/${{ steps.get_version.outputs.VERSION }})
+            - [GitHub Repository](https://github.com/Kebechet/Maui.Health)
+          files: ${{env.ARTIFACT_FOLDER}}/*.nupkg
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
