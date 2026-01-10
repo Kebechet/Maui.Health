@@ -78,6 +78,19 @@ internal static class KotlinResolver
             return (IList<TResult?>)aggregationResults;
         }
 
+        // Handle empty sets (Kotlin EmptySet returns an empty collection)
+        if (result is not null && result.Class.Name.Contains("EmptySet", StringComparison.OrdinalIgnoreCase))
+        {
+            return [];
+        }
+
+        // Handle Kotlin AbstractSet (non-mutable)
+        if (result is Kotlin.Collections.AbstractSet abstractSet)
+        {
+            var javaSet = abstractSet.JavaCast<Java.Util.ISet>();
+            return javaSet?.ToList<TResult?>();
+        }
+
         if (result is Kotlin.Collections.AbstractMutableSet abstractMutableSet)
         {
             var javaSet = abstractMutableSet.JavaCast<Java.Util.ISet>();

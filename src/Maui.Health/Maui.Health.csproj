@@ -42,8 +42,8 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>2.0.0</Version>
-    <PackageReleaseNotes>Production ready with comprehensive health data support, workout tracking, and cross-platform compatibility for Android Health Connect and iOS HealthKit.</PackageReleaseNotes>
+    <Version>2.0.1</Version>
+    <PackageReleaseNotes>Fixed Android API 28-33 crash when Health Connect returns empty or non-mutable Kotlin sets (e.g., empty permissions). KotlinResolver now properly handles EmptySet and AbstractSet types.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
