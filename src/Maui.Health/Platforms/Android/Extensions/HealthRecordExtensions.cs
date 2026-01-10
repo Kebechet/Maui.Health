@@ -3,6 +3,7 @@ using AndroidX.Health.Connect.Client.Records.Metadata;
 using AndroidX.Health.Connect.Client.Units;
 using Java.Time;
 using Maui.Health.Constants;
+using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android.Helpers;
 using System.Diagnostics;
@@ -13,6 +14,7 @@ using HeightRecord = AndroidX.Health.Connect.Client.Records.HeightRecord;
 using ActiveCaloriesBurnedRecord = AndroidX.Health.Connect.Client.Records.ActiveCaloriesBurnedRecord;
 using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
+using HealthDeviceType = Android.Health.Connect.DataTypes.HealthDeviceType;
 using System.Collections;
 
 namespace Maui.Health.Platforms.Android.Extensions;
@@ -58,6 +60,28 @@ internal static class HealthRecordExtensions
         };
     }
 
+    private static DeviceDetails? CreateDeviceDetails(Device? metadataDevice)
+    {
+        if (metadataDevice is null)
+        {
+            return null;
+        }
+
+        var deviceType = DataOrigin.Unknown;
+        if (Enum.IsDefined(typeof(HealthDeviceType), metadataDevice.Type))
+        {
+            var healthDeviceType = (HealthDeviceType)metadataDevice.Type;
+            deviceType = healthDeviceType.ToString();
+        }
+
+        return new DeviceDetails
+        {
+            DeviceType = deviceType,
+            Manufacturer = metadataDevice.Manufacturer,
+            Model = metadataDevice.Model
+        };
+    }
+
     public static StepsDto? ToStepsDto(this Java.Lang.Object record)
     {
         if (record is not StepsRecord stepsRecord)
@@ -72,6 +96,7 @@ internal static class HealthRecordExtensions
         {
             Id = stepsRecord.Metadata.Id,
             DataOrigin = stepsRecord.Metadata.DataOrigin.PackageName,
+            Device = CreateDeviceDetails(stepsRecord.Metadata.Device),
             Timestamp = startTime,
             Count = stepsRecord.Count,
             StartTime = startTime,
@@ -93,6 +118,7 @@ internal static class HealthRecordExtensions
         {
             Id = weightRecord.Metadata.Id,
             DataOrigin = weightRecord.Metadata.DataOrigin.PackageName,
+            Device = CreateDeviceDetails(weightRecord.Metadata.Device),
             Timestamp = timestamp,
             Value = weightValue,
             Unit = Units.Kilogram
@@ -113,6 +139,7 @@ internal static class HealthRecordExtensions
         {
             Id = heightRecord.Metadata.Id,
             DataOrigin = heightRecord.Metadata.DataOrigin.PackageName,
+            Device = CreateDeviceDetails(heightRecord.Metadata.Device),
             Timestamp = timestamp,
             Value = heightValue,
             Unit = Units.Centimeter
@@ -134,6 +161,7 @@ internal static class HealthRecordExtensions
         {
             Id = caloriesRecord.Metadata.Id,
             DataOrigin = caloriesRecord.Metadata.DataOrigin.PackageName,
+            Device = CreateDeviceDetails(caloriesRecord.Metadata.Device),
             Timestamp = startTime,
             Energy = energyValue,
             Unit = Units.Kilocalorie,
@@ -165,6 +193,7 @@ internal static class HealthRecordExtensions
         {
             Id = heartRateRecord.Metadata.Id,
             DataOrigin = heartRateRecord.Metadata.DataOrigin.PackageName,
+            Device = CreateDeviceDetails(heartRateRecord.Metadata.Device),
             Timestamp = timestamp,
             BeatsPerMinute = beatsPerMinute,
             Unit = Units.BeatsPerMinute
@@ -186,6 +215,7 @@ internal static class HealthRecordExtensions
         {
             Id = bodyFatRecord.Metadata.Id,
             DataOrigin = bodyFatRecord.Metadata.DataOrigin.PackageName,
+            Device = CreateDeviceDetails(bodyFatRecord.Metadata.Device),
             Timestamp = timestamp,
             Percentage = percentage,
             Unit = Units.Percent
@@ -207,6 +237,7 @@ internal static class HealthRecordExtensions
         {
             Id = vo2MaxRecord.Metadata.Id,
             DataOrigin = vo2MaxRecord.Metadata.DataOrigin.PackageName,
+            Device = CreateDeviceDetails(vo2MaxRecord.Metadata.Device),
             Timestamp = timestamp,
             Value = value,
             Unit = Units.Vo2Max

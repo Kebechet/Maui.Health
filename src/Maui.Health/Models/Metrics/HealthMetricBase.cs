@@ -1,3 +1,5 @@
+using Maui.Health.Models;
+
 namespace Maui.Health.Models.Metrics;
 
 /// <summary>
@@ -30,4 +32,9 @@ public abstract class HealthMetricBase
     /// Additional metadata for the record
     /// </summary>
     public Dictionary<string, object>? Metadata { get; init; }
+
+    /// <summary>
+    /// Device details associated with this health record
+    /// </summary>
+    public DeviceDetails? Device { get; init; }
 }
