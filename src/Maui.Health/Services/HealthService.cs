@@ -31,4 +31,6 @@ public partial class HealthService : IHealthService
 
     public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
+
+    public partial void OpenHealthStoreForUpdate();
 }

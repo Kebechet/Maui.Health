@@ -39,4 +39,13 @@ public interface IHealthService
     /// <returns>True if successful, false otherwise</returns>
     Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
+
+    /// <summary>
+    /// Opens the platform store to update the health provider app.
+    /// Call this after showing your custom UI when RequestPermissions returns
+    /// <see cref="Enums.Errors.RequestPermissionError.AndroidSdkUnavailableProviderUpdateRequired"/>.
+    /// On Android: Opens Play Store to update Health Connect.
+    /// On iOS: No-op (HealthKit is built into the OS).
+    /// </summary>
+    void OpenHealthStoreForUpdate();
 }
