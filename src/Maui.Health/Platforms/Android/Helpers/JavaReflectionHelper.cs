@@ -459,7 +459,6 @@ internal static class JavaReflectionHelper
 
             if (availabilityStatus == HealthConnectClient.SdkUnavailableProviderUpdateRequired)
             {
-                OpenHealthConnectInPlayStore(context);
                 return new() { Error = SdkCheckError.SdkUnavailableProviderUpdateRequired };
             }
 
@@ -481,7 +480,7 @@ internal static class JavaReflectionHelper
     /// Used when Health Connect is installed but needs an update.
     /// </summary>
     /// <param name="context">The Android context</param>
-    private static void OpenHealthConnectInPlayStore(Context context)
+    internal static void OpenHealthConnectInPlayStore(Context context)
     {
         var uriString = string.Format(PlayStoreUriTemplate, HealthConnectPackage);
 

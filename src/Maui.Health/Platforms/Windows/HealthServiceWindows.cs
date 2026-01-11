@@ -23,4 +23,6 @@ public partial class HealthService : IHealthService
     {
         return Task.FromResult(false);
     }
+
+    public partial void OpenHealthStoreForUpdate() { }
 }

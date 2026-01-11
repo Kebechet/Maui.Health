@@ -135,7 +135,7 @@ public async Task RequestPermissions()
     };
 
     var result = await _healthService.RequestPermissions(permissions);
-    
+
     if (result.IsSuccess)
     {
         Console.WriteLine("Permissions granted!");
@@ -143,6 +143,36 @@ public async Task RequestPermissions()
     else
     {
         Console.WriteLine($"Permission error: {result.Error}");
+    }
+}
+```
+
+#### Handling Health Connect Updates (Android)
+
+On Android devices with API < 34, Health Connect is a separate app that may need to be installed or updated. The library returns a specific error so you can show custom UI before opening the Play Store:
+
+```csharp
+public async Task RequestPermissionsWithUpdateHandling()
+{
+    var permissions = new List<HealthPermissionDto>
+    {
+        new() { HealthDataType = HealthDataType.Steps, PermissionType = PermissionType.Read }
+    };
+
+    var result = await _healthService.RequestPermissions(permissions);
+
+    if (result.Error == RequestPermissionError.AndroidSdkUnavailableProviderUpdateRequired)
+    {
+        // Show your custom UI explaining the update requirement
+        bool userConfirmed = await DisplayAlert(
+            "Update Required",
+            "Health Connect needs to be updated to use health features.",
+            "Update", "Cancel");
+
+        if (userConfirmed)
+        {
+            _healthService.OpenHealthStoreForUpdate(); // Opens Play Store
+        }
     }
 }
 ```

@@ -290,6 +290,8 @@ public partial class HealthService : IHealthService
                typeof(TDto) == typeof(ActiveCaloriesBurnedDto);
     }
 
+    public partial void OpenHealthStoreForUpdate() { }
+
     private async Task<List<TDto>> GetCumulativeHealthDataAsync<TDto>(
         HKQuantityType quantityType,
         NSPredicate predicate,
