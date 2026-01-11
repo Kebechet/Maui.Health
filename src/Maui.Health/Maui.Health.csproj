@@ -44,7 +44,7 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
     <Version>2.0.1</Version>
-    <PackageReleaseNotes>Enabled XML documentation generation for IntelliSense support</PackageReleaseNotes>
+    <PackageReleaseNotes>Added AndroidSdkUnavailableProviderUpdateRequired error type for better Health Connect update handling. Apps can now show custom UI before opening Play Store via OpenHealthStoreForUpdate().</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

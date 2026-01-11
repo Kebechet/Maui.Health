@@ -34,6 +34,14 @@ public partial class HealthService : IHealthService
             var sdkCheckResult = IsSdkAvailable();
             if (!sdkCheckResult.IsSuccess)
             {
+                if (sdkCheckResult.Error == SdkCheckError.SdkUnavailableProviderUpdateRequired)
+                {
+                    return new()
+                    {
+                        Error = RequestPermissionError.AndroidSdkUnavailableProviderUpdateRequired
+                    };
+                }
+
                 return new()
                 {
                     Error = RequestPermissionError.IsNotSupported
@@ -221,4 +229,6 @@ public partial class HealthService : IHealthService
     }
 
     private Result<SdkCheckError> IsSdkAvailable() => JavaReflectionHelper.CheckSdkAvailability(_activityContext);
+
+    public partial void OpenHealthStoreForUpdate() => JavaReflectionHelper.OpenHealthConnectInPlayStore(_activityContext);
 }
