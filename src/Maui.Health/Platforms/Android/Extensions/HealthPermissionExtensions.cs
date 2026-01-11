@@ -20,14 +20,20 @@ internal static class HealthPermissionExtensions
             permissionNameWithoutPrefix = _exercisePermissionName;
         }
 
-        if (healthPermission.PermissionType.HasFlag(PermissionType.Read))
+        switch (healthPermission.PermissionType)
         {
-            partialPermissionNames.Add($"READ_{permissionNameWithoutPrefix}");
-        }
-
-        if (healthPermission.PermissionType.HasFlag(PermissionType.Write))
-        {
-            partialPermissionNames.Add($"WRITE_{permissionNameWithoutPrefix}");
+            case PermissionType.Read:
+                partialPermissionNames.Add($"READ_{permissionNameWithoutPrefix}");
+                break;
+            case PermissionType.Write:
+                partialPermissionNames.Add($"WRITE_{permissionNameWithoutPrefix}");
+                break;
+            case PermissionType.ReadWrite:
+                partialPermissionNames.Add($"READ_{permissionNameWithoutPrefix}");
+                partialPermissionNames.Add($"WRITE_{permissionNameWithoutPrefix}");
+                break;
+            default:
+                throw new ArgumentException($"Unknown permission type: {healthPermission.PermissionType}");
         }
 
         return partialPermissionNames
