@@ -36,5 +36,5 @@ public abstract class HealthMetricBase
     /// <summary>
     /// Device details associated with this health record
     /// </summary>
-    public DeviceDetails? Device { get; init; }
+    public DeviceDetail? Device { get; init; }
 }

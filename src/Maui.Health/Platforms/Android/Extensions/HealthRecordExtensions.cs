@@ -1,7 +1,6 @@
 using AndroidX.Health.Connect.Client.Records;
 using AndroidX.Health.Connect.Client.Records.Metadata;
 using AndroidX.Health.Connect.Client.Units;
-using Java.Time;
 using Maui.Health.Constants;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
@@ -60,7 +59,7 @@ internal static class HealthRecordExtensions
         };
     }
 
-    private static DeviceDetails? CreateDeviceDetails(Device? metadataDevice)
+    private static DeviceDetail? CreateDeviceDetail(Device? metadataDevice)
     {
         if (metadataDevice is null)
         {
@@ -74,7 +73,7 @@ internal static class HealthRecordExtensions
             deviceType = healthDeviceType.ToString();
         }
 
-        return new DeviceDetails
+        return new DeviceDetail
         {
             DeviceType = deviceType,
             Manufacturer = metadataDevice.Manufacturer,
