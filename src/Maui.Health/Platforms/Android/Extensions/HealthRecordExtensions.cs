@@ -16,6 +16,7 @@ using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSes
 using HealthDeviceType = Android.Health.Connect.DataTypes.HealthDeviceType;
 using System.Collections;
 using Device = AndroidX.Health.Connect.Client.Records.Metadata.Device;
+using DataOrigin = Maui.Health.Constants.DataOrigin;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
