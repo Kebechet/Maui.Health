@@ -10,6 +10,7 @@
 		<SingleProject>true</SingleProject>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <!--Currently the package uses reflection which is not AOT/trimmable compatible-->
     <!--Also iOS release builds fail when this is set to true-->
@@ -42,7 +43,7 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>2.0.1</Version>
+    <Version>2.0.2</Version>
     <PackageReleaseNotes>- Fixed Android API 28-33 crash when Health Connect returns empty or non-mutable Kotlin sets (e.g., empty permissions). KotlinResolver now properly handles all ISet implementations.
 - Added DeviceDetails property to all health metrics, providing device metadata (manufacturer, model, type) for Android and iOS.</PackageReleaseNotes>
   </PropertyGroup>
