@@ -1,5 +1,6 @@
 using HealthKit;
 using Maui.Health.Constants;
+using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using UnitsNet;
 
@@ -23,6 +24,24 @@ internal static class HKQuantitySampleExtensions
         };
     }
 
+    private static DeviceDetail? CreateDeviceDetail(HKDevice? sampleDevice)
+    {
+        if (sampleDevice is null)
+        {
+            return null;
+        }
+
+        return new DeviceDetail
+        {
+            Name = sampleDevice.Name,
+            Manufacturer = sampleDevice.Manufacturer,
+            Model = sampleDevice.Model,
+            Id = sampleDevice.UdiDeviceIdentifier,
+            HardwareVersion = sampleDevice.HardwareVersion,
+            SoftwareVersion = sampleDevice.SoftwareVersion
+        };
+    }
+
     public static StepsDto ToStepsDto(this HKQuantitySample sample)
     {
         var value = sample.Quantity.GetDoubleValue(HKUnit.Count);
@@ -33,6 +52,7 @@ internal static class HKQuantitySampleExtensions
         {
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            Device = CreateDeviceDetail(sample.Device),
             Timestamp = startTime, // Use start time as the representative timestamp
             Count = (long)value,
             StartTime = startTime,
@@ -50,6 +70,7 @@ internal static class HKQuantitySampleExtensions
         {
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
             Value = value,
             Unit = Units.Kilogram
@@ -66,6 +87,7 @@ internal static class HKQuantitySampleExtensions
         {
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
             Value = value,
             Unit = Units.Centimeter
@@ -82,6 +104,7 @@ internal static class HKQuantitySampleExtensions
         {
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            Device = CreateDeviceDetail(sample.Device),
             Timestamp = startTime, // Use start time as the representative timestamp
             Energy = valueInKilocalories,
             Unit = Units.Kilocalorie,
@@ -99,6 +122,7 @@ internal static class HKQuantitySampleExtensions
         {
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
             BeatsPerMinute = beatsPerMinute,
             Unit = Units.BeatsPerMinute
@@ -115,6 +139,7 @@ internal static class HKQuantitySampleExtensions
         {
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
             Percentage = percentage,
             Unit = Units.Percent
@@ -130,6 +155,7 @@ internal static class HKQuantitySampleExtensions
         {
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
             Value = value,
             Unit = Units.Vo2Max

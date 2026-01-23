@@ -78,10 +78,10 @@ internal static class KotlinResolver
             return (IList<TResult?>)aggregationResults;
         }
 
-        if (result is Kotlin.Collections.AbstractMutableSet abstractMutableSet)
+        // Handle any Set implementation (covers EmptySet, AbstractSet, AbstractMutableSet, etc.)
+        if (result is Java.Util.ISet javaSet)
         {
-            var javaSet = abstractMutableSet.JavaCast<Java.Util.ISet>();
-            return javaSet?.ToList<TResult?>();
+            return javaSet.IsEmpty ? [] : javaSet.ToList<TResult?>();
         }
 
         return null;
