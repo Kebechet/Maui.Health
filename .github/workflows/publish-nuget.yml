@@ -79,7 +79,9 @@ jobs:
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
           $releaseNotesGroup = $csproj.Project.PropertyGroup | Where-Object { $_.PackageReleaseNotes } | Select-Object -First 1
           $releaseNotes = if ($releaseNotesGroup) { $releaseNotesGroup.PackageReleaseNotes } else { "" }
-          echo "RELEASE_NOTES=$releaseNotes" >> $env:GITHUB_OUTPUT
+          "RELEASE_NOTES<<EOF" >> $env:GITHUB_OUTPUT
+          $releaseNotes >> $env:GITHUB_OUTPUT
+          "EOF" >> $env:GITHUB_OUTPUT
 
       - name: Publish to NuGet
         run: >
