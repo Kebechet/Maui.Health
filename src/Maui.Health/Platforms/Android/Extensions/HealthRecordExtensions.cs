@@ -15,6 +15,7 @@ using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
 using HealthDeviceType = Android.Health.Connect.DataTypes.HealthDeviceType;
 using System.Collections;
+using Device = AndroidX.Health.Connect.Client.Records.Metadata.Device;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
@@ -95,7 +96,7 @@ internal static class HealthRecordExtensions
         {
             Id = stepsRecord.Metadata.Id,
             DataOrigin = stepsRecord.Metadata.DataOrigin.PackageName,
-            Device = CreateDeviceDetails(stepsRecord.Metadata.Device),
+            Device = CreateDeviceDetail(stepsRecord.Metadata.Device),
             Timestamp = startTime,
             Count = stepsRecord.Count,
             StartTime = startTime,
@@ -117,7 +118,7 @@ internal static class HealthRecordExtensions
         {
             Id = weightRecord.Metadata.Id,
             DataOrigin = weightRecord.Metadata.DataOrigin.PackageName,
-            Device = CreateDeviceDetails(weightRecord.Metadata.Device),
+            Device = CreateDeviceDetail(weightRecord.Metadata.Device),
             Timestamp = timestamp,
             Value = weightValue,
             Unit = Units.Kilogram
@@ -138,7 +139,7 @@ internal static class HealthRecordExtensions
         {
             Id = heightRecord.Metadata.Id,
             DataOrigin = heightRecord.Metadata.DataOrigin.PackageName,
-            Device = CreateDeviceDetails(heightRecord.Metadata.Device),
+            Device = CreateDeviceDetail(heightRecord.Metadata.Device),
             Timestamp = timestamp,
             Value = heightValue,
             Unit = Units.Centimeter
@@ -160,7 +161,7 @@ internal static class HealthRecordExtensions
         {
             Id = caloriesRecord.Metadata.Id,
             DataOrigin = caloriesRecord.Metadata.DataOrigin.PackageName,
-            Device = CreateDeviceDetails(caloriesRecord.Metadata.Device),
+            Device = CreateDeviceDetail(caloriesRecord.Metadata.Device),
             Timestamp = startTime,
             Energy = energyValue,
             Unit = Units.Kilocalorie,
@@ -192,7 +193,7 @@ internal static class HealthRecordExtensions
         {
             Id = heartRateRecord.Metadata.Id,
             DataOrigin = heartRateRecord.Metadata.DataOrigin.PackageName,
-            Device = CreateDeviceDetails(heartRateRecord.Metadata.Device),
+            Device = CreateDeviceDetail(heartRateRecord.Metadata.Device),
             Timestamp = timestamp,
             BeatsPerMinute = beatsPerMinute,
             Unit = Units.BeatsPerMinute
@@ -214,7 +215,7 @@ internal static class HealthRecordExtensions
         {
             Id = bodyFatRecord.Metadata.Id,
             DataOrigin = bodyFatRecord.Metadata.DataOrigin.PackageName,
-            Device = CreateDeviceDetails(bodyFatRecord.Metadata.Device),
+            Device = CreateDeviceDetail(bodyFatRecord.Metadata.Device),
             Timestamp = timestamp,
             Percentage = percentage,
             Unit = Units.Percent
@@ -236,7 +237,7 @@ internal static class HealthRecordExtensions
         {
             Id = vo2MaxRecord.Metadata.Id,
             DataOrigin = vo2MaxRecord.Metadata.DataOrigin.PackageName,
-            Device = CreateDeviceDetails(vo2MaxRecord.Metadata.Device),
+            Device = CreateDeviceDetail(vo2MaxRecord.Metadata.Device),
             Timestamp = timestamp,
             Value = value,
             Unit = Units.Vo2Max
