@@ -4,9 +4,7 @@
 ![NuGet Version](https://img.shields.io/nuget/v/Kebechet.Maui.Health)
 ![NuGet Downloads](https://img.shields.io/nuget/dt/Kebechet.Maui.Health)
 
-Abstraction around `Android Health Connect` and `iOS HealthKit` with unified DTO-based API
-⚠️ Beware, this package is currently just as **Proof of concept**. There is a lot of work required for proper stability and ease of use.
-[Issues](https://github.com/Kebechet/Maui.Health/issues) will contain future tasks that should be implemented.
+Abstraction around `Android Health Connect` and `iOS HealthKit` with unified API
 
 Feel free to contribute ❤️
 
