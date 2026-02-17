@@ -5,6 +5,7 @@ using AndroidX.Activity.Result;
 using AndroidX.Health.Connect.Client;
 using AndroidX.Health.Connect.Client.Records;
 using Java.Util;
+using Maui.Health.Constants;
 using Maui.Health.Enums;
 using Maui.Health.Enums.Errors;
 using Maui.Health.Extensions;
@@ -15,6 +16,7 @@ using Maui.Health.Platforms.Android.Callbacks;
 using Maui.Health.Platforms.Android.Extensions;
 using Maui.Health.Platforms.Android.Helpers;
 using Microsoft.Extensions.Logging;
+using static Maui.Health.Platforms.Android.AndroidConstant;
 
 namespace Maui.Health.Services;
 
@@ -144,6 +146,12 @@ public partial class HealthService : IHealthService
                 return [];
             }
 
+            // Use aggregate query for cumulative types to deduplicate across sources
+            if (IsCumulativeType<TDto>())
+            {
+                return await GetCumulativeHealthDataAsync<TDto>(timeRange, cancellationToken);
+            }
+
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
             var recordClass = healthDataType.ToKotlinClass();
 
@@ -218,6 +226,77 @@ public partial class HealthService : IHealthService
             _logger.LogError(ex, "Error writing health data for {DtoName}", typeof(TDto).Name);
             return false;
         }
+    }
+
+    private static bool IsCumulativeType<TDto>() where TDto : HealthMetricBase
+    {
+        return typeof(TDto) == typeof(StepsDto) ||
+               typeof(TDto) == typeof(ActiveCaloriesBurnedDto);
+    }
+
+    private async Task<List<TDto>> GetCumulativeHealthDataAsync<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        var (recordClassName, metricFieldName) = typeof(TDto).Name switch
+        {
+            nameof(StepsDto) => (Reflection.StepsRecordClassName, Reflection.CountTotalMetricName),
+            nameof(ActiveCaloriesBurnedDto) => (Reflection.ActiveCaloriesBurnedRecordClassName, Reflection.ActiveCaloriesTotalMetricName),
+            _ => throw new NotSupportedException($"Cumulative type {typeof(TDto).Name} is not supported")
+        };
+
+        var result = await _healthConnectClient.AggregateHealthRecords(recordClassName, metricFieldName, timeRange);
+        if (result is null)
+        {
+            _logger.LogInformation("No aggregate data found for {DtoName}", typeof(TDto).Name);
+            return [];
+        }
+
+        TDto? dto = null;
+
+        if (typeof(TDto) == typeof(StepsDto))
+        {
+            long count = 0;
+            if (result is Java.Lang.Number number)
+            {
+                count = number.LongValue();
+            }
+
+            dto = new StepsDto
+            {
+                Id = Guid.NewGuid().ToString(),
+                DataOrigin = DataOrigin.HealthConnectOrigin,
+                Timestamp = timeRange.StartTime,
+                Count = count,
+                StartTime = timeRange.StartTime,
+                EndTime = timeRange.EndTime
+            } as TDto;
+        }
+        else if (typeof(TDto) == typeof(ActiveCaloriesBurnedDto))
+        {
+            var energy = result.ExtractEnergyValue();
+
+            dto = new ActiveCaloriesBurnedDto
+            {
+                Id = Guid.NewGuid().ToString(),
+                DataOrigin = DataOrigin.HealthConnectOrigin,
+                Timestamp = timeRange.StartTime,
+                Energy = energy,
+                StartTime = timeRange.StartTime,
+                EndTime = timeRange.EndTime,
+                Unit = Units.Kilocalorie
+            } as TDto;
+        }
+
+        if (dto is null)
+        {
+            return [];
+        }
+
+        _logger.LogInformation("Found cumulative {DtoName}: {Value}", typeof(TDto).Name,
+            dto is StepsDto steps ? steps.Count.ToString() :
+            dto is ActiveCaloriesBurnedDto cal ? cal.Energy.ToString("F0") : "N/A");
+
+        return [dto];
     }
 
     private Result<SdkCheckError> IsSdkAvailable() => JavaReflectionHelper.CheckSdkAvailability(_activityContext);
