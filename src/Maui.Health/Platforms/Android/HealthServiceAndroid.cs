@@ -167,6 +167,24 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
+    public partial Task<Dictionary<DateOnly, List<TDto>>> GetHealthDataGroupedByDay<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return GetHealthDataGroupedByDayInternal<TDto>(timeRange, cancellationToken);
+    }
+
+    private async Task<Dictionary<DateOnly, List<TDto>>> GetHealthDataGroupedByDayInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        var results = await GetHealthDataInternal<TDto>(timeRange, cancellationToken);
+
+        return results
+            .GroupBy(x => DateOnly.FromDateTime(x.Timestamp.DateTime))
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
+    //https://github.com/Kebechet/Maui.Health/pull/8/files
+    //Split to `public partial` and `private async` method because of trimmer/linker issue
     public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {

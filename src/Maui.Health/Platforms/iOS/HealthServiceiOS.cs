@@ -216,6 +216,158 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
+    public partial Task<Dictionary<DateOnly, List<TDto>>> GetHealthDataGroupedByDay<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return GetHealthDataGroupedByDayInternal<TDto>(timeRange, cancellationToken);
+    }
+
+    private async Task<Dictionary<DateOnly, List<TDto>>> GetHealthDataGroupedByDayInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        if (!IsSupported)
+        {
+            return new Dictionary<DateOnly, List<TDto>>();
+        }
+
+        try
+        {
+            _logger.LogInformation("iOS GetHealthDataGroupedByDay<{DtoName}>: StartTime: {StartTime}, EndTime: {EndTime}",
+                typeof(TDto).Name, timeRange.StartTime, timeRange.EndTime);
+
+            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+            var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
+            if (!permissionResult.IsSuccess)
+            {
+                return new Dictionary<DateOnly, List<TDto>>();
+            }
+
+            var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
+            var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier())!;
+
+            var predicate = HKQuery.GetPredicateForSamples(
+                timeRange.StartTime.ToNSDate(),
+                timeRange.EndTime.ToNSDate(),
+                HKQueryOptions.StrictStartDate
+            );
+
+            if (IsCumulativeType<TDto>())
+            {
+                return await GetCumulativeHealthDataByDayAsync<TDto>(quantityType, predicate, timeRange, cancellationToken);
+            }
+
+            // Non-cumulative: reuse sample query, group client-side
+            var results = await GetHealthDataInternal<TDto>(timeRange, cancellationToken);
+
+            return results
+                .GroupBy(x => DateOnly.FromDateTime(x.Timestamp.DateTime))
+                .ToDictionary(g => g.Key, g => g.ToList());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching grouped health data for {DtoName}", typeof(TDto).Name);
+            return new Dictionary<DateOnly, List<TDto>>();
+        }
+    }
+
+    private async Task<Dictionary<DateOnly, List<TDto>>> GetCumulativeHealthDataByDayAsync<TDto>(
+        HKQuantityType quantityType,
+        NSPredicate predicate,
+        HealthTimeRange timeRange,
+        CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        var tcs = new TaskCompletionSource<Dictionary<DateOnly, List<TDto>>>();
+
+        var interval = new NSDateComponents { Day = 1 };
+        var anchorDate = timeRange.StartTime.ToNSDate();
+
+        var query = new HKStatisticsCollectionQuery(
+            quantityType,
+            predicate,
+            HKStatisticsOptions.CumulativeSum,
+            anchorDate,
+            interval);
+
+        query.InitialResultsHandler = (collectionQuery, results, error) =>
+        {
+            if (error is not null || results is null)
+            {
+                tcs.TrySetResult(new Dictionary<DateOnly, List<TDto>>());
+                return;
+            }
+
+            var grouped = new Dictionary<DateOnly, List<TDto>>();
+
+            results.EnumerateStatistics(
+                timeRange.StartTime.ToNSDate(),
+                timeRange.EndTime.ToNSDate(),
+                (statistics, stop) =>
+                {
+                    var sum = statistics.SumQuantity();
+                    if (sum is null)
+                    {
+                        return;
+                    }
+
+                    var dayStart = (DateTimeOffset)statistics.StartDate;
+                    var dayEnd = (DateTimeOffset)statistics.EndDate;
+                    var day = DateOnly.FromDateTime(dayStart.DateTime);
+
+                    TDto? dto = null;
+
+                    if (typeof(TDto) == typeof(StepsDto))
+                    {
+                        dto = new StepsDto
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            DataOrigin = DataOrigin.HealthKitOrigin,
+                            Timestamp = dayStart,
+                            Count = (long)sum.GetDoubleValue(HKUnit.Count),
+                            StartTime = dayStart,
+                            EndTime = dayEnd
+                        } as TDto;
+                    }
+                    else if (typeof(TDto) == typeof(ActiveCaloriesBurnedDto))
+                    {
+                        dto = new ActiveCaloriesBurnedDto
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            DataOrigin = DataOrigin.HealthKitOrigin,
+                            Timestamp = dayStart,
+                            Energy = sum.GetDoubleValue(HKUnit.Kilocalorie),
+                            StartTime = dayStart,
+                            EndTime = dayEnd,
+                            Unit = Units.Kilocalorie
+                        } as TDto;
+                    }
+
+                    if (dto is not null)
+                    {
+                        grouped[day] = [dto];
+                    }
+                });
+
+            tcs.TrySetResult(grouped);
+        };
+
+        using var store = new HKHealthStore();
+        using var ct = cancellationToken.Register(() =>
+        {
+            tcs.TrySetCanceled();
+            store.StopQuery(query);
+        });
+
+        store.ExecuteQuery(query);
+        var result = await tcs.Task;
+
+        _logger.LogInformation("Found {Count} days of cumulative {DtoName} data", result.Count, typeof(TDto).Name);
+
+        return result;
+    }
+
+    //https://github.com/Kebechet/Maui.Health/pull/8/files
+    //Split to `public partial` and `private async` method because of trimmer/linker issue
     public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
