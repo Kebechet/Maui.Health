@@ -13,6 +13,7 @@ Feel free to contribute ❤️
 - **Generic API**: Use `GetHealthDataAsync<TDto>()` for type-safe health data retrieval
 - **Unified DTOs**: Platform-agnostic data transfer objects with common properties
 - **Time Range Support**: Duration-based metrics implement `IHealthTimeRange` interface
+- **Group by Day**: `GetHealthDataGroupedByDay<TDto>()` fetches a full date range in one query and groups results by day
 - **Write/delete**: Possibility to write/delete activity to/from Android Health/iOS HealthKit.
 - **Duplication detection**: If you write activity under your app to the ios/android health and at same time you start activity on watch/phone natively. You have possibility to detect these workouts and synchronize it as you need.
 
@@ -85,7 +86,46 @@ public class HealthExampleService
 }
 ```
 
-### 3. Working with Time Ranges
+### 3. Getting Health Data Grouped by Day
+
+Fetch health data for a date range and get results grouped by day — ideal for charts, summaries, or day-by-day views. This uses a single query under the hood instead of N per-day calls. For cumulative types (steps, active calories) on iOS, it uses `HKStatisticsCollectionQuery` for proper cross-source deduplication.
+
+```csharp
+public async Task ShowMonthlySteps()
+{
+    var timeRange = HealthTimeRange.FromDateTime(
+        DateTime.Today.AddDays(-30),
+        DateTime.Now);
+
+    var groupedSteps = await _healthService.GetHealthDataGroupedByDay<StepsDto>(timeRange);
+
+    foreach (var (day, steps) in groupedSteps.OrderBy(x => x.Key))
+    {
+        var totalSteps = steps.Sum(s => s.Count);
+        Console.WriteLine($"{day}: {totalSteps} steps");
+    }
+}
+```
+
+You can also group workouts by day:
+
+```csharp
+public async Task ShowWeeklyWorkouts()
+{
+    var timeRange = HealthTimeRange.FromDateTime(
+        DateTime.Today.AddDays(-7),
+        DateTime.Now);
+
+    var groupedWorkouts = await _healthService.Activity.ReadGroupedByDay(timeRange);
+
+    foreach (var (day, workouts) in groupedWorkouts.OrderBy(x => x.Key))
+    {
+        Console.WriteLine($"{day}: {workouts.Count} workout(s)");
+    }
+}
+```
+
+### 4. Working with Time Ranges
 
 Duration-based metrics implement `IHealthTimeRange`:
 
@@ -120,7 +160,7 @@ public async Task AnalyzeStepsData()
 }
 ```
 
-### 4. Permission Handling
+### 5. Permission Handling
 
 ```csharp
 public async Task RequestPermissions()
@@ -145,7 +185,7 @@ public async Task RequestPermissions()
 }
 ```
 
-### 5. Workout Management (IHealthWorkoutService)
+### 6. Workout Management (IHealthWorkoutService)
 
 The `Activity` property on `IHealthService` provides workout/exercise session management (`IHealthWorkoutService`) with support for real-time tracking, pause/resume functionality, and duplicate detection.
 
