@@ -310,8 +310,8 @@ public partial class HealthService : IHealthService
                         return;
                     }
 
-                    var dayStart = (DateTimeOffset)statistics.StartDate;
-                    var dayEnd = (DateTimeOffset)statistics.EndDate;
+                    var dayStart = statistics.StartDate.ToDateTimeOffset();
+                    var dayEnd = statistics.EndDate.ToDateTimeOffset();
                     var day = DateOnly.FromDateTime(dayStart.DateTime);
 
                     TDto? dto = null;
