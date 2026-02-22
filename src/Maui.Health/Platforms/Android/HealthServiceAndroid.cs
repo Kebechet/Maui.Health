@@ -264,7 +264,7 @@ public partial class HealthService : IHealthService
             dto = new StepsDto
             {
                 Id = Guid.NewGuid().ToString(),
-                DataOrigin = DataOrigin.HealthConnectOrigin,
+                DataOrigin = Constants.DataOrigin.HealthConnectOrigin,
                 Timestamp = timeRange.StartTime,
                 Count = count,
                 StartTime = timeRange.StartTime,
@@ -278,7 +278,7 @@ public partial class HealthService : IHealthService
             dto = new ActiveCaloriesBurnedDto
             {
                 Id = Guid.NewGuid().ToString(),
-                DataOrigin = DataOrigin.HealthConnectOrigin,
+                DataOrigin = Constants.DataOrigin.HealthConnectOrigin,
                 Timestamp = timeRange.StartTime,
                 Energy = energy,
                 StartTime = timeRange.StartTime,
