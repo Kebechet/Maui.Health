@@ -1,8 +1,10 @@
 ﻿[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/kebechet)
 
 # Maui.Health
-![NuGet Version](https://img.shields.io/nuget/v/Kebechet.Maui.Health)
+[![NuGet Version](https://img.shields.io/nuget/v/Kebechet.Maui.Health)](https://www.nuget.org/packages/Kebechet.Maui.Health)
 ![NuGet Downloads](https://img.shields.io/nuget/dt/Kebechet.Maui.Health)
+![Last updated (main)](https://img.shields.io/github/last-commit/Kebechet/Maui.Health/main?label=last%20updated)
+[![Twitter](https://img.shields.io/twitter/url/https/twitter.com/samuel_sidor.svg?style=social&label=Follow%20samuel_sidor)](https://x.com/samuel_sidor)
 
 Abstraction around `Android Health Connect` and `iOS HealthKit` with unified API
 
