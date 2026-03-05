@@ -11,6 +11,10 @@
                 style="padding: 10px 20px; background-color: @(_activeTab == 1 ? "#007bff" : "transparent"); color: @(_activeTab == 1 ? "white" : "#007bff"); border: none; border-bottom: 3px solid @(_activeTab == 1 ? "#007bff" : "transparent"); cursor: pointer; font-weight: @(_activeTab == 1 ? "bold" : "normal");">
             🏃 Sessions
         </button>
+        <button @onclick="() => _activeTab = 2"
+                style="padding: 10px 20px; background-color: @(_activeTab == 2 ? "#007bff" : "transparent"); color: @(_activeTab == 2 ? "white" : "#007bff"); border: none; border-bottom: 3px solid @(_activeTab == 2 ? "#007bff" : "transparent"); cursor: pointer; font-weight: @(_activeTab == 2 ? "bold" : "normal");">
+            📅 Grouped by Day
+        </button>
     </div>
 </div>
 
@@ -219,4 +223,138 @@ else if (_activeTab == 1)
     {
         <p>No workouts found for today</p>
     }
+}
+else if (_activeTab == 2)
+{
+    <!-- Grouped by Day Tab -->
+    <h1>Health Data Grouped by Day (Last 7 Days)</h1>
+
+    <div style="margin-bottom: 20px;">
+        <button @onclick="LoadGroupedByDayDataAsync"
+                disabled="@_groupedDataLoading"
+                style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            @(_groupedDataLoading ? "Loading..." : "Load Grouped Data")
+        </button>
+        @if (!string.IsNullOrEmpty(_groupedDataMessage))
+        {
+            <p style="color: @(_groupedDataSuccess ? "green" : "red"); margin-top: 10px;">@_groupedDataMessage</p>
+        }
+    </div>
+
+    <!-- Steps per day -->
+    <h2>Steps per Day</h2>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+            <tr style="background-color: #f8f9fa;">
+                <th style="padding: 8px; border: 1px solid #dee2e6; text-align: left;">Date</th>
+                <th style="padding: 8px; border: 1px solid #dee2e6; text-align: right;">Total Steps</th>
+                <th style="padding: 8px; border: 1px solid #dee2e6; text-align: right;">Records</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var day in _last7Days)
+            {
+                var hasData = _stepsGroupedByDay.TryGetValue(day, out var steps);
+                var totalSteps = hasData ? steps!.Sum(s => s.Count) : 0;
+                var recordCount = hasData ? steps!.Count : 0;
+                var isToday = day == DateOnly.FromDateTime(DateTime.Today);
+
+                <tr style="background-color: @(isToday ? "#e8f4fd" : "transparent");">
+                    <td style="padding: 8px; border: 1px solid #dee2e6;">
+                        @day.ToString("ddd, MMM dd")
+                        @if (isToday)
+                        {
+                            <span style="background-color: #007bff; color: white; padding: 1px 6px; border-radius: 3px; font-size: 0.8em; margin-left: 5px;">TODAY</span>
+                        }
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; font-weight: @(hasData ? "bold" : "normal"); color: @(hasData ? "#333" : "#aaa");">
+                        @(hasData ? totalSteps.ToString("N0") : "-")
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; color: #666;">
+                        @(hasData ? recordCount.ToString() : "-")
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <!-- Active Calories per day -->
+    <h2>Active Calories per Day</h2>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+            <tr style="background-color: #f8f9fa;">
+                <th style="padding: 8px; border: 1px solid #dee2e6; text-align: left;">Date</th>
+                <th style="padding: 8px; border: 1px solid #dee2e6; text-align: right;">Total kcal</th>
+                <th style="padding: 8px; border: 1px solid #dee2e6; text-align: right;">Records</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var day in _last7Days)
+            {
+                var hasData = _caloriesGroupedByDay.TryGetValue(day, out var cals);
+                var totalCals = hasData ? cals!.Sum(c => c.Energy) : 0;
+                var recordCount = hasData ? cals!.Count : 0;
+                var isToday = day == DateOnly.FromDateTime(DateTime.Today);
+
+                <tr style="background-color: @(isToday ? "#e8f4fd" : "transparent");">
+                    <td style="padding: 8px; border: 1px solid #dee2e6;">
+                        @day.ToString("ddd, MMM dd")
+                        @if (isToday)
+                        {
+                            <span style="background-color: #007bff; color: white; padding: 1px 6px; border-radius: 3px; font-size: 0.8em; margin-left: 5px;">TODAY</span>
+                        }
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; font-weight: @(hasData ? "bold" : "normal"); color: @(hasData ? "#333" : "#aaa");">
+                        @(hasData ? totalCals.ToString("F0") : "-")
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; color: #666;">
+                        @(hasData ? recordCount.ToString() : "-")
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <!-- Workouts per day -->
+    <h2>Workouts per Day</h2>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+            <tr style="background-color: #f8f9fa;">
+                <th style="padding: 8px; border: 1px solid #dee2e6; text-align: left;">Date</th>
+                <th style="padding: 8px; border: 1px solid #dee2e6; text-align: right;">Workouts</th>
+                <th style="padding: 8px; border: 1px solid #dee2e6; text-align: left;">Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var day in _last7Days)
+            {
+                var hasData = _workoutsGroupedByDay.TryGetValue(day, out var workouts);
+                var workoutCount = hasData ? workouts!.Count : 0;
+                var isToday = day == DateOnly.FromDateTime(DateTime.Today);
+
+                <tr style="background-color: @(isToday ? "#e8f4fd" : "transparent");">
+                    <td style="padding: 8px; border: 1px solid #dee2e6;">
+                        @day.ToString("ddd, MMM dd")
+                        @if (isToday)
+                        {
+                            <span style="background-color: #007bff; color: white; padding: 1px 6px; border-radius: 3px; font-size: 0.8em; margin-left: 5px;">TODAY</span>
+                        }
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; font-weight: @(hasData ? "bold" : "normal"); color: @(hasData ? "#333" : "#aaa");">
+                        @(hasData ? workoutCount.ToString() : "-")
+                    </td>
+                    <td style="padding: 8px; border: 1px solid #dee2e6; color: #666;">
+                        @if (hasData)
+                        {
+                            @string.Join(", ", workouts!.Select(w => $"{w.ActivityType} ({(int)w.DurationSeconds / 60}min)"))
+                        }
+                        else
+                        {
+                            <span style="color: #aaa;">-</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 }

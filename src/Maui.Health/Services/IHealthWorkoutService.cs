@@ -17,6 +17,13 @@ public interface IHealthWorkoutService
     Task<List<WorkoutDto>> Read(HealthTimeRange activityTime);
 
     /// <summary>
+    /// Reads workout records from the health data store within the specified time range, grouped by day
+    /// </summary>
+    /// <param name="activityTime">The time range for data retrieval</param>
+    /// <returns>Dictionary keyed by date with lists of workout DTOs for each day</returns>
+    Task<Dictionary<DateOnly, List<WorkoutDto>>> ReadGroupedByDay(HealthTimeRange activityTime);
+
+    /// <summary>
     /// Writes a workout record to the health data store
     /// </summary>
     /// <param name="workout">The workout record to write</param>

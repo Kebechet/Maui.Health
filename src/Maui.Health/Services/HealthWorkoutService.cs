@@ -10,6 +10,15 @@ public partial class HealthWorkoutService : IHealthWorkoutService
 {
     public partial Task<List<WorkoutDto>> Read(HealthTimeRange activityTime);
 
+    public async Task<Dictionary<DateOnly, List<WorkoutDto>>> ReadGroupedByDay(HealthTimeRange activityTime)
+    {
+        var results = await Read(activityTime);
+
+        return results
+            .GroupBy(x => DateOnly.FromDateTime(x.Timestamp.DateTime))
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
     public partial Task Write(WorkoutDto workout);
 
     /// <summary>

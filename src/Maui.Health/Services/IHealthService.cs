@@ -31,6 +31,16 @@ public interface IHealthService
         where TDto : HealthMetricBase;
 
     /// <summary>
+    /// Get health data for a specific metric type within a time range, grouped by day
+    /// </summary>
+    /// <typeparam name="TDto">The type of health metric DTO to retrieve</typeparam>
+    /// <param name="timeRange">The time range for data retrieval</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Dictionary keyed by date with lists of health metric DTOs for each day</returns>
+    Task<Dictionary<DateOnly, List<TDto>>> GetHealthDataGroupedByDay<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase;
+
+    /// <summary>
     /// Write health data to the health store
     /// </summary>
     /// <typeparam name="TDto">The type of health metric DTO to write</typeparam>

@@ -18,6 +18,12 @@ public partial class HealthService : IHealthService
         return Task.FromResult<List<TDto>>([]);
     }
 
+    public partial Task<Dictionary<DateOnly, List<TDto>>> GetHealthDataGroupedByDay<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return Task.FromResult(new Dictionary<DateOnly, List<TDto>>());
+    }
+
     public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {

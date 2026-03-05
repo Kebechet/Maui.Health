@@ -31,6 +31,17 @@ public partial class Home
     private const string AppSource = "DemoApp";
     private int _duplicateThresholdMinutes { get; set; } = 5;
 
+    // Grouped by day data
+    private Dictionary<DateOnly, List<StepsDto>> _stepsGroupedByDay { get; set; } = [];
+    private Dictionary<DateOnly, List<ActiveCaloriesBurnedDto>> _caloriesGroupedByDay { get; set; } = [];
+    private Dictionary<DateOnly, List<WorkoutDto>> _workoutsGroupedByDay { get; set; } = [];
+    private string _groupedDataMessage { get; set; } = string.Empty;
+    private bool _groupedDataSuccess { get; set; } = false;
+    private bool _groupedDataLoading { get; set; } = false;
+    private List<DateOnly> _last7Days => Enumerable.Range(0, 7)
+        .Select(i => DateOnly.FromDateTime(DateTime.Today.AddDays(-6 + i)))
+        .ToList();
+
     // Session tracking
     private bool _isSessionRunning { get; set; } = false;
     private bool _isSessionPaused { get; set; } = false;
@@ -338,6 +349,72 @@ public partial class Home
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error in LoadHealthDataAsync: {ex.Message}");
+        }
+    }
+
+    private async Task LoadGroupedByDayDataAsync()
+    {
+        try
+        {
+            _groupedDataLoading = true;
+            _groupedDataMessage = "Loading grouped data...";
+            _groupedDataSuccess = false;
+            StateHasChanged();
+
+            var permissions = new List<HealthPermissionDto>
+            {
+                new() { HealthDataType = HealthDataType.Steps, PermissionType = PermissionType.Read },
+                new() { HealthDataType = HealthDataType.ActiveCaloriesBurned, PermissionType = PermissionType.Read },
+                new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Read }
+            };
+
+            await _healthService.RequestPermissions(permissions);
+
+            var weekRange = HealthTimeRange.FromDateTime(
+                DateTime.Today.AddDays(-6),
+                DateTime.Now);
+
+            try
+            {
+                _stepsGroupedByDay = await _healthService.GetHealthDataGroupedByDay<StepsDto>(weekRange);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading grouped steps: {ex.Message}");
+                _stepsGroupedByDay = [];
+            }
+
+            try
+            {
+                _caloriesGroupedByDay = await _healthService.GetHealthDataGroupedByDay<ActiveCaloriesBurnedDto>(weekRange);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading grouped calories: {ex.Message}");
+                _caloriesGroupedByDay = [];
+            }
+
+            try
+            {
+                _workoutsGroupedByDay = await _healthService.Activity.ReadGroupedByDay(weekRange);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading grouped workouts: {ex.Message}");
+                _workoutsGroupedByDay = [];
+            }
+
+            _groupedDataMessage = $"Loaded data for {_stepsGroupedByDay.Count} day(s) with steps, {_caloriesGroupedByDay.Count} day(s) with calories, {_workoutsGroupedByDay.Count} day(s) with workouts.";
+            _groupedDataSuccess = true;
+            _groupedDataLoading = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _groupedDataMessage = $"Error: {ex.Message}";
+            _groupedDataSuccess = false;
+            _groupedDataLoading = false;
+            StateHasChanged();
         }
     }
 

@@ -29,6 +29,9 @@ public partial class HealthService : IHealthService
     public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
+    public partial Task<Dictionary<DateOnly, List<TDto>>> GetHealthDataGroupedByDay<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase;
+
     public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 }
