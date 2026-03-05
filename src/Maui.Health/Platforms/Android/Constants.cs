@@ -106,5 +106,30 @@ public static class AndroidConstant
         /// Percentage class full name for reflection.
         /// </summary>
         public const string PercentageClassName = "androidx.health.connect.client.units.Percentage";
+
+        /// <summary>
+        /// StepsRecord class full name for aggregate metric reflection.
+        /// </summary>
+        public const string StepsRecordClassName = "androidx.health.connect.client.records.StepsRecord";
+
+        /// <summary>
+        /// ActiveCaloriesBurnedRecord class full name for aggregate metric reflection.
+        /// </summary>
+        public const string ActiveCaloriesBurnedRecordClassName = "androidx.health.connect.client.records.ActiveCaloriesBurnedRecord";
+
+        /// <summary>
+        /// COUNT_TOTAL aggregate metric field name on StepsRecord.
+        /// </summary>
+        public const string CountTotalMetricName = "COUNT_TOTAL";
+
+        /// <summary>
+        /// ACTIVE_CALORIES_TOTAL aggregate metric field name on ActiveCaloriesBurnedRecord.
+        /// </summary>
+        public const string ActiveCaloriesTotalMetricName = "ACTIVE_CALORIES_TOTAL";
+
+        /// <summary>
+        /// AggregateMetric class full name for reflection.
+        /// </summary>
+        public const string AggregateMetricClassName = "androidx.health.connect.client.aggregate.AggregateMetric";
     }
 }

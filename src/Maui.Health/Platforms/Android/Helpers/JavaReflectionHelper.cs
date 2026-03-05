@@ -247,6 +247,162 @@ internal static class JavaReflectionHelper
     }
 
     /// <summary>
+    /// Aggregates health records from Health Connect using the aggregate() API via JNI reflection.
+    /// This properly deduplicates data across multiple health apps (e.g. Samsung Health + Google Fit).
+    /// </summary>
+    /// <param name="healthConnectClient">The Health Connect client instance</param>
+    /// <param name="recordClassName">Fully qualified Java class name of the record type (e.g. StepsRecord)</param>
+    /// <param name="metricFieldName">Name of the static aggregate metric field (e.g. COUNT_TOTAL)</param>
+    /// <param name="timeRange">The time range to aggregate over</param>
+    /// <returns>The aggregated value (Long for steps, Energy for calories), or null if the operation failed</returns>
+    internal static async Task<Java.Lang.Object?> AggregateHealthRecords(
+        this IHealthConnectClient healthConnectClient,
+        string recordClassName,
+        string metricFieldName,
+        HealthTimeRange timeRange)
+    {
+        try
+        {
+            // 1. Get the aggregate metric constant from the record class (@JvmField on companion)
+            var recordClass = Java.Lang.Class.ForName(recordClassName);
+            if (recordClass is null)
+            {
+                Debug.WriteLine($"Failed to find record class: {recordClassName}");
+                return null;
+            }
+
+            var metricField = recordClass.GetDeclaredField(metricFieldName);
+            if (metricField is null)
+            {
+                Debug.WriteLine($"Failed to find metric field: {metricFieldName}");
+                return null;
+            }
+
+            metricField.Accessible = true;
+            var metric = metricField.Get(null);
+            if (metric is null)
+            {
+                Debug.WriteLine($"Metric field {metricFieldName} is null");
+                return null;
+            }
+
+            // 2. Create AggregateRequest with metric set and time range filter
+            var timeRangeFilter = TimeRangeFilter.Between(
+                Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
+                Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
+            );
+
+            var metricsSet = new Java.Util.HashSet();
+            metricsSet.Add(metric);
+
+            var emptySet = new Java.Util.HashSet();
+
+            var requestClass = Java.Lang.Class.ForName("androidx.health.connect.client.request.AggregateRequest");
+            if (requestClass is null)
+            {
+                Debug.WriteLine("Failed to find AggregateRequest class");
+                return null;
+            }
+
+            var requestConstructor = requestClass.GetConstructors()?.FirstOrDefault(c =>
+                c.GetParameterTypes()?.Length == 3);
+            if (requestConstructor is null)
+            {
+                Debug.WriteLine("Failed to find AggregateRequest constructor");
+                return null;
+            }
+
+            requestConstructor.Accessible = true;
+            var request = requestConstructor.NewInstance(metricsSet, timeRangeFilter, emptySet);
+            if (request is null)
+            {
+                Debug.WriteLine("Failed to create AggregateRequest");
+                return null;
+            }
+
+            // 3. Call aggregate() on the Health Connect client via JNI reflection
+            var clientType = healthConnectClient.GetType();
+            var handleField = clientType.GetField(JniHandleFieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+            if (handleField is null)
+            {
+                Debug.WriteLine("Could not find handle field via reflection");
+                return null;
+            }
+
+            var handle = handleField.GetValue(healthConnectClient);
+            if (handle is not IntPtr jniHandle || jniHandle == IntPtr.Zero)
+            {
+                Debug.WriteLine("Invalid JNI handle for Health Connect client");
+                return null;
+            }
+
+            var classHandle = JNIEnv.GetObjectClass(jniHandle);
+            var clientClass = Java.Lang.Object.GetObject<Java.Lang.Class>(classHandle, JniHandleOwnership.DoNotTransfer);
+            var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(jniHandle, JniHandleOwnership.DoNotTransfer);
+
+            var aggregateMethod = clientClass?.GetDeclaredMethods()?.FirstOrDefault(m =>
+                m?.Name == "aggregate" && m.GetParameterTypes()?.Length == 2);
+
+            if (aggregateMethod is null || clientObject is null)
+            {
+                Debug.WriteLine("Could not find aggregate method or client object");
+                return null;
+            }
+
+            var taskCompletionSource = new TaskCompletionSource<Java.Lang.Object>();
+            var continuation = new Continuation(taskCompletionSource, default);
+
+            aggregateMethod.Accessible = true;
+            var result = aggregateMethod.Invoke(clientObject, request, continuation);
+
+            if (result is Java.Lang.Enum javaEnum)
+            {
+                var currentState = Enum.Parse<CoroutineState>(javaEnum.ToString());
+                if (currentState == CoroutineState.COROUTINE_SUSPENDED)
+                {
+                    result = await taskCompletionSource.Task;
+                }
+            }
+
+            if (result is null)
+            {
+                return null;
+            }
+
+            // 4. Extract the aggregated value from AggregationResult using reflection
+            var aggregateMetricClass = Java.Lang.Class.ForName(Reflection.AggregateMetricClassName);
+            if (aggregateMetricClass is null)
+            {
+                Debug.WriteLine("Failed to find AggregateMetric class");
+                return null;
+            }
+
+            var getMethod = result.Class?.GetDeclaredMethod("get", aggregateMetricClass);
+            if (getMethod is null)
+            {
+                // Fallback: search all methods named "get" with one parameter
+                getMethod = result.Class?.GetDeclaredMethods()?.FirstOrDefault(m =>
+                    m?.Name == "get" && m.GetParameterTypes()?.Length == 1);
+            }
+
+            if (getMethod is null)
+            {
+                Debug.WriteLine("Could not find get method on AggregationResult");
+                return null;
+            }
+
+            getMethod.Accessible = true;
+            return getMethod.Invoke(result, metric);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error aggregating health records: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Inserts a record into Health Connect using reflection to call the Kotlin suspend function.
     /// </summary>
     /// <param name="healthConnectClient">The Health Connect client instance</param>
