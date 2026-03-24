@@ -55,13 +55,21 @@
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
 	  <PackageReference Include="Xamarin.AndroidX.Health.Connect.ConnectClient" Version="1.1.0" />
 
-    <!--underlying libraries have different versions than MAUI itself-->
-    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core" VersionOverride="2.10.0" NoWarn="NU1608" />
-    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" VersionOverride="2.10.0" NoWarn="NU1608" />
+    <!--Health.Connect.ConnectClient pulls in newer AndroidX deps (Activity 1.12.x, Lifecycle 2.10.x, SavedState 1.4.x)
+        but MAUI's transitive *.Ktx packages have tight version constraints expecting older versions-->
+    <PackageReference Include="Xamarin.AndroidX.Activity.Ktx" VersionOverride="1.12.4.1" NoWarn="NU1608" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData" VersionOverride="2.10.0.2" NoWarn="NU1608" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core" VersionOverride="2.10.0.2" NoWarn="NU1608" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData.Core.Ktx" VersionOverride="2.10.0.2" NoWarn="NU1608" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.Process" VersionOverride="2.10.0.2" NoWarn="NU1608" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.Runtime.Ktx" VersionOverride="2.10.0.2" NoWarn="NU1608" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.Runtime.Ktx.Android" VersionOverride="2.10.0.2" NoWarn="NU1608" />
+    <PackageReference Include="Xamarin.AndroidX.Lifecycle.ViewModel.Ktx" VersionOverride="2.10.0.2" NoWarn="NU1608" />
+    <PackageReference Include="Xamarin.AndroidX.SavedState.SavedState.Ktx" VersionOverride="1.4.0.2" NoWarn="NU1608" />
 
     <!--Fragment.Ktx 1.8.8 bug requires this: https://github.com/dotnet/android-libraries/issues/1186-->
     <!--https://github.com/dotnet/android-libraries/issues/1181#issuecomment-3053297891-->
-    <PackageReference Include="Xamarin.AndroidX.SavedState" VersionOverride="1.4.0" />
+    <PackageReference Include="Xamarin.AndroidX.SavedState" VersionOverride="1.4.0.2" />
     <PackageReference Include="Xamarin.AndroidX.Fragment.Ktx" VersionOverride="1.8.9" />
 	</ItemGroup>
 
