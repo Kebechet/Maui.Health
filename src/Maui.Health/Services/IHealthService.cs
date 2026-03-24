@@ -3,8 +3,19 @@ using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Services;
 
+/// <summary>
+/// Cross-platform service for reading and writing health data.
+/// On Android it uses Health Connect, on iOS it uses HealthKit.
+/// </summary>
 public interface IHealthService
 {
+    /// <summary>
+    /// Whether the health data platform is available on this device.
+    /// On Android: checks Health Connect SDK availability.
+    /// On iOS: always true (HealthKit is built into the OS).
+    /// </summary>
+    bool IsSupported { get; }
+
     /// <summary>
     /// Access to workout/activity tracking service
     /// </summary>
@@ -43,9 +54,9 @@ public interface IHealthService
     /// <summary>
     /// Opens the platform store to update the health provider app.
     /// Call this after showing your custom UI when RequestPermissions returns
-    /// <see cref="Enums.Errors.RequestPermissionError.AndroidSdkUnavailableProviderUpdateRequired"/>.
+    /// <see cref="Enums.Errors.RequestPermissionError.SdkUnavailableProviderUpdateRequired"/>.
     /// On Android: Opens Play Store to update Health Connect.
     /// On iOS: No-op (HealthKit is built into the OS).
     /// </summary>
-    void OpenHealthStoreForUpdate();
+    void OpenStorePageOfHealthProvider();
 }

@@ -1,9 +1,7 @@
 ﻿using Android.Content;
-using Android.Health.Connect.DataTypes;
 using AndroidX.Activity;
 using AndroidX.Activity.Result;
 using AndroidX.Health.Connect.Client;
-using AndroidX.Health.Connect.Client.Records;
 using Java.Util;
 using Maui.Health.Enums;
 using Maui.Health.Enums.Errors;
@@ -20,7 +18,8 @@ namespace Maui.Health.Services;
 
 public partial class HealthService : IHealthService
 {
-    public partial bool IsSupported => IsSdkAvailable().IsSuccess;
+    private Result<SdkStatus> _sdkStatus => _activityContext.CheckSdkAvailability();
+    public partial bool IsSupported => _sdkStatus.IsSuccess;
 
     private Context _activityContext => Platform.CurrentActivity ??
         throw new Exception("Current activity is null");
@@ -31,20 +30,20 @@ public partial class HealthService : IHealthService
     {
         try
         {
-            var sdkCheckResult = IsSdkAvailable();
+            var sdkCheckResult = _sdkStatus;
             if (!sdkCheckResult.IsSuccess)
             {
-                if (sdkCheckResult.Error == SdkCheckError.SdkUnavailableProviderUpdateRequired)
+                if (sdkCheckResult.Error == SdkStatus.SdkUnavailableProviderUpdateRequired)
                 {
                     return new()
                     {
-                        Error = RequestPermissionError.AndroidSdkUnavailableProviderUpdateRequired
+                        Error = RequestPermissionError.SdkUnavailableProviderUpdateRequired
                     };
                 }
 
                 return new()
                 {
-                    Error = RequestPermissionError.IsNotSupported
+                    Error = RequestPermissionError.SdkUnavailable
                 };
             }
 
@@ -138,7 +137,7 @@ public partial class HealthService : IHealthService
             _logger.LogInformation("Android GetHealthDataAsync<{DtoName}>: StartTime: {StartTime}, EndTime: {EndTime}",
                 typeof(TDto).Name, timeRange.StartTime, timeRange.EndTime);
 
-            var sdkCheckResult = IsSdkAvailable();
+            var sdkCheckResult = _sdkStatus;
             if (!sdkCheckResult.IsSuccess)
             {
                 return [];
@@ -185,7 +184,7 @@ public partial class HealthService : IHealthService
     {
         try
         {
-            var sdkCheckResult = IsSdkAvailable();
+            var sdkCheckResult = _sdkStatus;
             if (!sdkCheckResult.IsSuccess)
             {
                 return false;
@@ -228,7 +227,8 @@ public partial class HealthService : IHealthService
         }
     }
 
-    private Result<SdkCheckError> IsSdkAvailable() => JavaReflectionHelper.CheckSdkAvailability(_activityContext);
-
-    public partial void OpenHealthStoreForUpdate() => JavaReflectionHelper.OpenHealthConnectInPlayStore(_activityContext);
+    public partial void OpenStorePageOfHealthProvider()
+    {
+        _activityContext.OpenHealthConnectInPlayStore();
+    }
 }

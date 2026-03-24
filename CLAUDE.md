@@ -61,3 +61,12 @@ Platform-specific conversions use extension methods in `Platforms/{Platform}/Ext
 - Collection expressions:
   - Use `[]` for return statements: `return [];`
   - Keep `var x = new List<T>();` for variable declarations (to preserve `var`)
+- **Docstring inheritance**: When a class implements an interface, add `/// <inheritdoc/>` to the class and its public members instead of duplicating docstrings
+- **External SDK type documentation**: When documenting types/enums that map to external SDK constants (e.g., Android Health Connect), use the official description text from the docs and include the reference URL on a separate line within the `<summary>` block:
+  ```csharp
+  /// <summary>
+  /// The Health Connect SDK is unavailable on this device at the time.
+  /// https://developer.android.com/reference/androidx/health/connect/client/HealthConnectClient#SDK_UNAVAILABLE()
+  /// </summary>
+  SdkUnavailable = 1,
+  ```

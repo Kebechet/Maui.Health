@@ -29,7 +29,7 @@ public partial class HealthService : IHealthService
         {
             return new RequestPermissionResult()
             {
-                Error = Enums.Errors.RequestPermissionError.IsNotSupported
+                Error = Enums.Errors.RequestPermissionError.SdkUnavailable
             };
         }
 
@@ -290,7 +290,7 @@ public partial class HealthService : IHealthService
                typeof(TDto) == typeof(ActiveCaloriesBurnedDto);
     }
 
-    public partial void OpenHealthStoreForUpdate() { }
+    public partial void OpenStorePageOfHealthProvider() { }
 
     private async Task<List<TDto>> GetCumulativeHealthDataAsync<TDto>(
         HKQuantityType quantityType,

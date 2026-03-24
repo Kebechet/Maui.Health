@@ -79,10 +79,14 @@ public class HealthExampleService
 
     public async Task<List<StepsDto>> GetTodaysStepsAsync()
     {
+        if (!_healthService.IsSupported)
+        {
+            return [];
+        }
+
         var timeRange = HealthTimeRange.FromDateTime(DateTime.Today, DateTime.Now);
 
-        var steps = await _healthService.GetHealthData<StepsDto>(timeRange);
-        return steps.ToList();
+        return await _healthService.GetHealthData<StepsDto>(timeRange);
     }
 }
 ```
@@ -117,8 +121,6 @@ public async Task AnalyzeStepsData()
             Console.WriteLine($"This measurement lasted {timeRange.Duration.TotalMinutes} minutes");
         }
     }
-}
-
 }
 ```
 
@@ -161,7 +163,7 @@ public async Task RequestPermissionsWithUpdateHandling()
 
     var result = await _healthService.RequestPermissions(permissions);
 
-    if (result.Error == RequestPermissionError.AndroidSdkUnavailableProviderUpdateRequired)
+    if (result.Error == RequestPermissionError.SdkUnavailableProviderUpdateRequired)
     {
         // Show your custom UI explaining the update requirement
         bool userConfirmed = await DisplayAlert(
@@ -171,7 +173,7 @@ public async Task RequestPermissionsWithUpdateHandling()
 
         if (userConfirmed)
         {
-            _healthService.OpenHealthStoreForUpdate(); // Opens Play Store
+            _healthService.OpenStorePageOfHealthProvider(); // Opens Play Store
         }
     }
 }

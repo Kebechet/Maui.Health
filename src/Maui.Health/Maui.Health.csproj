@@ -43,8 +43,8 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>2.0.3</Version>
-    <PackageReleaseNotes>Added AndroidSdkUnavailableProviderUpdateRequired error type for better Health Connect update handling. Apps can now show custom UI before opening Play Store via OpenHealthStoreForUpdate().</PackageReleaseNotes>
+    <Version>3.0.0</Version>
+    <PackageReleaseNotes>Unified and simplified android health connect handling</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
