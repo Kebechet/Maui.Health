@@ -2,8 +2,12 @@
 
 namespace Maui.Health.Models;
 
+/// <summary>
+/// Result of a permission request, including any denied permissions.
+/// </summary>
 public class RequestPermissionResult : Result<RequestPermissionError>
 {
+    /// <inheritdoc/>
     public override bool IsSuccess => base.IsSuccess && !DeniedPermissions.Any();
     /// <summary>
     /// These currently differ between Android and iOS - use just as an debug info.

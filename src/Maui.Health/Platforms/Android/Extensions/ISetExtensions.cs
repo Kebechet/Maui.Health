@@ -6,7 +6,7 @@ namespace Maui.Health.Platforms.Android.Extensions;
 internal static class ISetExtensions
 {
     internal static IList<T?> ToList<T>(this ISet? javaSet)
-        where T : Java.Lang.Object?
+        where T : Java.Lang.Object
     {
         if (javaSet is null)
         {

@@ -1,11 +1,14 @@
 ﻿namespace Maui.Health.Enums;
 
-//iOS: https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier
-//Android: https://developer.android.com/health-and-fitness/guides/health-connect/plan/data-types#permissions
-//Flutter: https://pub.dev/packages/health#data-types
+/// <summary>
+/// Types of health data that can be read from or written to the health data store.
+/// iOS: https://developer.apple.com/documentation/healthkit/hkquantitytypeidentifier
+/// Android: https://developer.android.com/health-and-fitness/guides/health-connect/plan/data-types#permissions
+/// Flutter: https://pub.dev/packages/health#data-types
+/// </summary>
 public enum HealthDataType
 {
-    //extracted from Android 1.0.0-alpha10 and higher
+#pragma warning disable CS1591
     ActiveCaloriesBurned,
     BasalBodyTemperature,
     BasalMetabolicRate,
@@ -46,4 +49,5 @@ public enum HealthDataType
     Vo2Max,
     Weight,
     //WheelchairPushes
+#pragma warning restore CS1591
 }

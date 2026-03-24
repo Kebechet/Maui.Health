@@ -4,31 +4,42 @@ using Microsoft.Extensions.Logging;
 
 namespace Maui.Health.Services;
 
+/// <inheritdoc/>
 public partial class HealthService : IHealthService
 {
+    /// <inheritdoc/>
     public IHealthWorkoutService Activity => _activityService;
 
     private readonly HealthWorkoutService _activityService;
-    protected readonly ILogger<HealthService> _logger;
+    private readonly ILogger<HealthService> _logger;
 
+    /// <inheritdoc/>
+    public partial bool IsSupported { get; }
+
+    /// <inheritdoc/>
     public HealthService(HealthWorkoutService activityService, ILogger<HealthService> logger)
     {
         _activityService = activityService;
         _logger = logger;
     }
 
-    public partial bool IsSupported { get; }
-
+    /// <inheritdoc/>
     public Task<RequestPermissionResult> RequestPermission(HealthPermissionDto healthPermission, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default)
     {
         return RequestPermissions([healthPermission]);
     }
 
+    /// <inheritdoc/>
     public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
 
+    /// <inheritdoc/>
     public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
+    /// <inheritdoc/>
     public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
+
+    /// <inheritdoc/>
+    public partial void OpenStorePageOfHealthProvider();
 }

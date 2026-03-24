@@ -1,4 +1,3 @@
-using Android.Content;
 using Android.Runtime;
 using AndroidX.Health.Connect.Client;
 using AndroidX.Health.Connect.Client.Request;
@@ -6,12 +5,10 @@ using AndroidX.Health.Connect.Client.Response;
 using AndroidX.Health.Connect.Client.Time;
 using Java.Time;
 using Kotlin.Reflect;
-using Maui.Health.Enums.Errors;
-using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android.Callbacks;
+using Maui.Health.Platforms.Android.Extensions;
 using System.Diagnostics;
-using System.Text.RegularExpressions;
 using static Maui.Health.Platforms.Android.AndroidConstant;
 
 namespace Maui.Health.Platforms.Android.Helpers;
@@ -49,7 +46,7 @@ internal static class JavaReflectionHelper
             inUnitMethod.Accessible = true;
             var result = inUnitMethod.Invoke(obj, unitConstant!);
 
-            return TryConvertToDouble(result, out value);
+            return result.TryConvertToDouble(out value);
         }
         catch
         {
@@ -77,7 +74,7 @@ internal static class JavaReflectionHelper
             field.Accessible = true;
             var fieldValue = field.Get(obj);
 
-            return TryConvertToDouble(fieldValue, out value);
+            return fieldValue.TryConvertToDouble(out value);
         }
         catch
         {
@@ -105,34 +102,12 @@ internal static class JavaReflectionHelper
             method.Accessible = true;
             var result = method.Invoke(obj);
 
-            return TryConvertToDouble(result, out value);
+            return result.TryConvertToDouble(out value);
         }
         catch
         {
             return false;
         }
-    }
-
-    /// <summary>
-    /// Tries to parse a double value from a string using regex.
-    /// </summary>
-    public static bool TryParseFromString(this string? stringValue, out double value)
-    {
-        value = 0;
-
-        if (string.IsNullOrEmpty(stringValue))
-        {
-            return false;
-        }
-
-        var match = Regex.Match(stringValue, Reflection.NumberExtractionPattern);
-
-        if (!match.Success)
-        {
-            return false;
-        }
-
-        return double.TryParse(match.Groups[1].Value, out value);
     }
 
     /// <summary>
@@ -164,7 +139,7 @@ internal static class JavaReflectionHelper
                 return default;
             }
 
-            var factoryMethod = companion.Class?.GetDeclaredMethod(factoryMethodName, Java.Lang.Double.Type);
+            var factoryMethod = companion.Class?.GetDeclaredMethod(factoryMethodName, Java.Lang.Double.Type!);
             if (factoryMethod is null)
             {
                 Debug.WriteLine($"Failed to find factory method {factoryMethodName} in {className}");
@@ -172,7 +147,7 @@ internal static class JavaReflectionHelper
             }
 
             factoryMethod.Accessible = true;
-            var result = factoryMethod.Invoke(companion, new Java.Lang.Double(value));
+            var result = factoryMethod.Invoke(companion, Java.Lang.Double.ValueOf(value));
             if (result is null)
             {
                 Debug.WriteLine($"Factory method {factoryMethodName} returned null for value {value}");
@@ -225,25 +200,6 @@ internal static class JavaReflectionHelper
         {
             return false;
         }
-    }
-
-    private static bool TryConvertToDouble(Java.Lang.Object? obj, out double value)
-    {
-        value = 0;
-
-        if (obj is null)
-        {
-            return false;
-        }
-
-        // Use Java.Lang.Number base class for unified conversion
-        if (obj is Java.Lang.Number javaNumber)
-        {
-            value = javaNumber.DoubleValue();
-            return true;
-        }
-
-        return false;
     }
 
     /// <summary>
@@ -414,6 +370,10 @@ internal static class JavaReflectionHelper
             var emptyList = new Java.Util.ArrayList();
 
             var recordClassObj = Java.Lang.Object.GetObject<Java.Lang.Object>(recordClass.Handle, JniHandleOwnership.DoNotTransfer);
+            if (recordClassObj is null)
+            {
+                return false;
+            }
 
             var result = deleteMethod.Invoke(clientObject, recordClassObj, recordIdsList, emptyList, continuation);
 
@@ -433,64 +393,5 @@ internal static class JavaReflectionHelper
             Debug.WriteLine($"Error deleting record: {ex.Message}");
             return false;
         }
-    }
-
-    /// <summary>
-    /// Checks if the Health Connect SDK is available on the device.
-    /// </summary>
-    /// <remarks>
-    /// The Health Connect SDK supports Android 8 (API level 26) or higher, while the Health Connect app
-    /// is only compatible with Android 9 (API level 28) or higher. This means that third-party apps can
-    /// support users with Android 8, but only users with Android 9 or higher can use Health Connect.
-    /// See: https://developer.android.com/health-and-fitness/guides/health-connect/develop/get-started
-    /// </remarks>
-    /// <param name="context">The Android context</param>
-    /// <returns>A Result indicating success or the specific error</returns>
-    internal static Result<SdkCheckError> CheckSdkAvailability(Context context)
-    {
-        try
-        {
-            var availabilityStatus = HealthConnectClient.GetSdkStatus(context);
-
-            if (availabilityStatus == HealthConnectClient.SdkUnavailable)
-            {
-                return new() { Error = SdkCheckError.SdkUnavailable };
-            }
-
-            if (availabilityStatus == HealthConnectClient.SdkUnavailableProviderUpdateRequired)
-            {
-                OpenHealthConnectInPlayStore(context);
-                return new() { Error = SdkCheckError.SdkUnavailableProviderUpdateRequired };
-            }
-
-            if (!OperatingSystem.IsAndroidVersionAtLeast(MinimumApiVersionRequired))
-            {
-                return new() { Error = SdkCheckError.AndroidVersionNotSupported };
-            }
-
-            return new();
-        }
-        catch (Exception ex)
-        {
-            return new() { ErrorException = ex };
-        }
-    }
-
-    /// <summary>
-    /// Opens the Google Play Store to the Health Connect app page for updating.
-    /// Used when Health Connect is installed but needs an update.
-    /// </summary>
-    /// <param name="context">The Android context</param>
-    private static void OpenHealthConnectInPlayStore(Context context)
-    {
-        var uriString = string.Format(PlayStoreUriTemplate, HealthConnectPackage);
-
-        var intent = new Intent(Intent.ActionView);
-        intent.SetPackage(PlayStorePackage);
-        intent.SetData(global::Android.Net.Uri.Parse(uriString));
-        intent.PutExtra(IntentExtraOverlay, true);
-        intent.PutExtra(IntentExtraCaller, context.PackageName);
-
-        context.StartActivity(intent);
     }
 }

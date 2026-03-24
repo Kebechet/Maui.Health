@@ -68,11 +68,6 @@ public static class AndroidConstant
     public static class Reflection
     {
         /// <summary>
-        /// Regex pattern for extracting numbers from strings.
-        /// </summary>
-        public const string NumberExtractionPattern = @"(\d+\.?\d*)";
-
-        /// <summary>
         /// Mass class full name for reflection.
         /// </summary>
         public const string MassClassName = "androidx.health.connect.client.units.Mass";

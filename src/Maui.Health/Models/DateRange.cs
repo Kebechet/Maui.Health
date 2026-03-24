@@ -25,6 +25,7 @@ public class DateRange
     /// </summary>
     public TimeSpan Duration => (End ?? DateTimeOffset.UtcNow) - Start;
 
+    /// <inheritdoc/>
     public DateRange(DateTimeOffset start, DateTimeOffset? end = null)
     {
         Start = start;

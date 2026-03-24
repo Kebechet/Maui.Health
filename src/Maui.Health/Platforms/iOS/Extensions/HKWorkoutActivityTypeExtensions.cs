@@ -13,7 +13,11 @@ internal static class HKWorkoutActivityTypeExtensions
     /// than our cross-platform ActivityType enum, so multiple HKWorkoutActivityTypes may map
     /// to the same ActivityType.
     /// </summary>
-    private static readonly Dictionary<HKWorkoutActivityType, ActivityType> WorkoutActivityTypeMap = new()
+    private static readonly Dictionary<HKWorkoutActivityType, ActivityType> WorkoutActivityTypeMap = BuildWorkoutActivityTypeMap();
+
+    private static Dictionary<HKWorkoutActivityType, ActivityType> BuildWorkoutActivityTypeMap()
+    {
+        var map = new Dictionary<HKWorkoutActivityType, ActivityType>
     {
         { HKWorkoutActivityType.AmericanFootball, ActivityType.AmericanFootball },
         { HKWorkoutActivityType.Archery, ActivityType.Archery },
@@ -95,11 +99,23 @@ internal static class HKWorkoutActivityTypeExtensions
         { HKWorkoutActivityType.SocialDance, ActivityType.Dance }, // not 1:1 mapping
         { HKWorkoutActivityType.Pickleball, ActivityType.Pickleball },
         { HKWorkoutActivityType.Cooldown, ActivityType.Cooldown },
-        { HKWorkoutActivityType.SwimBikeRun, ActivityType.SwimBikeRun },
-        { HKWorkoutActivityType.Transition, ActivityType.Transition },
-        { HKWorkoutActivityType.UnderwaterDiving, ActivityType.UnderwaterDiving },
-        { HKWorkoutActivityType.Other, ActivityType.Unknown }
     };
+
+        if (OperatingSystem.IsIOSVersionAtLeast(16))
+        {
+            map[HKWorkoutActivityType.SwimBikeRun] = ActivityType.SwimBikeRun;
+            map[HKWorkoutActivityType.Transition] = ActivityType.Transition;
+        }
+
+        if (OperatingSystem.IsIOSVersionAtLeast(17))
+        {
+            map[HKWorkoutActivityType.UnderwaterDiving] = ActivityType.UnderwaterDiving;
+        }
+
+        map[HKWorkoutActivityType.Other] = ActivityType.Unknown;
+
+        return map;
+    }
 
     internal static ActivityType ToActivityType(this HKWorkoutActivityType workoutActivityType)
     {

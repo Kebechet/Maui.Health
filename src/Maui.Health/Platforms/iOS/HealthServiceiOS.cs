@@ -17,9 +17,10 @@ public partial class HealthService : IHealthService
     public partial bool IsSupported => HKHealthStore.IsHealthDataAvailable;
     private nuint _healthRateLimit { get; set; } = Defaults.HeartRateLimit;
 
-    /// <summary>
-    /// <param name="canRequestFullHistoryPermission">iOS has this by default as TRUE</param>
-    /// <returns></returns>
+    /// <inheritdoc/>
+    /// <remarks>
+    /// iOS has full history permission by default (canRequestFullHistoryPermission is ignored).
+    /// </remarks>
     public async partial Task<RequestPermissionResult> RequestPermissions(
         IList<HealthPermissionDto> healthPermissions,
         bool canRequestFullHistoryPermission,
@@ -29,7 +30,7 @@ public partial class HealthService : IHealthService
         {
             return new RequestPermissionResult()
             {
-                Error = Enums.Errors.RequestPermissionError.IsNotSupported
+                Error = Enums.Errors.RequestPermissionError.SdkUnavailable
             };
         }
 
@@ -289,6 +290,8 @@ public partial class HealthService : IHealthService
         return typeof(TDto) == typeof(StepsDto) ||
                typeof(TDto) == typeof(ActiveCaloriesBurnedDto);
     }
+
+    public partial void OpenStorePageOfHealthProvider() { }
 
     private async Task<List<TDto>> GetCumulativeHealthDataAsync<TDto>(
         HKQuantityType quantityType,
