@@ -15,6 +15,7 @@ public partial class HealthWorkoutService
     private WorkoutSession? _activeWorkoutSession;
     private readonly ILogger<HealthWorkoutService> _logger;
 
+    /// <inheritdoc/>
     public HealthWorkoutService(ILogger<HealthWorkoutService> logger)
     {
         _logger = logger;
@@ -170,7 +171,7 @@ public partial class HealthWorkoutService
         }
     }
 
-    public partial Task Start(ActivityType activityType, string? title = null, string? dataOrigin = null)
+    public partial Task Start(ActivityType activityType, string? title, string? dataOrigin)
     {
         try
         {

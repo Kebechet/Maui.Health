@@ -17,9 +17,10 @@ public partial class HealthService : IHealthService
     public partial bool IsSupported => HKHealthStore.IsHealthDataAvailable;
     private nuint _healthRateLimit { get; set; } = Defaults.HeartRateLimit;
 
-    /// <summary>
-    /// <param name="canRequestFullHistoryPermission">iOS has this by default as TRUE</param>
-    /// <returns></returns>
+    /// <inheritdoc/>
+    /// <remarks>
+    /// iOS has full history permission by default (canRequestFullHistoryPermission is ignored).
+    /// </remarks>
     public async partial Task<RequestPermissionResult> RequestPermissions(
         IList<HealthPermissionDto> healthPermissions,
         bool canRequestFullHistoryPermission,
