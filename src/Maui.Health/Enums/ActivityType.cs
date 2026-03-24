@@ -6,6 +6,7 @@ namespace Maui.Health.Enums;
 /// </summary>
 public enum ActivityType
 {
+#pragma warning disable CS1591
     Unknown = 0,
 
     AmericanFootball = 1,
@@ -94,4 +95,5 @@ public enum ActivityType
     WheelchairWalkPace = 84,
     Wrestling = 85,
     Yoga = 86
+#pragma warning restore CS1591
 }
