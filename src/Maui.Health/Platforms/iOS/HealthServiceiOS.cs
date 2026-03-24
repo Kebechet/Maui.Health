@@ -672,14 +672,39 @@ public partial class HealthService : IHealthService
         try
         {
             // iOS uses HKAnchoredObjectQuery with anchors instead of tokens.
-            // We serialize the initial anchor (HKQueryAnchor.Create(0)) as a token string.
-            // The "token" is a JSON object containing the anchor value and the data types.
-            var tokenData = new
-            {
-                Anchor = 0,
-                DataTypes = dataTypes.Select(dt => dt.ToString()).ToList()
-            };
+            // To get a "current" token, we run anchored queries with anchor 0 to fast-forward
+            // to the present state, discard the results, and return the resulting anchor.
+            var dataTypeStrings = dataTypes.Select(dt => dt.ToString()).ToList();
+            nuint latestAnchorValue = 0;
 
+            foreach (var healthDataType in dataTypes)
+            {
+                if (healthDataType == HealthDataType.ExerciseSession)
+                {
+                    continue;
+                }
+
+                var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier());
+                if (quantityType is null)
+                {
+                    continue;
+                }
+
+                var newAnchor = await RunAnchoredQuery(quantityType, HKQueryAnchor.Create(0), cancellationToken);
+
+                if (newAnchor.Anchor is not null)
+                {
+                    var parsedAnchor = ParseAnchorValue(newAnchor.Anchor);
+                    if (parsedAnchor > latestAnchorValue)
+                    {
+                        latestAnchorValue = parsedAnchor;
+                    }
+                }
+            }
+
+            var tokenData = new { Anchor = (long)latestAnchorValue, DataTypes = dataTypeStrings };
+
+            _logger.LogInformation("iOS GetChangesToken: anchor={Anchor} for {Count} data types", latestAnchorValue, dataTypes.Count);
             return JsonSerializer.Serialize(tokenData);
         }
         catch (Exception ex)
@@ -705,9 +730,7 @@ public partial class HealthService : IHealthService
                 .Where(dt => dt is not null)
                 .ToList();
 
-            var anchor = anchorValue > 0
-                ? HKQueryAnchor.Create((nuint)anchorValue)
-                : HKQueryAnchor.Create(0);
+            var anchor = HKQueryAnchor.Create((nuint)anchorValue);
 
             var allChanges = new List<HealthChange>();
             nuint latestAnchorValue = (nuint)anchorValue;
@@ -730,38 +753,11 @@ public partial class HealthService : IHealthService
                     continue;
                 }
 
-                var tcs = new TaskCompletionSource<(HKSample[]? Added, HKDeletedObject[]? Deleted, HKQueryAnchor? NewAnchor)>();
+                var result = await RunAnchoredQuery(quantityType, anchor, cancellationToken);
 
-                var query = new HKAnchoredObjectQuery(
-                    quantityType,
-                    null,
-                    anchor,
-                    0,
-                    (_, addedObjects, deletedObjects, newAnchor, error) =>
-                    {
-                        if (error is not null)
-                        {
-                            tcs.TrySetResult((null, null, null));
-                            return;
-                        }
-
-                        tcs.TrySetResult((addedObjects, deletedObjects, newAnchor));
-                    }
-                );
-
-                using var store = new HKHealthStore();
-                using var ct = cancellationToken.Register(() =>
+                if (result.Added is not null)
                 {
-                    tcs.TrySetCanceled();
-                    store.StopQuery(query);
-                });
-
-                store.ExecuteQuery(query);
-                var (added, deleted, newAnchor) = await tcs.Task;
-
-                if (added is not null)
-                {
-                    foreach (var sample in added)
+                    foreach (var sample in result.Added)
                     {
                         allChanges.Add(new HealthChange
                         {
@@ -772,9 +768,9 @@ public partial class HealthService : IHealthService
                     }
                 }
 
-                if (deleted is not null)
+                if (result.Deleted is not null)
                 {
-                    foreach (var deletedObj in deleted)
+                    foreach (var deletedObj in result.Deleted)
                     {
                         allChanges.Add(new HealthChange
                         {
@@ -784,28 +780,19 @@ public partial class HealthService : IHealthService
                     }
                 }
 
-                if (newAnchor is not null)
+                if (result.Anchor is not null)
                 {
-                    // Extract the anchor value via description string parsing since HKQueryAnchor
-                    // doesn't expose its internal value directly
-                    var anchorDesc = newAnchor.Description;
-                    if (nuint.TryParse(anchorDesc, out var parsedAnchor))
+                    var parsedAnchor = ParseAnchorValue(result.Anchor);
+                    if (parsedAnchor > latestAnchorValue)
                     {
-                        if (parsedAnchor > latestAnchorValue)
-                        {
-                            latestAnchorValue = parsedAnchor;
-                        }
+                        latestAnchorValue = parsedAnchor;
                     }
                 }
             }
 
-            var nextTokenData = new
-            {
-                Anchor = (long)latestAnchorValue,
-                DataTypes = dataTypeStrings
-            };
+            var nextTokenData = new { Anchor = (long)latestAnchorValue, DataTypes = dataTypeStrings };
 
-            _logger.LogInformation("iOS GetChanges: {Count} changes", allChanges.Count);
+            _logger.LogInformation("iOS GetChanges: {Count} changes since anchor {Anchor}", allChanges.Count, anchorValue);
 
             return new HealthChangesResult
             {
@@ -819,6 +806,49 @@ public partial class HealthService : IHealthService
             _logger.LogError(ex, "Error getting health changes");
             return null;
         }
+    }
+
+    private async Task<(HKSample[]? Added, HKDeletedObject[]? Deleted, HKQueryAnchor? Anchor)> RunAnchoredQuery(
+        HKQuantityType quantityType,
+        HKQueryAnchor anchor,
+        CancellationToken cancellationToken)
+    {
+        var tcs = new TaskCompletionSource<(HKSample[]?, HKDeletedObject[]?, HKQueryAnchor?)>();
+
+        var query = new HKAnchoredObjectQuery(
+            quantityType,
+            null,
+            anchor,
+            0,
+            (_, addedObjects, deletedObjects, newAnchor, error) =>
+            {
+                if (error is not null)
+                {
+                    tcs.TrySetResult((null, null, null));
+                    return;
+                }
+
+                tcs.TrySetResult((addedObjects, deletedObjects, newAnchor));
+            }
+        );
+
+        using var store = new HKHealthStore();
+        using var ct = cancellationToken.Register(() =>
+        {
+            tcs.TrySetCanceled();
+            store.StopQuery(query);
+        });
+
+        store.ExecuteQuery(query);
+        return await tcs.Task;
+    }
+
+    private static nuint ParseAnchorValue(HKQueryAnchor anchor)
+    {
+        // HKQueryAnchor doesn't expose its internal value directly.
+        // Try to parse from its description string representation.
+        var anchorDesc = anchor.Description;
+        return nuint.TryParse(anchorDesc, out var parsedAnchor) ? parsedAnchor : 0;
     }
 
     private static bool IsCumulativeType<TDto>() where TDto : HealthMetricBase
