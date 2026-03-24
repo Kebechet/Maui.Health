@@ -139,7 +139,7 @@ internal static class JavaReflectionHelper
                 return default;
             }
 
-            var factoryMethod = companion.Class?.GetDeclaredMethod(factoryMethodName, Java.Lang.Double.Type);
+            var factoryMethod = companion.Class?.GetDeclaredMethod(factoryMethodName, Java.Lang.Double.Type!);
             if (factoryMethod is null)
             {
                 Debug.WriteLine($"Failed to find factory method {factoryMethodName} in {className}");
@@ -147,7 +147,7 @@ internal static class JavaReflectionHelper
             }
 
             factoryMethod.Accessible = true;
-            var result = factoryMethod.Invoke(companion, new Java.Lang.Double(value));
+            var result = factoryMethod.Invoke(companion, Java.Lang.Double.ValueOf(value));
             if (result is null)
             {
                 Debug.WriteLine($"Factory method {factoryMethodName} returned null for value {value}");
@@ -370,6 +370,10 @@ internal static class JavaReflectionHelper
             var emptyList = new Java.Util.ArrayList();
 
             var recordClassObj = Java.Lang.Object.GetObject<Java.Lang.Object>(recordClass.Handle, JniHandleOwnership.DoNotTransfer);
+            if (recordClassObj is null)
+            {
+                return false;
+            }
 
             var result = deleteMethod.Invoke(clientObject, recordClassObj, recordIdsList, emptyList, continuation);
 
