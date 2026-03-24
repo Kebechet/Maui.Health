@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿#pragma warning disable MH001, MH002, MH003, MH004, MH005, MH006
+
+using Microsoft.AspNetCore.Components;
 using Maui.Health.Services;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Models;
@@ -639,5 +641,170 @@ public partial class Home
     private DuplicateWorkoutGroup? GetDuplicateGroup(WorkoutDto workout)
     {
         return _duplicateGroups.FirstOrDefault(group => group.Workouts.Any(w => w.Id == workout.Id));
+    }
+
+    // --- Experimental API properties ---
+    private AggregatedResult? _aggregateSteps { get; set; }
+    private AggregatedResult? _aggregateCalories { get; set; }
+    private bool _isAggregateLoading { get; set; }
+    private string _aggregateMessage { get; set; } = string.Empty;
+    private bool _aggregateSuccess { get; set; }
+
+    private List<AggregatedResult> _intervalResults { get; set; } = [];
+    private bool _isIntervalLoading { get; set; }
+    private string _intervalMessage { get; set; } = string.Empty;
+    private bool _intervalSuccess { get; set; }
+
+    private string _deleteRecordId { get; set; } = string.Empty;
+    private string _deleteMessage { get; set; } = string.Empty;
+    private bool _deleteSuccess { get; set; }
+
+    private string? _changesToken { get; set; }
+    private HealthChangesResult? _changesResult { get; set; }
+    private string _changesMessage { get; set; } = string.Empty;
+    private bool _changesSuccess { get; set; }
+
+    private async Task LoadAggregatedDataAsync()
+    {
+        try
+        {
+            _isAggregateLoading = true;
+            _aggregateMessage = "";
+            StateHasChanged();
+
+            var todayRange = HealthTimeRange.FromDateTime(DateTime.Today, DateTime.Now);
+
+            _aggregateSteps = await _healthService.GetAggregatedHealthData<StepsDto>(todayRange);
+            _aggregateCalories = await _healthService.GetAggregatedHealthData<ActiveCaloriesBurnedDto>(todayRange);
+
+            _aggregateMessage = $"Aggregation complete. Steps: {(_aggregateSteps is not null ? "OK" : "no data")}, Calories: {(_aggregateCalories is not null ? "OK" : "no data")}";
+            _aggregateSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _aggregateMessage = $"Error: {ex.Message}";
+            _aggregateSuccess = false;
+        }
+        finally
+        {
+            _isAggregateLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAggregatedByIntervalAsync()
+    {
+        try
+        {
+            _isIntervalLoading = true;
+            _intervalMessage = "";
+            StateHasChanged();
+
+            var weekRange = HealthTimeRange.FromDateTime(DateTime.Today.AddDays(-6), DateTime.Now);
+            _intervalResults = await _healthService.GetAggregatedHealthDataByInterval<StepsDto>(weekRange, TimeSpan.FromDays(1));
+
+            _intervalMessage = $"Found {_intervalResults.Count} daily buckets";
+            _intervalSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _intervalMessage = $"Error: {ex.Message}";
+            _intervalSuccess = false;
+        }
+        finally
+        {
+            _isIntervalLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteRecordByIdAsync()
+    {
+        try
+        {
+            _deleteMessage = "Deleting...";
+            StateHasChanged();
+
+            var isDeleted = await _healthService.DeleteHealthData<StepsDto>(_deleteRecordId);
+
+            _deleteMessage = isDeleted ? $"Record {_deleteRecordId} deleted successfully" : $"Failed to delete record {_deleteRecordId}";
+            _deleteSuccess = isDeleted;
+        }
+        catch (Exception ex)
+        {
+            _deleteMessage = $"Error: {ex.Message}";
+            _deleteSuccess = false;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task GetChangesTokenAsync()
+    {
+        try
+        {
+            _changesMessage = "Getting token...";
+            StateHasChanged();
+
+            var dataTypes = new List<HealthDataType>
+            {
+                HealthDataType.Steps,
+                HealthDataType.ActiveCaloriesBurned,
+                HealthDataType.Weight
+            };
+
+            _changesToken = await _healthService.GetChangesToken(dataTypes);
+
+            _changesMessage = _changesToken is not null ? "Token acquired" : "Failed to get token";
+            _changesSuccess = _changesToken is not null;
+        }
+        catch (Exception ex)
+        {
+            _changesMessage = $"Error: {ex.Message}";
+            _changesSuccess = false;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task GetChangesAsync()
+    {
+        if (_changesToken is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _changesMessage = "Fetching changes...";
+            StateHasChanged();
+
+            _changesResult = await _healthService.GetChanges(_changesToken);
+
+            if (_changesResult is not null)
+            {
+                _changesToken = _changesResult.NextToken;
+                _changesMessage = $"Got {_changesResult.Changes.Count} changes";
+                _changesSuccess = true;
+            }
+            else
+            {
+                _changesMessage = "Token expired or invalid";
+                _changesSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _changesMessage = $"Error: {ex.Message}";
+            _changesSuccess = false;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
     }
 }
