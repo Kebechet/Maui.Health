@@ -15,7 +15,10 @@ Feel free to contribute ❤️
 - **Generic API**: Use `GetHealthDataAsync<TDto>()` for type-safe health data retrieval
 - **Unified DTOs**: Platform-agnostic data transfer objects with common properties
 - **Time Range Support**: Duration-based metrics implement `IHealthTimeRange` interface
-- **Write/delete**: Possibility to write/delete activity to/from Android Health/iOS HealthKit.
+- **Write/delete**: Possibility to write/delete any health record or activity to/from Android Health/iOS HealthKit
+- **Aggregate**: Platform-native aggregation (sum, average) with cross-source deduplication
+- **Aggregate by interval**: Bucketed aggregation (daily, hourly) using native APIs
+- **Differential sync**: Track changes (upserts/deletions) since a token for efficient data synchronization
 - **Duplication detection**: If you write activity under your app to the ios/android health and at same time you start activity on watch/phone natively. You have possibility to detect these workouts and synchronize it as you need.
 
 ## Platform Support & Health Data Mapping
@@ -124,7 +127,138 @@ public async Task AnalyzeStepsData()
 }
 ```
 
-### 4. Permission Handling
+### 4. Read Single Record
+
+Fetch a specific health record by its platform-specific ID (Android: Health Connect metadata ID, iOS: HealthKit UUID):
+
+```csharp
+public async Task<StepsDto?> GetSpecificRecord(string recordId)
+{
+    return await _healthService.GetHealthRecord<StepsDto>(recordId);
+}
+```
+
+> **Note:** This API is marked `[Experimental("MH001")]`. Suppress the warning with `#pragma warning disable MH001`.
+
+### 5. Delete Health Records
+
+Delete any health record by its platform-specific ID. You can only delete records created by your application:
+
+```csharp
+public async Task DeleteRecord(string recordId)
+{
+    var isDeleted = await _healthService.DeleteHealthData<StepsDto>(recordId);
+
+    if (isDeleted)
+    {
+        Console.WriteLine("Record deleted successfully");
+    }
+}
+```
+
+> **Note:** This API is marked `[Experimental("MH002")]`. Suppress the warning with `#pragma warning disable MH002`.
+
+### 6. Aggregated Health Data
+
+Get deduplicated totals or averages using platform-native aggregation. This uses Android's `aggregate()` API and iOS's `HKStatisticsQuery`, which properly handle data from multiple health apps (e.g., Samsung Health + Google Fit):
+
+```csharp
+public async Task ShowTodaysSummary()
+{
+    var todayRange = HealthTimeRange.FromDateTime(DateTime.Today, DateTime.Now);
+
+    // Cumulative types (steps, calories) return a sum
+    var steps = await _healthService.GetAggregatedHealthData<StepsDto>(todayRange);
+    if (steps is not null)
+    {
+        Console.WriteLine($"Total steps today: {steps.Value}");
+    }
+
+    // Discrete types (weight, heart rate) return an average
+    var weight = await _healthService.GetAggregatedHealthData<WeightDto>(todayRange);
+    if (weight is not null)
+    {
+        Console.WriteLine($"Average weight: {weight.Value} {weight.Unit}");
+    }
+}
+```
+
+> **Note:** This API is marked `[Experimental("MH003")]`. Suppress the warning with `#pragma warning disable MH003`.
+
+### 7. Aggregated Health Data by Interval
+
+Get aggregated data bucketed by time intervals - ideal for charts and day-by-day views. Uses Android's `aggregateGroupByDuration()` and iOS's `HKStatisticsCollectionQuery`:
+
+```csharp
+public async Task ShowWeeklySteps()
+{
+    var weekRange = HealthTimeRange.FromDateTime(
+        DateTime.Today.AddDays(-6), DateTime.Now);
+
+    var dailySteps = await _healthService.GetAggregatedHealthDataByInterval<StepsDto>(
+        weekRange, TimeSpan.FromDays(1));
+
+    foreach (var bucket in dailySteps)
+    {
+        Console.WriteLine($"{bucket.StartTime:ddd MMM dd}: {bucket.Value:N0} steps");
+    }
+}
+```
+
+> **Note:** This API is marked `[Experimental("MH004")]`. Suppress the warning with `#pragma warning disable MH004`.
+
+### 8. Differential Sync (Change Tracking)
+
+Track changes (upserts and deletions) to health data since a given point in time. Uses Android's `getChangesToken()`/`getChanges()` and iOS's `HKAnchoredObjectQuery`. Tokens expire after 30 days.
+
+```csharp
+public class HealthSyncService
+{
+    private readonly IHealthService _healthService;
+    private string? _syncToken;
+
+    // Call once to establish a baseline - captures the current state
+    public async Task InitializeSync()
+    {
+        var dataTypes = new List<HealthDataType>
+        {
+            HealthDataType.Steps,
+            HealthDataType.Weight,
+            HealthDataType.ActiveCaloriesBurned
+        };
+
+        _syncToken = await _healthService.GetChangesToken(dataTypes);
+        // Store _syncToken persistently (e.g., Preferences, database)
+    }
+
+    // Call periodically to get new changes since last sync
+    public async Task SyncChanges()
+    {
+        if (_syncToken is null) return;
+
+        var result = await _healthService.GetChanges(_syncToken);
+        if (result is null) return;
+
+        foreach (var change in result.Changes)
+        {
+            Console.WriteLine($"{change.Type}: {change.RecordId}");
+        }
+
+        // Update token for next call
+        _syncToken = result.NextToken;
+
+        // If more changes available, keep fetching
+        if (result.HasMore)
+        {
+            await SyncChanges();
+        }
+    }
+}
+```
+
+> **Note:** These APIs are marked `[Experimental("MH005")]` and `[Experimental("MH006")]`. Suppress with `#pragma warning disable MH005, MH006`.
+
+### 9. Permission Handling
 
 ```csharp
 public async Task RequestPermissions()
@@ -179,7 +313,7 @@ public async Task RequestPermissionsWithUpdateHandling()
 }
 ```
 
-### 5. Workout Management (IHealthWorkoutService)
+### 10. Workout Management (IHealthWorkoutService)
 
 The `Activity` property on `IHealthService` provides workout/exercise session management (`IHealthWorkoutService`) with support for real-time tracking, pause/resume functionality, and duplicate detection.
 
