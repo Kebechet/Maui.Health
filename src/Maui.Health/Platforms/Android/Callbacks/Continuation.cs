@@ -4,7 +4,7 @@ using Kotlin.Coroutines;
 
 namespace Maui.Health.Platforms.Android.Callbacks;
 
-internal class Continuation : Java.Lang.Object, IContinuation
+internal sealed class Continuation : Java.Lang.Object, IContinuation
 {
     public ICoroutineContext Context => EmptyCoroutineContext.Instance;
 
