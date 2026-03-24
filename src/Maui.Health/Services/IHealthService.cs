@@ -1,4 +1,5 @@
-﻿using Maui.Health.Enums;
+﻿using System.Diagnostics.CodeAnalysis;
+using Maui.Health.Enums;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 
@@ -51,6 +52,7 @@ public interface IHealthService
     /// <param name="id">The platform-specific record ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The health record, or null if not found</returns>
+    [Experimental("MH001")]
     Task<TDto?> GetHealthRecord<TDto>(string id, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
@@ -72,6 +74,7 @@ public interface IHealthService
     /// <param name="id">The platform-specific record ID</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if deleted successfully, false otherwise</returns>
+    [Experimental("MH002")]
     Task<bool> DeleteHealthData<TDto>(string id, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
@@ -83,6 +86,7 @@ public interface IHealthService
     /// <param name="timeRange">The time range to aggregate over</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The aggregated result, or null if no data or unsupported type</returns>
+    [Experimental("MH003")]
     Task<AggregatedResult?> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
@@ -95,6 +99,7 @@ public interface IHealthService
     /// <param name="interval">The bucket interval (e.g., TimeSpan.FromDays(1) for daily)</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of aggregated results, one per interval bucket</returns>
+    [Experimental("MH004")]
     Task<List<AggregatedResult>> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
@@ -106,6 +111,7 @@ public interface IHealthService
     /// <param name="dataTypes">The health data types to track changes for</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>An opaque token string, or null if the operation failed</returns>
+    [Experimental("MH005")]
     Task<string?> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -115,6 +121,7 @@ public interface IHealthService
     /// <param name="token">The token from GetChangesToken or a previous GetChanges call</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The changes result, or null if the token is invalid/expired</returns>
+    [Experimental("MH006")]
     Task<HealthChangesResult?> GetChanges(string token, CancellationToken cancellationToken = default);
 
     /// <summary>
