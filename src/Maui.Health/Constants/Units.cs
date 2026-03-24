@@ -41,6 +41,11 @@ public static class Units
     public const string MillimetersOfMercury = "mmHg";
 
     /// <summary>
+    /// Liter unit label.
+    /// </summary>
+    public const string Liter = "L";
+
+    /// <summary>
     /// HealthKit VO2 Max unit string.
     /// </summary>
     public const string HKVo2Max = "ml/kg*min";

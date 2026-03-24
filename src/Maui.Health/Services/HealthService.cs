@@ -1,4 +1,5 @@
-﻿using Maui.Health.Models;
+﻿using Maui.Health.Enums;
+using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using Microsoft.Extensions.Logging;
 
@@ -37,8 +38,30 @@ public partial class HealthService : IHealthService
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
+    public partial Task<TDto?> GetHealthRecord<TDto>(string id, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase;
+
+    /// <inheritdoc/>
     public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
+
+    /// <inheritdoc/>
+    public partial Task<bool> DeleteHealthData<TDto>(string id, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase;
+
+    /// <inheritdoc/>
+    public partial Task<AggregatedResult?> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase;
+
+    /// <inheritdoc/>
+    public partial Task<List<AggregatedResult>> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase;
+
+    /// <inheritdoc/>
+    public partial Task<string?> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken = default);
+
+    /// <inheritdoc/>
+    public partial Task<HealthChangesResult?> GetChanges(string token, CancellationToken cancellationToken = default);
 
     /// <inheritdoc/>
     public partial void OpenStorePageOfHealthProvider();
