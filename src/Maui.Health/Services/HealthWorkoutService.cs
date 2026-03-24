@@ -6,10 +6,13 @@ using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Services;
 
+/// <inheritdoc/>
 public partial class HealthWorkoutService : IHealthWorkoutService
 {
+    /// <inheritdoc/>
     public partial Task<List<WorkoutDto>> Read(HealthTimeRange activityTime);
 
+    /// <inheritdoc/>
     public partial Task Write(WorkoutDto workout);
 
     /// <summary>
@@ -28,6 +31,7 @@ public partial class HealthWorkoutService : IHealthWorkoutService
     /// <returns>The active WorkoutSession, or null if no session is running</returns>
     public partial Task<WorkoutSession?> GetActive();
 
+    /// <inheritdoc/>
     public partial Task<bool> IsRunning();
 
     /// <summary>
@@ -38,10 +42,13 @@ public partial class HealthWorkoutService : IHealthWorkoutService
     /// <param name="dataOrigin">Optional data origin identifier (defaults to app package name)</param>
     public partial Task Start(ActivityType activityType, string? title = null, string? dataOrigin = null);
 
+    /// <inheritdoc/>
     public partial Task Pause();
 
+    /// <inheritdoc/>
     public partial Task Resume();
 
+    /// <inheritdoc/>
     public partial Task<bool> IsPaused();
 
     /// <summary>

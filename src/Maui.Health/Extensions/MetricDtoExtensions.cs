@@ -4,6 +4,9 @@ using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Extensions;
 
+/// <summary>
+/// Extension methods for health metric DTOs (permission mapping, aggregation).
+/// </summary>
 public static class MetricDtoExtensions
 {
     /// <summary>

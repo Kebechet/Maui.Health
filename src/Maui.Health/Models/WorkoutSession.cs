@@ -65,6 +65,9 @@ public class WorkoutSession
         }
     }
 
+    /// <summary>
+    /// Creates a new workout session.
+    /// </summary>
     public WorkoutSession(
         string id,
         ActivityType activityType,
@@ -83,6 +86,9 @@ public class WorkoutSession
         PauseIntervals = pauseIntervals ?? [];
     }
 
+    /// <summary>
+    /// Pauses the session and starts tracking a new pause interval.
+    /// </summary>
     public void Pause()
     {
         if (State != WorkoutSessionState.Running)
@@ -94,6 +100,9 @@ public class WorkoutSession
         PauseIntervals.Add(new DateRange(DateTimeOffset.UtcNow));
     }
 
+    /// <summary>
+    /// Resumes the session and closes the current pause interval.
+    /// </summary>
     public void Resume()
     {
         if (State != WorkoutSessionState.Paused)
@@ -114,6 +123,9 @@ public class WorkoutSession
         State = WorkoutSessionState.Running;
     }
 
+    /// <summary>
+    /// Ends the session and closes any open pause interval.
+    /// </summary>
     public void End()
     {
         // If we're paused when ending, close the pause interval
