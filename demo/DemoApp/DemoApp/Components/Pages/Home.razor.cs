@@ -25,6 +25,15 @@ public partial class Home
     private string _demoDataMessage { get; set; } = string.Empty;
     private bool _demoDataSuccess { get; set; } = false;
 
+    // Raw records for detail view
+    private List<StepsDto> _stepsRecords { get; set; } = [];
+    private List<WeightDto> _weightRecords { get; set; } = [];
+    private List<ActiveCaloriesBurnedDto> _caloriesRecords { get; set; } = [];
+    private List<HeartRateDto> _heartRateRecords { get; set; } = [];
+    private List<Vo2MaxDto> _vo2MaxRecords { get; set; } = [];
+    private List<BodyFatDto> _bodyFatRecords { get; set; } = [];
+    private HashSet<string> _expandedMetrics { get; set; } = [];
+
     // Tab tracking
     private int _activeTab { get; set; } = 0;
 
@@ -219,16 +228,16 @@ public partial class Home
             await _healthService.RequestPermissions(permissions);
 
             var today = DateTime.Today;
-            var now = DateTime.Now;
 
-            // Create time ranges
-            var todayRange = HealthTimeRange.FromDateTime(today, now);
+            // Use end of day so demo data written with future timestamps (e.g. 14:00) is always included
+            var todayRange = HealthTimeRange.FromDateTime(today, today.AddDays(1));
             var exerciseRange = HealthTimeRange.FromDateTime(today.AddHours(14), today.AddHours(17)); // 14:00 - 17:00
 
             // Load data with individual try-catch to continue on permission errors
             try
             {
                 var stepsData = await _healthService.GetHealthData<StepsDto>(todayRange);
+                _stepsRecords = stepsData;
                 _steps = stepsData.Sum(s => s.Count);
             }
             catch (Exception ex)
@@ -240,6 +249,7 @@ public partial class Home
             try
             {
                 var weightData = await _healthService.GetHealthData<WeightDto>(todayRange);
+                _weightRecords = weightData;
                 _weight = weightData.OrderByDescending(w => w.Timestamp).FirstOrDefault()?.Value ?? 0;
             }
             catch (Exception ex)
@@ -251,6 +261,7 @@ public partial class Home
             try
             {
                 var caloriesData = await _healthService.GetHealthData<ActiveCaloriesBurnedDto>(todayRange);
+                _caloriesRecords = caloriesData;
                 _calories = caloriesData.Sum(c => c.Energy);
             }
             catch (Exception ex)
@@ -262,6 +273,7 @@ public partial class Home
             try
             {
                 var heartRateData = await _healthService.GetHealthData<HeartRateDto>(exerciseRange);
+                _heartRateRecords = heartRateData;
                 if (heartRateData.Count > 0)
                 {
                     _averageHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
@@ -283,6 +295,7 @@ public partial class Home
             try
             {
                 var vo2MaxData = await _healthService.GetHealthData<Vo2MaxDto>(todayRange);
+                _vo2MaxRecords = vo2MaxData;
                 var firstVo2Max = vo2MaxData.OrderByDescending(v => v.Timestamp).FirstOrDefault();
                 System.Diagnostics.Debug.WriteLine($"VO2 Max records: {vo2MaxData.Count}, First value: {firstVo2Max?.Value ?? -1}");
                 _vo2Max = firstVo2Max?.Value ?? 0;
@@ -296,6 +309,7 @@ public partial class Home
             try
             {
                 var bodyFatData = await _healthService.GetHealthData<BodyFatDto>(todayRange);
+                _bodyFatRecords = bodyFatData;
                 _bodyFat = bodyFatData.OrderByDescending(b => b.Timestamp).FirstOrDefault()?.Percentage ?? 0;
             }
             catch (Exception ex)
@@ -655,9 +669,20 @@ public partial class Home
     private string _intervalMessage { get; set; } = string.Empty;
     private bool _intervalSuccess { get; set; }
 
+    private const string TypeSteps = nameof(StepsDto);
+    private const string TypeWeight = nameof(WeightDto);
+    private const string TypeCalories = nameof(ActiveCaloriesBurnedDto);
+    private const string TypeHeartRate = nameof(HeartRateDto);
+    private const string TypeVo2Max = nameof(Vo2MaxDto);
+    private const string TypeBodyFat = nameof(BodyFatDto);
+
     private string _deleteRecordId { get; set; } = string.Empty;
+    private string _deleteRecordType { get; set; } = TypeSteps;
     private string _deleteMessage { get; set; } = string.Empty;
     private bool _deleteSuccess { get; set; }
+    private List<StepsDto> _latestRecords { get; set; } = [];
+    private bool _isLoadingLatest { get; set; }
+    private Dictionary<string, string> _verifyResults { get; set; } = [];
 
     private string? _changesToken { get; set; }
     private HealthChangesResult? _changesResult { get; set; }
@@ -725,7 +750,15 @@ public partial class Home
             _deleteMessage = "Deleting...";
             StateHasChanged();
 
-            var isDeleted = await _healthService.DeleteHealthData<StepsDto>(_deleteRecordId);
+            var isDeleted = _deleteRecordType switch
+            {
+                nameof(WeightDto) => await _healthService.DeleteHealthData<WeightDto>(_deleteRecordId),
+                nameof(ActiveCaloriesBurnedDto) => await _healthService.DeleteHealthData<ActiveCaloriesBurnedDto>(_deleteRecordId),
+                nameof(HeartRateDto) => await _healthService.DeleteHealthData<HeartRateDto>(_deleteRecordId),
+                nameof(Vo2MaxDto) => await _healthService.DeleteHealthData<Vo2MaxDto>(_deleteRecordId),
+                nameof(BodyFatDto) => await _healthService.DeleteHealthData<BodyFatDto>(_deleteRecordId),
+                _ => await _healthService.DeleteHealthData<StepsDto>(_deleteRecordId),
+            };
 
             _deleteMessage = isDeleted ? $"Record {_deleteRecordId} deleted successfully" : $"Failed to delete record {_deleteRecordId}";
             _deleteSuccess = isDeleted;
@@ -740,6 +773,82 @@ public partial class Home
             StateHasChanged();
         }
     }
+
+    private async Task LoadLatestRecordsAsync()
+    {
+        try
+        {
+            _isLoadingLatest = true;
+            StateHasChanged();
+
+            var range = new HealthTimeRange
+            {
+                StartTime = DateTimeOffset.Now.AddDays(-30),
+                EndTime = DateTimeOffset.Now
+            };
+            var records = await _healthService.GetHealthData<StepsDto>(range);
+
+            _latestRecords = records
+                .OrderByDescending(r => r.Timestamp)
+                .Take(3)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _deleteMessage = $"Error loading records: {ex.Message}";
+            _deleteSuccess = false;
+        }
+        finally
+        {
+            _isLoadingLatest = false;
+            StateHasChanged();
+        }
+    }
+
+    private void UseRecordId(string id, string type = "Steps")
+    {
+        _deleteRecordId = id;
+        _deleteRecordType = type;
+        StateHasChanged();
+    }
+
+    private void UseRecordIdAndSwitch(string id, string type)
+    {
+        _deleteRecordId = id;
+        _deleteRecordType = type;
+        _activeTab = 2;
+        StateHasChanged();
+    }
+
+    private void ToggleMetric(string metric)
+    {
+        if (!_expandedMetrics.Remove(metric))
+            _expandedMetrics.Add(metric);
+    }
+
+    private async Task VerifyRecordByIdAsync(string id)
+    {
+        try
+        {
+            _verifyResults[id] = "Verifying...";
+            StateHasChanged();
+
+            var record = await _healthService.GetHealthRecord<StepsDto>(id);
+
+            _verifyResults[id] = record is not null
+                ? $"Found: {record.Count} steps, {record.DataOrigin}"
+                : "Not found via GetHealthRecord";
+        }
+        catch (Exception ex)
+        {
+            _verifyResults[id] = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
 
     private async Task GetChangesTokenAsync()
     {

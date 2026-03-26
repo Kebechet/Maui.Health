@@ -28,8 +28,8 @@
     <hr class="separator" />
 
     <div class="metric-grid">
-        <div class="metric-card">
-            <div class="metric-label">Steps</div>
+        <div class="metric-card" @onclick="() => ToggleMetric(nameof(_stepsRecords))">
+            <div class="metric-label">Steps @(_expandedMetrics.Contains(nameof(_stepsRecords)) ? "▴" : "▾")</div>
             @if (_steps > 0)
             {
                 <div class="metric-value">@_steps.ToString("N0")</div>
@@ -38,10 +38,26 @@
             {
                 <div class="metric-empty">No data</div>
             }
+            @if (_expandedMetrics.Contains(nameof(_stepsRecords)))
+            {
+                <div class="metric-details">
+                    @foreach (var r in _stepsRecords)
+                    {
+                        <div class="metric-detail-row">
+                            <div class="metric-detail-info">
+                                <span class="latest-record-id">@r.Id[..Math.Min(8, r.Id.Length)]...</span>
+                                <span class="latest-record-detail">@r.Count steps &middot; @r.Timestamp.LocalDateTime.ToString("g")</span>
+                                <span class="latest-record-detail">Origin: @r.DataOrigin</span>
+                            </div>
+                            <button class="action-btn sm primary" @onclick:stopPropagation="true" @onclick="() => UseRecordIdAndSwitch(r.Id, TypeSteps)">Use</button>
+                        </div>
+                    }
+                </div>
+            }
         </div>
 
-        <div class="metric-card">
-            <div class="metric-label">Weight</div>
+        <div class="metric-card" @onclick="() => ToggleMetric(nameof(_weightRecords))">
+            <div class="metric-label">Weight @(_expandedMetrics.Contains(nameof(_weightRecords)) ? "▴" : "▾")</div>
             @if (_weight > 0)
             {
                 <div class="metric-value">@_weight.ToString("F1") <span class="metric-unit">kg</span></div>
@@ -50,10 +66,26 @@
             {
                 <div class="metric-empty">No data</div>
             }
+            @if (_expandedMetrics.Contains(nameof(_weightRecords)))
+            {
+                <div class="metric-details">
+                    @foreach (var r in _weightRecords)
+                    {
+                        <div class="metric-detail-row">
+                            <div class="metric-detail-info">
+                                <span class="latest-record-id">@r.Id[..Math.Min(8, r.Id.Length)]...</span>
+                                <span class="latest-record-detail">@r.Value.ToString("F1") kg &middot; @r.Timestamp.LocalDateTime.ToString("g")</span>
+                                <span class="latest-record-detail">Origin: @r.DataOrigin</span>
+                            </div>
+                            <button class="action-btn sm primary" @onclick:stopPropagation="true" @onclick="() => UseRecordIdAndSwitch(r.Id, TypeWeight)">Use</button>
+                        </div>
+                    }
+                </div>
+            }
         </div>
 
-        <div class="metric-card">
-            <div class="metric-label">Active Calories</div>
+        <div class="metric-card" @onclick="() => ToggleMetric(nameof(_caloriesRecords))">
+            <div class="metric-label">Active Calories @(_expandedMetrics.Contains(nameof(_caloriesRecords)) ? "▴" : "▾")</div>
             @if (_calories > 0)
             {
                 <div class="metric-value">@_calories.ToString("F0") <span class="metric-unit">kcal</span></div>
@@ -62,10 +94,26 @@
             {
                 <div class="metric-empty">No data</div>
             }
+            @if (_expandedMetrics.Contains(nameof(_caloriesRecords)))
+            {
+                <div class="metric-details">
+                    @foreach (var r in _caloriesRecords)
+                    {
+                        <div class="metric-detail-row">
+                            <div class="metric-detail-info">
+                                <span class="latest-record-id">@r.Id[..Math.Min(8, r.Id.Length)]...</span>
+                                <span class="latest-record-detail">@r.Energy.ToString("F0") kcal &middot; @r.Timestamp.LocalDateTime.ToString("g")</span>
+                                <span class="latest-record-detail">Origin: @r.DataOrigin</span>
+                            </div>
+                            <button class="action-btn sm primary" @onclick:stopPropagation="true" @onclick="() => UseRecordIdAndSwitch(r.Id, TypeCalories)">Use</button>
+                        </div>
+                    }
+                </div>
+            }
         </div>
 
-        <div class="metric-card">
-            <div class="metric-label">Heart Rate (14:00-17:00)</div>
+        <div class="metric-card" @onclick="() => ToggleMetric(nameof(_heartRateRecords))">
+            <div class="metric-label">Heart Rate (14:00-17:00) @(_expandedMetrics.Contains(nameof(_heartRateRecords)) ? "▴" : "▾")</div>
             @if (_heartRateCount > 0)
             {
                 <div class="metric-value">@_averageHeartRate.ToString("F1") <span class="metric-unit">BPM</span></div>
@@ -75,10 +123,26 @@
             {
                 <div class="metric-empty">No data</div>
             }
+            @if (_expandedMetrics.Contains(nameof(_heartRateRecords)))
+            {
+                <div class="metric-details">
+                    @foreach (var r in _heartRateRecords)
+                    {
+                        <div class="metric-detail-row">
+                            <div class="metric-detail-info">
+                                <span class="latest-record-id">@r.Id[..Math.Min(8, r.Id.Length)]...</span>
+                                <span class="latest-record-detail">@r.BeatsPerMinute.ToString("F0") BPM &middot; @r.Timestamp.LocalDateTime.ToString("g")</span>
+                                <span class="latest-record-detail">Origin: @r.DataOrigin</span>
+                            </div>
+                            <button class="action-btn sm primary" @onclick:stopPropagation="true" @onclick="() => UseRecordIdAndSwitch(r.Id, TypeHeartRate)">Use</button>
+                        </div>
+                    }
+                </div>
+            }
         </div>
 
-        <div class="metric-card">
-            <div class="metric-label">VO2 Max</div>
+        <div class="metric-card" @onclick="() => ToggleMetric(nameof(_vo2MaxRecords))">
+            <div class="metric-label">VO2 Max @(_expandedMetrics.Contains(nameof(_vo2MaxRecords)) ? "▴" : "▾")</div>
             @if (_vo2Max > 0)
             {
                 <div class="metric-value">@_vo2Max.ToString("F1") <span class="metric-unit">ml/kg/min</span></div>
@@ -87,10 +151,26 @@
             {
                 <div class="metric-empty">No data</div>
             }
+            @if (_expandedMetrics.Contains(nameof(_vo2MaxRecords)))
+            {
+                <div class="metric-details">
+                    @foreach (var r in _vo2MaxRecords)
+                    {
+                        <div class="metric-detail-row">
+                            <div class="metric-detail-info">
+                                <span class="latest-record-id">@r.Id[..Math.Min(8, r.Id.Length)]...</span>
+                                <span class="latest-record-detail">@r.Value.ToString("F1") ml/kg/min &middot; @r.Timestamp.LocalDateTime.ToString("g")</span>
+                                <span class="latest-record-detail">Origin: @r.DataOrigin</span>
+                            </div>
+                            <button class="action-btn sm primary" @onclick:stopPropagation="true" @onclick="() => UseRecordIdAndSwitch(r.Id, TypeVo2Max)">Use</button>
+                        </div>
+                    }
+                </div>
+            }
         </div>
 
-        <div class="metric-card">
-            <div class="metric-label">Body Fat</div>
+        <div class="metric-card" @onclick="() => ToggleMetric(nameof(_bodyFatRecords))">
+            <div class="metric-label">Body Fat @(_expandedMetrics.Contains(nameof(_bodyFatRecords)) ? "▴" : "▾")</div>
             @if (_bodyFat > 0)
             {
                 <div class="metric-value">@_bodyFat.ToString("F1") <span class="metric-unit">%</span></div>
@@ -98,6 +178,22 @@
             else
             {
                 <div class="metric-empty">No data</div>
+            }
+            @if (_expandedMetrics.Contains(nameof(_bodyFatRecords)))
+            {
+                <div class="metric-details">
+                    @foreach (var r in _bodyFatRecords)
+                    {
+                        <div class="metric-detail-row">
+                            <div class="metric-detail-info">
+                                <span class="latest-record-id">@r.Id[..Math.Min(8, r.Id.Length)]...</span>
+                                <span class="latest-record-detail">@r.Percentage.ToString("F1")% &middot; @r.Timestamp.LocalDateTime.ToString("g")</span>
+                                <span class="latest-record-detail">Origin: @r.DataOrigin</span>
+                            </div>
+                            <button class="action-btn sm primary" @onclick:stopPropagation="true" @onclick="() => UseRecordIdAndSwitch(r.Id, TypeBodyFat)">Use</button>
+                        </div>
+                    }
+                </div>
             }
         </div>
     </div>
@@ -309,8 +405,42 @@ else if (_activeTab == 2)
     <div class="api-section">
         <div class="api-section-title">Delete Record by ID</div>
         <p class="section-description">Delete any health record using its platform-specific ID. Only records created by your app can be deleted.</p>
+        <button class="action-btn info" @onclick="LoadLatestRecordsAsync" disabled="@_isLoadingLatest">
+            @(_isLoadingLatest ? "Loading..." : "Show Latest Records")
+        </button>
+        @if (_latestRecords.Any())
+        {
+            <div class="latest-records">
+                @foreach (var record in _latestRecords)
+                {
+                    <div class="latest-record-row">
+                        <div class="latest-record-info">
+                            <span class="latest-record-id">@record.Id[..Math.Min(8, record.Id.Length)]...</span>
+                            <span class="latest-record-detail">@record.Count steps &middot; @record.Timestamp.LocalDateTime.ToString("g")</span>
+                            <span class="latest-record-detail">Origin: @record.DataOrigin</span>
+                            @if (_verifyResults.TryGetValue(record.Id, out var result))
+                            {
+                                <span class="latest-record-detail verify-result">@result</span>
+                            }
+                        </div>
+                        <div class="latest-record-actions">
+                            <button class="action-btn sm muted" @onclick="() => VerifyRecordByIdAsync(record.Id)">Verify</button>
+                            <button class="action-btn sm primary" @onclick="() => UseRecordId(record.Id)">Use</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
         <div class="controls-row">
             <input type="text" @bind="_deleteRecordId" placeholder="Record ID" />
+            <select @bind="_deleteRecordType">
+                <option value="@TypeSteps">Steps</option>
+                <option value="@TypeWeight">Weight</option>
+                <option value="@TypeCalories">Active Calories</option>
+                <option value="@TypeHeartRate">Heart Rate</option>
+                <option value="@TypeVo2Max">VO2 Max</option>
+                <option value="@TypeBodyFat">Body Fat</option>
+            </select>
             <button class="action-btn danger" @onclick="DeleteRecordByIdAsync" disabled="@string.IsNullOrEmpty(_deleteRecordId)">Delete</button>
         </div>
         @if (!string.IsNullOrEmpty(_deleteMessage))
