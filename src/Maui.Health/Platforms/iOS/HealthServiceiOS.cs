@@ -383,7 +383,7 @@ public partial class HealthService : IHealthService
                 HealthDataType = readPermission.HealthDataType,
                 PermissionType = PermissionType.Write
             };
-            var permissionResult = await RequestPermissions([writePermission], cancellationToken: cancellationToken);
+            var permissionResult = await RequestPermissions([readPermission, writePermission], cancellationToken: cancellationToken);
             if (!permissionResult.IsSuccess)
             {
                 return false;
@@ -662,6 +662,14 @@ public partial class HealthService : IHealthService
         }
     }
 
+    /// <summary>
+    /// iOS uses HKAnchoredObjectQuery with opaque HKQueryAnchor objects instead of string tokens.
+    /// HKQueryAnchor internally contains a rowid (database row position) and a clientToken (integrity hash).
+    /// The clientToken allows HealthKit to detect database restructuring and force a full re-sync if needed.
+    /// Since HKQueryAnchor conforms to NSSecureCoding but exposes no public value property,
+    /// we serialize it via NSKeyedArchiver to Base64 — the Apple-endorsed persistence mechanism
+    /// (confirmed by WWDC 2020 "Synchronize health data with HealthKit" and community consensus).
+    /// </summary>
     public async partial Task<string?> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken)
     {
         if (!IsSupported)
@@ -671,11 +679,8 @@ public partial class HealthService : IHealthService
 
         try
         {
-            // iOS uses HKAnchoredObjectQuery with anchors instead of tokens.
-            // To get a "current" token, we run anchored queries with anchor 0 to fast-forward
-            // to the present state, discard the results, and return the resulting anchor.
             var dataTypeStrings = dataTypes.Select(dt => dt.ToString()).ToList();
-            nuint latestAnchorValue = 0;
+            HKQueryAnchor? latestAnchor = null;
 
             foreach (var healthDataType in dataTypes)
             {
@@ -690,21 +695,18 @@ public partial class HealthService : IHealthService
                     continue;
                 }
 
-                var newAnchor = await RunAnchoredQuery(quantityType, HKQueryAnchor.Create(0), cancellationToken);
+                var result = await RunAnchoredQuery(quantityType, HKQueryAnchor.Create(0), cancellationToken);
 
-                if (newAnchor.Anchor is not null)
+                if (result.Anchor is not null)
                 {
-                    var parsedAnchor = ParseAnchorValue(newAnchor.Anchor);
-                    if (parsedAnchor > latestAnchorValue)
-                    {
-                        latestAnchorValue = parsedAnchor;
-                    }
+                    latestAnchor = result.Anchor;
                 }
             }
 
-            var tokenData = new { Anchor = (long)latestAnchorValue, DataTypes = dataTypeStrings };
+            var anchorBase64 = latestAnchor is not null ? SerializeAnchor(latestAnchor) : null;
+            var tokenData = new { Anchor = anchorBase64, DataTypes = dataTypeStrings };
 
-            _logger.LogInformation("iOS GetChangesToken: anchor={Anchor} for {Count} data types", latestAnchorValue, dataTypes.Count);
+            _logger.LogInformation("iOS GetChangesToken: anchor serialized for {Count} data types", dataTypes.Count);
             return JsonSerializer.Serialize(tokenData);
         }
         catch (Exception ex)
@@ -723,17 +725,19 @@ public partial class HealthService : IHealthService
 
         try
         {
-            var tokenData = JsonSerializer.Deserialize<JsonElement>(token);
-            var anchorValue = tokenData.GetProperty("Anchor").GetInt64();
-            var dataTypeStrings = tokenData.GetProperty("DataTypes").EnumerateArray()
+            var tokenJson = JsonSerializer.Deserialize<JsonElement>(token);
+            var anchorBase64 = tokenJson.GetProperty("Anchor").GetString();
+            var dataTypeStrings = tokenJson.GetProperty("DataTypes").EnumerateArray()
                 .Select(dt => dt.GetString())
                 .Where(dt => dt is not null)
                 .ToList();
 
-            var anchor = HKQueryAnchor.Create((nuint)anchorValue);
+            var anchor = anchorBase64 is not null
+                ? DeserializeAnchor(anchorBase64)
+                : HKQueryAnchor.Create(0);
 
             var allChanges = new List<HealthChange>();
-            nuint latestAnchorValue = (nuint)anchorValue;
+            HKQueryAnchor? latestAnchor = anchor;
 
             foreach (var dtString in dataTypeStrings)
             {
@@ -782,17 +786,14 @@ public partial class HealthService : IHealthService
 
                 if (result.Anchor is not null)
                 {
-                    var parsedAnchor = ParseAnchorValue(result.Anchor);
-                    if (parsedAnchor > latestAnchorValue)
-                    {
-                        latestAnchorValue = parsedAnchor;
-                    }
+                    latestAnchor = result.Anchor;
                 }
             }
 
-            var nextTokenData = new { Anchor = (long)latestAnchorValue, DataTypes = dataTypeStrings };
+            var nextAnchorBase64 = latestAnchor is not null ? SerializeAnchor(latestAnchor) : anchorBase64;
+            var nextTokenData = new { Anchor = nextAnchorBase64, DataTypes = dataTypeStrings };
 
-            _logger.LogInformation("iOS GetChanges: {Count} changes since anchor {Anchor}", allChanges.Count, anchorValue);
+            _logger.LogInformation("iOS GetChanges: {Count} changes found", allChanges.Count);
 
             return new HealthChangesResult
             {
@@ -843,12 +844,18 @@ public partial class HealthService : IHealthService
         return await tcs.Task;
     }
 
-    private static nuint ParseAnchorValue(HKQueryAnchor anchor)
+    private static string SerializeAnchor(HKQueryAnchor anchor)
     {
-        // HKQueryAnchor doesn't expose its internal value directly.
-        // Try to parse from its description string representation.
-        var anchorDesc = anchor.Description;
-        return nuint.TryParse(anchorDesc, out var parsedAnchor) ? parsedAnchor : 0;
+        var data = NSKeyedArchiver.GetArchivedData(anchor, true, out _);
+        return Convert.ToBase64String(data.ToArray());
+    }
+
+    private static HKQueryAnchor DeserializeAnchor(string base64)
+    {
+        var bytes = Convert.FromBase64String(base64);
+        var data = NSData.FromArray(bytes);
+        var anchor = NSKeyedUnarchiver.GetUnarchivedObject(new ObjCRuntime.Class(typeof(HKQueryAnchor)), data, out _) as HKQueryAnchor;
+        return anchor ?? HKQueryAnchor.Create(0);
     }
 
     private static bool IsCumulativeType<TDto>() where TDto : HealthMetricBase
