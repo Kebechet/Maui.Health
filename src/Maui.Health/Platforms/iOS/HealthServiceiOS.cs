@@ -1,4 +1,5 @@
-﻿using Foundation;
+﻿using System.Text.Json;
+using Foundation;
 using HealthKit;
 using Maui.Health.Constants;
 using Maui.Health.Enums;
@@ -116,13 +117,13 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return GetHealthDataInternal<TDto>(timeRange, cancellationToken);
+        return GetHealthDataInternal<TDto>(timeRange, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<List<TDto>> GetHealthDataInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    private async Task<List<TDto>> GetHealthDataInternal<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (!IsSupported)
@@ -135,12 +136,14 @@ public partial class HealthService : IHealthService
             _logger.LogInformation("iOS GetHealthDataAsync<{DtoName}>: StartTime: {StartTime} (Local: {StartDateTime}), EndTime: {EndTime} (Local: {EndDateTime})",
                 typeof(TDto).Name, timeRange.StartTime, timeRange.StartDateTime, timeRange.EndTime, timeRange.EndDateTime);
 
-            // Request permission for the specific metric
-            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
-            if (!permissionResult.IsSuccess)
+            if (shouldCheckPermissions)
             {
-                return [];
+                var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
+                if (!permissionResult.IsSuccess)
+                {
+                    return [];
+                }
             }
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
@@ -217,13 +220,13 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken)
+    public partial Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return WriteHealthDataInternal(data, cancellationToken);
+        return WriteHealthDataInternal(data, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<bool> WriteHealthDataInternal<TDto>(TDto data, CancellationToken cancellationToken)
+    private async Task<bool> WriteHealthDataInternal<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (!IsSupported)
@@ -235,18 +238,20 @@ public partial class HealthService : IHealthService
         {
             _logger.LogInformation("iOS WriteHealthDataAsync<{DtoName}>", typeof(TDto).Name);
 
-            // Request write permission for the specific metric
-            var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var writePermission = new HealthPermissionDto
+            if (shouldCheckPermissions)
             {
-                HealthDataType = readPermission.HealthDataType,
-                PermissionType = PermissionType.Write
-            };
-            var permissionResult = await RequestPermissions([writePermission], cancellationToken: cancellationToken);
-            if (!permissionResult.IsSuccess)
-            {
-                _logger.LogWarning("iOS Write: Permission denied for {DtoName}", typeof(TDto).Name);
-                return false;
+                var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var writePermission = new HealthPermissionDto
+                {
+                    HealthDataType = readPermission.HealthDataType,
+                    PermissionType = PermissionType.Write
+                };
+                var permissionResult = await RequestPermissions([writePermission], cancellationToken: cancellationToken);
+                if (!permissionResult.IsSuccess)
+                {
+                    _logger.LogWarning("iOS Write: Permission denied for {DtoName}", typeof(TDto).Name);
+                    return false;
+                }
             }
 
             // Convert DTO to HKObject (HKQuantitySample or HKWorkout)
@@ -285,10 +290,623 @@ public partial class HealthService : IHealthService
         }
     }
 
+    //https://github.com/Kebechet/Maui.Health/pull/8/files
+    //Split to `public partial` and `private async` method because of trimmer/linker issue
+    public partial Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return GetHealthRecordInternal<TDto>(id, shouldCheckPermissions, cancellationToken);
+    }
+
+    private async Task<TDto?> GetHealthRecordInternal<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        if (!IsSupported)
+        {
+            return null;
+        }
+
+        try
+        {
+            if (shouldCheckPermissions)
+            {
+                var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
+                if (!permissionResult.IsSuccess)
+                {
+                    return null;
+                }
+            }
+
+            if (!Guid.TryParse(id, out var guid))
+            {
+                return null;
+            }
+
+            var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
+            var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier())!;
+
+            var uuid = new NSUuid(guid.ToString());
+            var predicate = HKQuery.GetPredicateForObject(uuid);
+
+            var tcs = new TaskCompletionSource<TDto?>();
+
+            var query = new HKSampleQuery(
+                quantityType,
+                predicate,
+                1,
+                null,
+                (_, results, error) =>
+                {
+                    if (error is not null || results is null)
+                    {
+                        tcs.TrySetResult(null);
+                        return;
+                    }
+
+                    var sample = results.FirstOrDefault() as HKQuantitySample;
+                    tcs.TrySetResult(sample?.ToDto<TDto>());
+                }
+            );
+
+            using var store = new HKHealthStore();
+            using var ct = cancellationToken.Register(() =>
+            {
+                tcs.TrySetCanceled();
+                store.StopQuery(query);
+            });
+
+            store.ExecuteQuery(query);
+            return await tcs.Task;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching health record {Id} for {DtoName}", id, typeof(TDto).Name);
+            return null;
+        }
+    }
+
+    //https://github.com/Kebechet/Maui.Health/pull/8/files
+    //Split to `public partial` and `private async` method because of trimmer/linker issue
+    public partial Task<bool> DeleteHealthData<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return DeleteHealthDataInternal<TDto>(id, shouldCheckPermissions, cancellationToken);
+    }
+
+    private async Task<bool> DeleteHealthDataInternal<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        if (!IsSupported)
+        {
+            return false;
+        }
+
+        try
+        {
+            if (shouldCheckPermissions)
+            {
+                var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var writePermission = new HealthPermissionDto
+                {
+                    HealthDataType = readPermission.HealthDataType,
+                    PermissionType = PermissionType.Write
+                };
+                var permissionResult = await RequestPermissions([readPermission, writePermission], cancellationToken: cancellationToken);
+                if (!permissionResult.IsSuccess)
+                {
+                    return false;
+                }
+            }
+
+            if (!Guid.TryParse(id, out var guid))
+            {
+                return false;
+            }
+
+            var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
+            var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier())!;
+
+            var uuid = new NSUuid(guid.ToString());
+            var predicate = HKQuery.GetPredicateForObject(uuid);
+
+            // First find the sample, then delete it
+            var findTcs = new TaskCompletionSource<HKQuantitySample?>();
+
+            var findQuery = new HKSampleQuery(
+                quantityType,
+                predicate,
+                1,
+                null,
+                (_, results, error) =>
+                {
+                    findTcs.TrySetResult(results?.FirstOrDefault() as HKQuantitySample);
+                }
+            );
+
+            using var store = new HKHealthStore();
+            using var ct = cancellationToken.Register(() => findTcs.TrySetCanceled());
+
+            store.ExecuteQuery(findQuery);
+            var sample = await findTcs.Task;
+
+            if (sample is null)
+            {
+                _logger.LogWarning("iOS Delete: Record {Id} not found for {DtoName}", id, typeof(TDto).Name);
+                return false;
+            }
+
+            var isDeleted = await store.Delete(sample, cancellationToken);
+
+            if (isDeleted)
+            {
+                _logger.LogInformation("iOS Delete: Successfully deleted {DtoName} record {Id}", typeof(TDto).Name, id);
+            }
+
+            return isDeleted;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "iOS Delete error for {DtoName} record {Id}", typeof(TDto).Name, id);
+            return false;
+        }
+    }
+
+    //https://github.com/Kebechet/Maui.Health/pull/8/files
+    //Split to `public partial` and `private async` method because of trimmer/linker issue
+    public partial Task<AggregatedResult?> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return GetAggregatedHealthDataInternal<TDto>(timeRange, cancellationToken);
+    }
+
+    private async Task<AggregatedResult?> GetAggregatedHealthDataInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        if (!IsSupported)
+        {
+            return null;
+        }
+
+        try
+        {
+            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+            var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
+            if (!permissionResult.IsSuccess)
+            {
+                return null;
+            }
+
+            var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
+            var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier())!;
+
+            var predicate = HKQuery.GetPredicateForSamples(
+                timeRange.StartTime.ToNSDate(),
+                timeRange.EndTime.ToNSDate(),
+                HKQueryOptions.StrictStartDate
+            );
+
+            var (statisticsOption, hkUnit) = GetStatisticsInfo(healthDataType);
+
+            var tcs = new TaskCompletionSource<AggregatedResult?>();
+
+            var query = new HKStatisticsQuery(
+                quantityType,
+                predicate,
+                statisticsOption,
+                (_, statistics, error) =>
+                {
+                    if (error is not null || statistics is null)
+                    {
+                        tcs.TrySetResult(null);
+                        return;
+                    }
+
+                    var quantity = IsCumulativeType(healthDataType)
+                        ? statistics.SumQuantity()
+                        : statistics.AverageQuantity();
+
+                    if (quantity is null)
+                    {
+                        tcs.TrySetResult(null);
+                        return;
+                    }
+
+                    var value = quantity.GetDoubleValue(hkUnit);
+                    var unit = GetUnitString(healthDataType);
+
+                    tcs.TrySetResult(new AggregatedResult
+                    {
+                        StartTime = timeRange.StartTime,
+                        EndTime = timeRange.EndTime,
+                        Value = value,
+                        Unit = unit,
+                        DataType = healthDataType
+                    });
+                }
+            );
+
+            using var store = new HKHealthStore();
+            using var ct = cancellationToken.Register(() =>
+            {
+                tcs.TrySetCanceled();
+                store.StopQuery(query);
+            });
+
+            store.ExecuteQuery(query);
+            var result = await tcs.Task;
+
+            if (result is not null)
+            {
+                _logger.LogInformation("iOS Aggregated {DtoName}: {Value}", typeof(TDto).Name, result.Value);
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error aggregating health data for {DtoName}", typeof(TDto).Name);
+            return null;
+        }
+    }
+
+    //https://github.com/Kebechet/Maui.Health/pull/8/files
+    //Split to `public partial` and `private async` method because of trimmer/linker issue
+    public partial Task<List<AggregatedResult>> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return GetAggregatedHealthDataByIntervalInternal<TDto>(timeRange, interval, cancellationToken);
+    }
+
+    private async Task<List<AggregatedResult>> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        if (!IsSupported)
+        {
+            return [];
+        }
+
+        try
+        {
+            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+            var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
+            if (!permissionResult.IsSuccess)
+            {
+                return [];
+            }
+
+            var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
+            var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier())!;
+
+            var predicate = HKQuery.GetPredicateForSamples(
+                timeRange.StartTime.ToNSDate(),
+                timeRange.EndTime.ToNSDate(),
+                HKQueryOptions.StrictStartDate
+            );
+
+            var (statisticsOption, hkUnit) = GetStatisticsInfo(healthDataType);
+            var unit = GetUnitString(healthDataType);
+            var isCumulative = IsCumulativeType(healthDataType);
+
+            var intervalComponents = new NSDateComponents();
+            if (interval.TotalDays >= 1)
+            {
+                intervalComponents.Day = (nint)interval.TotalDays;
+            }
+            else if (interval.TotalHours >= 1)
+            {
+                intervalComponents.Hour = (nint)interval.TotalHours;
+            }
+            else
+            {
+                intervalComponents.Minute = (nint)interval.TotalMinutes;
+            }
+
+            var tcs = new TaskCompletionSource<List<AggregatedResult>>();
+
+            var query = new HKStatisticsCollectionQuery(
+                quantityType,
+                predicate,
+                statisticsOption,
+                timeRange.StartTime.ToNSDate(),
+                intervalComponents);
+
+            query.InitialResultsHandler = (_, results, error) =>
+            {
+                if (error is not null || results is null)
+                {
+                    tcs.TrySetResult([]);
+                    return;
+                }
+
+                var aggregatedResults = new List<AggregatedResult>();
+
+                results.EnumerateStatistics(
+                    timeRange.StartTime.ToNSDate(),
+                    timeRange.EndTime.ToNSDate(),
+                    (statistics, _) =>
+                    {
+                        var quantity = isCumulative
+                            ? statistics.SumQuantity()
+                            : statistics.AverageQuantity();
+
+                        if (quantity is null)
+                        {
+                            return;
+                        }
+
+                        var value = quantity.GetDoubleValue(hkUnit);
+                        var bucketStart = statistics.StartDate.ToDateTimeOffset();
+                        var bucketEnd = statistics.EndDate.ToDateTimeOffset();
+
+                        aggregatedResults.Add(new AggregatedResult
+                        {
+                            StartTime = bucketStart,
+                            EndTime = bucketEnd,
+                            Value = value,
+                            Unit = unit,
+                            DataType = healthDataType
+                        });
+                    });
+
+                tcs.TrySetResult(aggregatedResults);
+            };
+
+            using var store = new HKHealthStore();
+            using var ct = cancellationToken.Register(() =>
+            {
+                tcs.TrySetCanceled();
+                store.StopQuery(query);
+            });
+
+            store.ExecuteQuery(query);
+            var result = await tcs.Task;
+
+            _logger.LogInformation("Found {Count} interval buckets for {DtoName}", result.Count, typeof(TDto).Name);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error aggregating health data by interval for {DtoName}", typeof(TDto).Name);
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// iOS uses HKAnchoredObjectQuery with opaque HKQueryAnchor objects instead of string tokens.
+    /// HKQueryAnchor internally contains a rowid (database row position) and a clientToken (integrity hash).
+    /// The clientToken allows HealthKit to detect database restructuring and force a full re-sync if needed.
+    /// Since HKQueryAnchor conforms to NSSecureCoding but exposes no public value property,
+    /// we serialize it via NSKeyedArchiver to Base64 — the Apple-endorsed persistence mechanism
+    /// (confirmed by WWDC 2020 "Synchronize health data with HealthKit" and community consensus).
+    /// </summary>
+    public async partial Task<string?> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken)
+    {
+        if (!IsSupported)
+        {
+            return null;
+        }
+
+        try
+        {
+            var dataTypeStrings = dataTypes.Select(dt => dt.ToString()).ToList();
+            HKQueryAnchor? latestAnchor = null;
+
+            foreach (var healthDataType in dataTypes)
+            {
+                if (healthDataType == HealthDataType.ExerciseSession)
+                {
+                    continue;
+                }
+
+                var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier());
+                if (quantityType is null)
+                {
+                    continue;
+                }
+
+                var result = await RunAnchoredQuery(quantityType, HKQueryAnchor.Create(0), cancellationToken);
+
+                if (result.Anchor is not null)
+                {
+                    latestAnchor = result.Anchor;
+                }
+            }
+
+            var anchorBase64 = latestAnchor is not null ? SerializeAnchor(latestAnchor) : null;
+            var tokenData = new { Anchor = anchorBase64, DataTypes = dataTypeStrings };
+
+            _logger.LogInformation("iOS GetChangesToken: anchor serialized for {Count} data types", dataTypes.Count);
+            return JsonSerializer.Serialize(tokenData);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating changes token");
+            return null;
+        }
+    }
+
+    public async partial Task<HealthChangesResult?> GetChanges(string token, CancellationToken cancellationToken)
+    {
+        if (!IsSupported)
+        {
+            return null;
+        }
+
+        try
+        {
+            var tokenJson = JsonSerializer.Deserialize<JsonElement>(token);
+            var anchorBase64 = tokenJson.GetProperty("Anchor").GetString();
+            var dataTypeStrings = tokenJson.GetProperty("DataTypes").EnumerateArray()
+                .Select(dt => dt.GetString())
+                .Where(dt => dt is not null)
+                .ToList();
+
+            var anchor = anchorBase64 is not null
+                ? DeserializeAnchor(anchorBase64)
+                : HKQueryAnchor.Create(0);
+
+            var allChanges = new List<HealthChange>();
+            HKQueryAnchor? latestAnchor = anchor;
+
+            foreach (var dtString in dataTypeStrings)
+            {
+                if (!Enum.TryParse<HealthDataType>(dtString, out var healthDataType))
+                {
+                    continue;
+                }
+
+                if (healthDataType == HealthDataType.ExerciseSession)
+                {
+                    continue;
+                }
+
+                var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier());
+                if (quantityType is null)
+                {
+                    continue;
+                }
+
+                var result = await RunAnchoredQuery(quantityType, anchor, cancellationToken);
+
+                if (result.Added is not null)
+                {
+                    foreach (var sample in result.Added)
+                    {
+                        allChanges.Add(new HealthChange
+                        {
+                            Type = HealthChangeType.Upsert,
+                            RecordId = sample.Uuid.ToString(),
+                            DataType = healthDataType
+                        });
+                    }
+                }
+
+                if (result.Deleted is not null)
+                {
+                    foreach (var deletedObj in result.Deleted)
+                    {
+                        allChanges.Add(new HealthChange
+                        {
+                            Type = HealthChangeType.Deletion,
+                            RecordId = deletedObj.Uuid.ToString()
+                        });
+                    }
+                }
+
+                if (result.Anchor is not null)
+                {
+                    latestAnchor = result.Anchor;
+                }
+            }
+
+            var nextAnchorBase64 = latestAnchor is not null ? SerializeAnchor(latestAnchor) : anchorBase64;
+            var nextTokenData = new { Anchor = nextAnchorBase64, DataTypes = dataTypeStrings };
+
+            _logger.LogInformation("iOS GetChanges: {Count} changes found", allChanges.Count);
+
+            return new HealthChangesResult
+            {
+                Changes = allChanges,
+                NextToken = JsonSerializer.Serialize(nextTokenData),
+                HasMore = false
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting health changes");
+            return null;
+        }
+    }
+
+    private async Task<(HKSample[]? Added, HKDeletedObject[]? Deleted, HKQueryAnchor? Anchor)> RunAnchoredQuery(
+        HKQuantityType quantityType,
+        HKQueryAnchor anchor,
+        CancellationToken cancellationToken)
+    {
+        var tcs = new TaskCompletionSource<(HKSample[]?, HKDeletedObject[]?, HKQueryAnchor?)>();
+
+        var query = new HKAnchoredObjectQuery(
+            quantityType,
+            null,
+            anchor,
+            0,
+            (_, addedObjects, deletedObjects, newAnchor, error) =>
+            {
+                if (error is not null)
+                {
+                    tcs.TrySetResult((null, null, null));
+                    return;
+                }
+
+                tcs.TrySetResult((addedObjects, deletedObjects, newAnchor));
+            }
+        );
+
+        using var store = new HKHealthStore();
+        using var ct = cancellationToken.Register(() =>
+        {
+            tcs.TrySetCanceled();
+            store.StopQuery(query);
+        });
+
+        store.ExecuteQuery(query);
+        return await tcs.Task;
+    }
+
+    private static string SerializeAnchor(HKQueryAnchor anchor)
+    {
+        var data = NSKeyedArchiver.GetArchivedData(anchor, true, out _);
+        return Convert.ToBase64String(data.ToArray());
+    }
+
+    private static HKQueryAnchor DeserializeAnchor(string base64)
+    {
+        var bytes = Convert.FromBase64String(base64);
+        var data = NSData.FromArray(bytes);
+        var anchor = NSKeyedUnarchiver.GetUnarchivedObject(new ObjCRuntime.Class(typeof(HKQueryAnchor)), data, out _) as HKQueryAnchor;
+        return anchor ?? HKQueryAnchor.Create(0);
+    }
+
     private static bool IsCumulativeType<TDto>() where TDto : HealthMetricBase
     {
         return typeof(TDto) == typeof(StepsDto) ||
                typeof(TDto) == typeof(ActiveCaloriesBurnedDto);
+    }
+
+    private static bool IsCumulativeType(HealthDataType healthDataType)
+    {
+        return healthDataType is HealthDataType.Steps
+            or HealthDataType.ActiveCaloriesBurned
+            or HealthDataType.Hydration;
+    }
+
+    private static (HKStatisticsOptions Option, HKUnit Unit) GetStatisticsInfo(HealthDataType healthDataType)
+    {
+        return healthDataType switch
+        {
+            HealthDataType.Steps => (HKStatisticsOptions.CumulativeSum, HKUnit.Count),
+            HealthDataType.ActiveCaloriesBurned => (HKStatisticsOptions.CumulativeSum, HKUnit.Kilocalorie),
+            HealthDataType.Hydration => (HKStatisticsOptions.CumulativeSum, HKUnit.Liter),
+            HealthDataType.Weight => (HKStatisticsOptions.DiscreteAverage, HKUnit.FromString("kg")),
+            HealthDataType.HeartRate => (HKStatisticsOptions.DiscreteAverage, HKUnit.FromString("count/min")),
+            HealthDataType.Height => (HKStatisticsOptions.DiscreteAverage, HKUnit.FromString("cm")),
+            _ => (HKStatisticsOptions.DiscreteAverage, HKUnit.Count)
+        };
+    }
+
+    private static string? GetUnitString(HealthDataType healthDataType)
+    {
+        return healthDataType switch
+        {
+            HealthDataType.Steps => null,
+            HealthDataType.ActiveCaloriesBurned => Units.Kilocalorie,
+            HealthDataType.Hydration => Units.Liter,
+            HealthDataType.Weight => Units.Kilogram,
+            HealthDataType.HeartRate => Units.BeatsPerMinute,
+            HealthDataType.Height => Units.Centimeter,
+            _ => null
+        };
     }
 
     public partial void OpenStorePageOfHealthProvider() { }

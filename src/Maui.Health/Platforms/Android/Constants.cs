@@ -101,5 +101,75 @@ public static class AndroidConstant
         /// Percentage class full name for reflection.
         /// </summary>
         public const string PercentageClassName = "androidx.health.connect.client.units.Percentage";
+
+        /// <summary>
+        /// StepsRecord class full name for aggregate metric reflection.
+        /// </summary>
+        public const string StepsRecordClassName = "androidx.health.connect.client.records.StepsRecord";
+
+        /// <summary>
+        /// ActiveCaloriesBurnedRecord class full name for aggregate metric reflection.
+        /// </summary>
+        public const string ActiveCaloriesBurnedRecordClassName = "androidx.health.connect.client.records.ActiveCaloriesBurnedRecord";
+
+        /// <summary>
+        /// HydrationRecord class full name for aggregate metric reflection.
+        /// </summary>
+        public const string HydrationRecordClassName = "androidx.health.connect.client.records.HydrationRecord";
+
+        /// <summary>
+        /// WeightRecord class full name for aggregate metric reflection.
+        /// </summary>
+        public const string WeightRecordClassName = "androidx.health.connect.client.records.WeightRecord";
+
+        /// <summary>
+        /// HeartRateRecord class full name for aggregate metric reflection.
+        /// </summary>
+        public const string HeartRateRecordClassName = "androidx.health.connect.client.records.HeartRateRecord";
+
+        /// <summary>
+        /// COUNT_TOTAL aggregate metric field name on StepsRecord.
+        /// </summary>
+        public const string CountTotalMetricName = "COUNT_TOTAL";
+
+        /// <summary>
+        /// ACTIVE_CALORIES_TOTAL aggregate metric field name on ActiveCaloriesBurnedRecord.
+        /// </summary>
+        public const string ActiveCaloriesTotalMetricName = "ACTIVE_CALORIES_TOTAL";
+
+        /// <summary>
+        /// VOLUME_TOTAL aggregate metric field name on HydrationRecord.
+        /// </summary>
+        public const string VolumeTotalMetricName = "VOLUME_TOTAL";
+
+        /// <summary>
+        /// WEIGHT_AVG aggregate metric field name on WeightRecord.
+        /// </summary>
+        public const string WeightAvgMetricName = "WEIGHT_AVG";
+
+        /// <summary>
+        /// BPM_AVG aggregate metric field name on HeartRateRecord.
+        /// </summary>
+        public const string BpmAvgMetricName = "BPM_AVG";
+
+        /// <summary>
+        /// AggregateMetric class full name for reflection.
+        /// </summary>
+        public const string AggregateMetricClassName = "androidx.health.connect.client.aggregate.AggregateMetric";
+
+        /// <summary>
+        /// AggregateRequest class full name for reflection.
+        /// </summary>
+        public const string AggregateRequestClassName = "androidx.health.connect.client.request.AggregateRequest";
+
+        /// <summary>
+        /// AggregateGroupByDurationRequest class full name for reflection.
+        /// </summary>
+        public const string AggregateGroupByDurationRequestClassName = "androidx.health.connect.client.request.AggregateGroupByDurationRequest";
+
+        /// <summary>
+        /// ChangesTokenRequest class full name for reflection.
+        /// </summary>
+        public const string ChangesTokenRequestClassName = "androidx.health.connect.client.request.ChangesTokenRequest";
     }
 }

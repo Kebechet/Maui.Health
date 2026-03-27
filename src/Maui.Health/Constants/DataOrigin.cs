@@ -11,6 +11,11 @@ public static class DataOrigin
     public const string HealthKitOrigin = "HealthKit";
 
     /// <summary>
+    /// Android Health Connect data origin.
+    /// </summary>
+    public const string HealthConnectOrigin = "HealthConnect";
+
+    /// <summary>
     /// Unknown data origin.
     /// </summary>
     public const string Unknown = nameof(Unknown);

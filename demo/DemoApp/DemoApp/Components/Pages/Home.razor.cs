@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿#pragma warning disable MH001, MH002, MH003, MH004, MH005, MH006
+
+using Microsoft.AspNetCore.Components;
 using Maui.Health.Services;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Models;
@@ -22,6 +24,15 @@ public partial class Home
     private List<WorkoutDto> _workouts { get; set; } = [];
     private string _demoDataMessage { get; set; } = string.Empty;
     private bool _demoDataSuccess { get; set; } = false;
+
+    // Raw records for detail view
+    private List<StepsDto> _stepsRecords { get; set; } = [];
+    private List<WeightDto> _weightRecords { get; set; } = [];
+    private List<ActiveCaloriesBurnedDto> _caloriesRecords { get; set; } = [];
+    private List<HeartRateDto> _heartRateRecords { get; set; } = [];
+    private List<Vo2MaxDto> _vo2MaxRecords { get; set; } = [];
+    private List<BodyFatDto> _bodyFatRecords { get; set; } = [];
+    private HashSet<string> _expandedMetrics { get; set; } = [];
 
     // Tab tracking
     private int _activeTab { get; set; } = 0;
@@ -81,17 +92,16 @@ public partial class Home
             _demoDataMessage = "Writing demo data...";
             StateHasChanged();
 
-            var today = DateTime.Today;
-            var now = DateTime.Now;
-            var localOffset = DateTimeOffset.Now.Offset;
+            // Use timestamps relative to now (in the past) so Android Health Connect accepts them
+            var now = DateTimeOffset.Now;
 
-            // Write Steps data (multiple entries throughout the day)
+            // Write Steps data (multiple entries spread over the last 40 minutes)
             var stepsData = new[]
             {
-                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 1500, StartTime = new DateTimeOffset(today.AddHours(8), localOffset), EndTime = new DateTimeOffset(today.AddHours(9), localOffset), Timestamp = new DateTimeOffset(today.AddHours(8), localOffset) },
-                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 2300, StartTime = new DateTimeOffset(today.AddHours(10), localOffset), EndTime = new DateTimeOffset(today.AddHours(12), localOffset), Timestamp = new DateTimeOffset(today.AddHours(10), localOffset) },
-                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 3200, StartTime = new DateTimeOffset(today.AddHours(14), localOffset), EndTime = new DateTimeOffset(today.AddHours(16), localOffset), Timestamp = new DateTimeOffset(today.AddHours(14), localOffset) },
-                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 1800, StartTime = new DateTimeOffset(today.AddHours(17), localOffset), EndTime = new DateTimeOffset(today.AddHours(18), localOffset), Timestamp = new DateTimeOffset(today.AddHours(17), localOffset) }
+                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 1500, StartTime = now.AddMinutes(-40), EndTime = now.AddMinutes(-30), Timestamp = now.AddMinutes(-40) },
+                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 2300, StartTime = now.AddMinutes(-30), EndTime = now.AddMinutes(-20), Timestamp = now.AddMinutes(-30) },
+                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 3200, StartTime = now.AddMinutes(-20), EndTime = now.AddMinutes(-15), Timestamp = now.AddMinutes(-20) },
+                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 1800, StartTime = now.AddMinutes(-15), EndTime = now.AddMinutes(-10), Timestamp = now.AddMinutes(-15) }
             };
 
             foreach (var step in stepsData)
@@ -105,15 +115,15 @@ public partial class Home
                 Id = "",
                 DataOrigin = "DemoApp",
                 Value = 75.5,
-                Timestamp = new DateTimeOffset(today.AddHours(7), localOffset),
+                Timestamp = now.AddMinutes(-10),
                 Unit = "kg"
             };
             await _healthService.WriteHealthData(weightData);
 
-            // Write Active Calories Burned data (multiple sessions)
+            // Write Active Calories Burned data
             var caloriesData = new[]
             {
-                new ActiveCaloriesBurnedDto { Id = "", DataOrigin = "DemoApp", Energy = 120, StartTime = new DateTimeOffset(today.AddHours(8), localOffset), EndTime = new DateTimeOffset(today.AddHours(9), localOffset), Timestamp = new DateTimeOffset(today.AddHours(8), localOffset), Unit = "kcal" },
+                new ActiveCaloriesBurnedDto { Id = "", DataOrigin = "DemoApp", Energy = 120, StartTime = now.AddMinutes(-30), EndTime = now.AddMinutes(-20), Timestamp = now.AddMinutes(-30), Unit = "kcal" },
             };
 
             foreach (var calories in caloriesData)
@@ -121,15 +131,15 @@ public partial class Home
                 await _healthService.WriteHealthData(calories);
             }
 
-            // Write Heart Rate data during exercise time (14:00-17:00)
+            // Write Heart Rate data (spread over the last hour)
             var heartRateData = new[]
             {
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 125, Timestamp = new DateTimeOffset(today.AddHours(14).AddMinutes(5), localOffset), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 138, Timestamp = new DateTimeOffset(today.AddHours(14).AddMinutes(15), localOffset), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 145, Timestamp = new DateTimeOffset(today.AddHours(14).AddMinutes(25), localOffset), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 142, Timestamp = new DateTimeOffset(today.AddHours(14).AddMinutes(35), localOffset), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 135, Timestamp = new DateTimeOffset(today.AddHours(14).AddMinutes(45), localOffset), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 128, Timestamp = new DateTimeOffset(today.AddHours(14).AddMinutes(55), localOffset), Unit = "BPM" }
+                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 125, Timestamp = now.AddMinutes(-55), Unit = "BPM" },
+                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 138, Timestamp = now.AddMinutes(-45), Unit = "BPM" },
+                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 145, Timestamp = now.AddMinutes(-35), Unit = "BPM" },
+                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 142, Timestamp = now.AddMinutes(-25), Unit = "BPM" },
+                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 135, Timestamp = now.AddMinutes(-15), Unit = "BPM" },
+                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 128, Timestamp = now.AddMinutes(-5), Unit = "BPM" }
             };
 
             foreach (var heartRate in heartRateData)
@@ -143,7 +153,7 @@ public partial class Home
                 Id = "",
                 DataOrigin = "DemoApp",
                 Value = 42.5,
-                Timestamp = new DateTimeOffset(today.AddHours(7), localOffset),
+                Timestamp = now.AddMinutes(-10),
                 Unit = "ml/kg/min"
             };
             await _healthService.WriteHealthData(vo2MaxData);
@@ -154,23 +164,21 @@ public partial class Home
                 Id = "",
                 DataOrigin = "DemoApp",
                 Percentage = 18.5,
-                Timestamp = new DateTimeOffset(today.AddHours(7), localOffset),
+                Timestamp = now.AddMinutes(-10),
                 Unit = "%"
             };
             await _healthService.WriteHealthData(bodyFatData);
 
             // Write a strength training workout
-            var workoutStart = now.AddHours(-1);
-            var workoutEnd = now;
             var strengthTrainingWorkout = new WorkoutDto
             {
                 Id = "",
                 DataOrigin = "DemoApp",
                 ActivityType = ActivityType.StrengthTraining,
                 Title = "Strength Training",
-                StartTime = new DateTimeOffset(workoutStart, localOffset),
-                EndTime = new DateTimeOffset(workoutEnd, localOffset),
-                Timestamp = new DateTimeOffset(workoutStart, localOffset),
+                StartTime = now.AddMinutes(-30),
+                EndTime = now.AddMinutes(-10),
+                Timestamp = now.AddMinutes(-30),
                 EnergyBurned = 250,
                 Distance = null
             };
@@ -197,6 +205,69 @@ public partial class Home
         }
     }
 
+    private async Task ClearAllDemoData()
+    {
+        try
+        {
+            _demoDataMessage = "Clearing all demo data...";
+            _demoDataSuccess = false;
+            StateHasChanged();
+
+            var today = DateTime.Today;
+            var todayRange = HealthTimeRange.FromDateTime(today, today.AddDays(1));
+
+            foreach (var record in _stepsRecords)
+            {
+                await _healthService.DeleteHealthData<StepsDto>(record.Id);
+            }
+
+            foreach (var record in _weightRecords)
+            {
+                await _healthService.DeleteHealthData<WeightDto>(record.Id);
+            }
+
+            foreach (var record in _caloriesRecords)
+            {
+                await _healthService.DeleteHealthData<ActiveCaloriesBurnedDto>(record.Id);
+            }
+
+            foreach (var record in _heartRateRecords)
+            {
+                await _healthService.DeleteHealthData<HeartRateDto>(record.Id);
+            }
+
+            foreach (var record in _vo2MaxRecords)
+            {
+                await _healthService.DeleteHealthData<Vo2MaxDto>(record.Id);
+            }
+
+            foreach (var record in _bodyFatRecords)
+            {
+                await _healthService.DeleteHealthData<BodyFatDto>(record.Id);
+            }
+
+            foreach (var workout in _workouts)
+            {
+                await _healthService.Activity.Delete(workout);
+            }
+
+            _demoDataMessage = "All demo data cleared! Refreshing...";
+            _demoDataSuccess = true;
+            StateHasChanged();
+
+            await LoadHealthDataAsync();
+
+            _demoDataMessage = "All demo data cleared successfully!";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _demoDataMessage = $"Error clearing: {ex.Message}";
+            _demoDataSuccess = false;
+            StateHasChanged();
+        }
+    }
+
     private async Task LoadHealthDataAsync()
     {
         try
@@ -217,16 +288,16 @@ public partial class Home
             await _healthService.RequestPermissions(permissions);
 
             var today = DateTime.Today;
-            var now = DateTime.Now;
 
-            // Create time ranges
-            var todayRange = HealthTimeRange.FromDateTime(today, now);
-            var exerciseRange = HealthTimeRange.FromDateTime(today.AddHours(14), today.AddHours(17)); // 14:00 - 17:00
+            var todayRange = HealthTimeRange.FromDateTime(today, today.AddDays(1));
+            // Heart rate: use full day range to capture demo data written relative to now
+            var exerciseRange = todayRange;
 
             // Load data with individual try-catch to continue on permission errors
             try
             {
                 var stepsData = await _healthService.GetHealthData<StepsDto>(todayRange);
+                _stepsRecords = stepsData;
                 _steps = stepsData.Sum(s => s.Count);
             }
             catch (Exception ex)
@@ -238,6 +309,7 @@ public partial class Home
             try
             {
                 var weightData = await _healthService.GetHealthData<WeightDto>(todayRange);
+                _weightRecords = weightData;
                 _weight = weightData.OrderByDescending(w => w.Timestamp).FirstOrDefault()?.Value ?? 0;
             }
             catch (Exception ex)
@@ -249,6 +321,7 @@ public partial class Home
             try
             {
                 var caloriesData = await _healthService.GetHealthData<ActiveCaloriesBurnedDto>(todayRange);
+                _caloriesRecords = caloriesData;
                 _calories = caloriesData.Sum(c => c.Energy);
             }
             catch (Exception ex)
@@ -260,6 +333,7 @@ public partial class Home
             try
             {
                 var heartRateData = await _healthService.GetHealthData<HeartRateDto>(exerciseRange);
+                _heartRateRecords = heartRateData;
                 if (heartRateData.Count > 0)
                 {
                     _averageHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
@@ -281,6 +355,7 @@ public partial class Home
             try
             {
                 var vo2MaxData = await _healthService.GetHealthData<Vo2MaxDto>(todayRange);
+                _vo2MaxRecords = vo2MaxData;
                 var firstVo2Max = vo2MaxData.OrderByDescending(v => v.Timestamp).FirstOrDefault();
                 System.Diagnostics.Debug.WriteLine($"VO2 Max records: {vo2MaxData.Count}, First value: {firstVo2Max?.Value ?? -1}");
                 _vo2Max = firstVo2Max?.Value ?? 0;
@@ -294,6 +369,7 @@ public partial class Home
             try
             {
                 var bodyFatData = await _healthService.GetHealthData<BodyFatDto>(todayRange);
+                _bodyFatRecords = bodyFatData;
                 _bodyFat = bodyFatData.OrderByDescending(b => b.Timestamp).FirstOrDefault()?.Percentage ?? 0;
             }
             catch (Exception ex)
@@ -639,5 +715,265 @@ public partial class Home
     private DuplicateWorkoutGroup? GetDuplicateGroup(WorkoutDto workout)
     {
         return _duplicateGroups.FirstOrDefault(group => group.Workouts.Any(w => w.Id == workout.Id));
+    }
+
+    // --- Experimental API properties ---
+    private AggregatedResult? _aggregateSteps { get; set; }
+    private AggregatedResult? _aggregateCalories { get; set; }
+    private bool _isAggregateLoading { get; set; }
+    private string _aggregateMessage { get; set; } = string.Empty;
+    private bool _aggregateSuccess { get; set; }
+
+    private List<AggregatedResult> _intervalResults { get; set; } = [];
+    private bool _isIntervalLoading { get; set; }
+    private string _intervalMessage { get; set; } = string.Empty;
+    private bool _intervalSuccess { get; set; }
+
+    private const string TypeSteps = nameof(StepsDto);
+    private const string TypeWeight = nameof(WeightDto);
+    private const string TypeCalories = nameof(ActiveCaloriesBurnedDto);
+    private const string TypeHeartRate = nameof(HeartRateDto);
+    private const string TypeVo2Max = nameof(Vo2MaxDto);
+    private const string TypeBodyFat = nameof(BodyFatDto);
+
+    private string _deleteRecordId { get; set; } = string.Empty;
+    private string _deleteRecordType { get; set; } = TypeSteps;
+    private string _deleteMessage { get; set; } = string.Empty;
+    private bool _deleteSuccess { get; set; }
+    private List<StepsDto> _latestRecords { get; set; } = [];
+    private bool _isLoadingLatest { get; set; }
+    private Dictionary<string, string> _verifyResults { get; set; } = [];
+
+    private string? _changesToken { get; set; }
+    private HealthChangesResult? _changesResult { get; set; }
+    private string _changesMessage { get; set; } = string.Empty;
+    private bool _changesSuccess { get; set; }
+
+    private async Task LoadAggregatedDataAsync()
+    {
+        try
+        {
+            _isAggregateLoading = true;
+            _aggregateMessage = "";
+            StateHasChanged();
+
+            var todayRange = HealthTimeRange.FromDateTime(DateTime.Today, DateTime.Now);
+
+            _aggregateSteps = await _healthService.GetAggregatedHealthData<StepsDto>(todayRange);
+            _aggregateCalories = await _healthService.GetAggregatedHealthData<ActiveCaloriesBurnedDto>(todayRange);
+
+            _aggregateMessage = $"Aggregation complete. Steps: {(_aggregateSteps is not null ? "OK" : "no data")}, Calories: {(_aggregateCalories is not null ? "OK" : "no data")}";
+            _aggregateSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _aggregateMessage = $"Error: {ex.Message}";
+            _aggregateSuccess = false;
+        }
+        finally
+        {
+            _isAggregateLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAggregatedByIntervalAsync()
+    {
+        try
+        {
+            _isIntervalLoading = true;
+            _intervalMessage = "";
+            StateHasChanged();
+
+            var weekRange = HealthTimeRange.FromDateTime(DateTime.Today.AddDays(-6), DateTime.Now);
+            _intervalResults = await _healthService.GetAggregatedHealthDataByInterval<StepsDto>(weekRange, TimeSpan.FromDays(1));
+
+            _intervalMessage = $"Found {_intervalResults.Count} daily buckets";
+            _intervalSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _intervalMessage = $"Error: {ex.Message}";
+            _intervalSuccess = false;
+        }
+        finally
+        {
+            _isIntervalLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteRecordByIdAsync()
+    {
+        try
+        {
+            _deleteMessage = "Deleting...";
+            StateHasChanged();
+
+            var isDeleted = _deleteRecordType switch
+            {
+                nameof(WeightDto) => await _healthService.DeleteHealthData<WeightDto>(_deleteRecordId),
+                nameof(ActiveCaloriesBurnedDto) => await _healthService.DeleteHealthData<ActiveCaloriesBurnedDto>(_deleteRecordId),
+                nameof(HeartRateDto) => await _healthService.DeleteHealthData<HeartRateDto>(_deleteRecordId),
+                nameof(Vo2MaxDto) => await _healthService.DeleteHealthData<Vo2MaxDto>(_deleteRecordId),
+                nameof(BodyFatDto) => await _healthService.DeleteHealthData<BodyFatDto>(_deleteRecordId),
+                _ => await _healthService.DeleteHealthData<StepsDto>(_deleteRecordId),
+            };
+
+            _deleteMessage = isDeleted ? $"Record {_deleteRecordId} deleted successfully" : $"Failed to delete record {_deleteRecordId}";
+            _deleteSuccess = isDeleted;
+        }
+        catch (Exception ex)
+        {
+            _deleteMessage = $"Error: {ex.Message}";
+            _deleteSuccess = false;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadLatestRecordsAsync()
+    {
+        try
+        {
+            _isLoadingLatest = true;
+            StateHasChanged();
+
+            var range = new HealthTimeRange
+            {
+                StartTime = DateTimeOffset.Now.AddDays(-30),
+                EndTime = DateTimeOffset.Now
+            };
+            var records = await _healthService.GetHealthData<StepsDto>(range);
+
+            _latestRecords = records
+                .OrderByDescending(r => r.Timestamp)
+                .Take(3)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _deleteMessage = $"Error loading records: {ex.Message}";
+            _deleteSuccess = false;
+        }
+        finally
+        {
+            _isLoadingLatest = false;
+            StateHasChanged();
+        }
+    }
+
+    private void UseRecordId(string id, string type = "Steps")
+    {
+        _deleteRecordId = id;
+        _deleteRecordType = type;
+        StateHasChanged();
+    }
+
+    private void UseRecordIdAndSwitch(string id, string type)
+    {
+        _deleteRecordId = id;
+        _deleteRecordType = type;
+        _activeTab = 2;
+        StateHasChanged();
+    }
+
+    private void ToggleMetric(string metric)
+    {
+        if (!_expandedMetrics.Remove(metric))
+            _expandedMetrics.Add(metric);
+    }
+
+    private async Task VerifyRecordByIdAsync(string id)
+    {
+        try
+        {
+            _verifyResults[id] = "Verifying...";
+            StateHasChanged();
+
+            var record = await _healthService.GetHealthRecord<StepsDto>(id);
+
+            _verifyResults[id] = record is not null
+                ? $"Found: {record.Count} steps, {record.DataOrigin}"
+                : "Not found via GetHealthRecord";
+        }
+        catch (Exception ex)
+        {
+            _verifyResults[id] = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+
+    private async Task GetChangesTokenAsync()
+    {
+        try
+        {
+            _changesMessage = "Getting token...";
+            StateHasChanged();
+
+            var dataTypes = new List<HealthDataType>
+            {
+                HealthDataType.Steps,
+                HealthDataType.ActiveCaloriesBurned,
+                HealthDataType.Weight
+            };
+
+            _changesToken = await _healthService.GetChangesToken(dataTypes);
+
+            _changesMessage = _changesToken is not null ? "Token acquired" : "Failed to get token";
+            _changesSuccess = _changesToken is not null;
+        }
+        catch (Exception ex)
+        {
+            _changesMessage = $"Error: {ex.Message}";
+            _changesSuccess = false;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task GetChangesAsync()
+    {
+        if (_changesToken is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _changesMessage = "Fetching changes...";
+            StateHasChanged();
+
+            _changesResult = await _healthService.GetChanges(_changesToken);
+
+            if (_changesResult is not null)
+            {
+                _changesToken = _changesResult.NextToken;
+                _changesMessage = $"Got {_changesResult.Changes.Count} changes";
+                _changesSuccess = true;
+            }
+            else
+            {
+                _changesMessage = "Token expired or invalid";
+                _changesSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _changesMessage = $"Error: {ex.Message}";
+            _changesSuccess = false;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
     }
 }

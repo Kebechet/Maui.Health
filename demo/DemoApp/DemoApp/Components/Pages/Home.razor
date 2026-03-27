@@ -1,222 +1,498 @@
 @page "/"
 
 <!-- Tab Navigation -->
-<div style="border-bottom: 2px solid #dee2e6; margin-bottom: 20px;">
-    <div style="display: flex; gap: 10px;">
-        <button @onclick="() => _activeTab = 0"
-                style="padding: 10px 20px; background-color: @(_activeTab == 0 ? "#007bff" : "transparent"); color: @(_activeTab == 0 ? "white" : "#007bff"); border: none; border-bottom: 3px solid @(_activeTab == 0 ? "#007bff" : "transparent"); cursor: pointer; font-weight: @(_activeTab == 0 ? "bold" : "normal");">
-            📊 Measurements
-        </button>
-        <button @onclick="() => _activeTab = 1"
-                style="padding: 10px 20px; background-color: @(_activeTab == 1 ? "#007bff" : "transparent"); color: @(_activeTab == 1 ? "white" : "#007bff"); border: none; border-bottom: 3px solid @(_activeTab == 1 ? "#007bff" : "transparent"); cursor: pointer; font-weight: @(_activeTab == 1 ? "bold" : "normal");">
-            🏃 Sessions
-        </button>
-    </div>
+<div class="tab-nav">
+    <button class="tab-btn @(_activeTab == 0 ? "active" : "")" @onclick="() => _activeTab = 0">
+        Measurements
+    </button>
+    <button class="tab-btn @(_activeTab == 1 ? "active" : "")" @onclick="() => _activeTab = 1">
+        Sessions
+    </button>
+    <button class="tab-btn @(_activeTab == 2 ? "active" : "")" @onclick="() => _activeTab = 2">
+        Experimental APIs
+    </button>
 </div>
 
 @if (_activeTab == 0)
 {
     <!-- Measurements Tab -->
-    <div style="margin-bottom: 20px;">
-        <button @onclick="PopulateDemoData" style="padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-            Populate Demo Data
-        </button>
-        @if (!string.IsNullOrEmpty(_demoDataMessage))
-        {
-            <p style="color: @(_demoDataSuccess ? "green" : "red"); margin-top: 10px;">@_demoDataMessage</p>
-        }
+    <div class="btn-group">
+        <button class="action-btn primary" @onclick="PopulateDemoData">Populate Demo Data</button>
+        <button class="action-btn muted" @onclick="LoadHealthDataAsync">Refresh</button>
+        <button class="action-btn muted" @onclick="ClearAllDemoData" style="color: #dc3545;">Clear</button>
     </div>
-
-    <hr style="margin: 20px 0;" />
-
-    <h1>Number of steps:</h1>
-    @_steps
-
-    <h1>Weight (kg):</h1>
-    @_weight
-
-    <h1>Active Calories Burned (kcal):</h1>
-    @_calories
-
-    <h1>Average Heart Rate during Exercise (14:00-17:00):</h1>
-    @if (_heartRateCount > 0)
+    @if (!string.IsNullOrEmpty(_demoDataMessage))
     {
-        <p>@_averageHeartRate.ToString("F1") BPM (based on @_heartRateCount measurements)</p>
-    }
-    else
-    {
-        <p>No heart rate data available for this time period</p>
+        <div class="status-msg @(_demoDataSuccess ? "success" : "error")">@_demoDataMessage</div>
     }
 
-    <h1>VO2 Max (ml/kg/min):</h1>
-    @if (_vo2Max > 0)
-    {
-        <p>@_vo2Max.ToString("F1") ml/kg/min</p>
-    }
-    else
-    {
-        <p>No VO2 Max data available</p>
-    }
+    <hr class="separator" />
 
-    <h1>Body Fat (%):</h1>
-    @if (_bodyFat > 0)
-    {
-        <p>@_bodyFat.ToString("F1")%</p>
-    }
-    else
-    {
-        <p>No body fat data available</p>
-    }
+    <div class="metric-grid">
+        <div class="metric-card" @onclick="() => ToggleMetric(nameof(_stepsRecords))">
+            <div class="metric-label">Steps @(_expandedMetrics.Contains(nameof(_stepsRecords)) ? "▴" : "▾")</div>
+            @if (_steps > 0)
+            {
+                <div class="metric-value">@_steps.ToString("N0")</div>
+            }
+            else
+            {
+                <div class="metric-empty">No data</div>
+            }
+            @if (_expandedMetrics.Contains(nameof(_stepsRecords)))
+            {
+                <div class="metric-details">
+                    @foreach (var r in _stepsRecords)
+                    {
+                        <div class="metric-detail-row">
+                            <div class="metric-detail-info">
+                                <span class="latest-record-id">@r.Id[..Math.Min(8, r.Id.Length)]...</span>
+                                <span class="latest-record-detail">@r.Count steps &middot; @r.Timestamp.LocalDateTime.ToString("g")</span>
+                                <span class="latest-record-detail">Origin: @r.DataOrigin</span>
+                            </div>
+                            <button class="action-btn sm primary" @onclick:stopPropagation="true" @onclick="() => UseRecordIdAndSwitch(r.Id, TypeSteps)">Use</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="metric-card" @onclick="() => ToggleMetric(nameof(_weightRecords))">
+            <div class="metric-label">Weight @(_expandedMetrics.Contains(nameof(_weightRecords)) ? "▴" : "▾")</div>
+            @if (_weight > 0)
+            {
+                <div class="metric-value">@_weight.ToString("F1") <span class="metric-unit">kg</span></div>
+            }
+            else
+            {
+                <div class="metric-empty">No data</div>
+            }
+            @if (_expandedMetrics.Contains(nameof(_weightRecords)))
+            {
+                <div class="metric-details">
+                    @foreach (var r in _weightRecords)
+                    {
+                        <div class="metric-detail-row">
+                            <div class="metric-detail-info">
+                                <span class="latest-record-id">@r.Id[..Math.Min(8, r.Id.Length)]...</span>
+                                <span class="latest-record-detail">@r.Value.ToString("F1") kg &middot; @r.Timestamp.LocalDateTime.ToString("g")</span>
+                                <span class="latest-record-detail">Origin: @r.DataOrigin</span>
+                            </div>
+                            <button class="action-btn sm primary" @onclick:stopPropagation="true" @onclick="() => UseRecordIdAndSwitch(r.Id, TypeWeight)">Use</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="metric-card" @onclick="() => ToggleMetric(nameof(_caloriesRecords))">
+            <div class="metric-label">Active Calories @(_expandedMetrics.Contains(nameof(_caloriesRecords)) ? "▴" : "▾")</div>
+            @if (_calories > 0)
+            {
+                <div class="metric-value">@_calories.ToString("F0") <span class="metric-unit">kcal</span></div>
+            }
+            else
+            {
+                <div class="metric-empty">No data</div>
+            }
+            @if (_expandedMetrics.Contains(nameof(_caloriesRecords)))
+            {
+                <div class="metric-details">
+                    @foreach (var r in _caloriesRecords)
+                    {
+                        <div class="metric-detail-row">
+                            <div class="metric-detail-info">
+                                <span class="latest-record-id">@r.Id[..Math.Min(8, r.Id.Length)]...</span>
+                                <span class="latest-record-detail">@r.Energy.ToString("F0") kcal &middot; @r.Timestamp.LocalDateTime.ToString("g")</span>
+                                <span class="latest-record-detail">Origin: @r.DataOrigin</span>
+                            </div>
+                            <button class="action-btn sm primary" @onclick:stopPropagation="true" @onclick="() => UseRecordIdAndSwitch(r.Id, TypeCalories)">Use</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="metric-card" @onclick="() => ToggleMetric(nameof(_heartRateRecords))">
+            <div class="metric-label">Heart Rate (14:00-17:00) @(_expandedMetrics.Contains(nameof(_heartRateRecords)) ? "▴" : "▾")</div>
+            @if (_heartRateCount > 0)
+            {
+                <div class="metric-value">@_averageHeartRate.ToString("F1") <span class="metric-unit">BPM</span></div>
+                <div class="workout-meta">@_heartRateCount measurements</div>
+            }
+            else
+            {
+                <div class="metric-empty">No data</div>
+            }
+            @if (_expandedMetrics.Contains(nameof(_heartRateRecords)))
+            {
+                <div class="metric-details">
+                    @foreach (var r in _heartRateRecords)
+                    {
+                        <div class="metric-detail-row">
+                            <div class="metric-detail-info">
+                                <span class="latest-record-id">@r.Id[..Math.Min(8, r.Id.Length)]...</span>
+                                <span class="latest-record-detail">@r.BeatsPerMinute.ToString("F0") BPM &middot; @r.Timestamp.LocalDateTime.ToString("g")</span>
+                                <span class="latest-record-detail">Origin: @r.DataOrigin</span>
+                            </div>
+                            <button class="action-btn sm primary" @onclick:stopPropagation="true" @onclick="() => UseRecordIdAndSwitch(r.Id, TypeHeartRate)">Use</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="metric-card" @onclick="() => ToggleMetric(nameof(_vo2MaxRecords))">
+            <div class="metric-label">VO2 Max @(_expandedMetrics.Contains(nameof(_vo2MaxRecords)) ? "▴" : "▾")</div>
+            @if (_vo2Max > 0)
+            {
+                <div class="metric-value">@_vo2Max.ToString("F1") <span class="metric-unit">ml/kg/min</span></div>
+            }
+            else
+            {
+                <div class="metric-empty">No data</div>
+            }
+            @if (_expandedMetrics.Contains(nameof(_vo2MaxRecords)))
+            {
+                <div class="metric-details">
+                    @foreach (var r in _vo2MaxRecords)
+                    {
+                        <div class="metric-detail-row">
+                            <div class="metric-detail-info">
+                                <span class="latest-record-id">@r.Id[..Math.Min(8, r.Id.Length)]...</span>
+                                <span class="latest-record-detail">@r.Value.ToString("F1") ml/kg/min &middot; @r.Timestamp.LocalDateTime.ToString("g")</span>
+                                <span class="latest-record-detail">Origin: @r.DataOrigin</span>
+                            </div>
+                            <button class="action-btn sm primary" @onclick:stopPropagation="true" @onclick="() => UseRecordIdAndSwitch(r.Id, TypeVo2Max)">Use</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="metric-card" @onclick="() => ToggleMetric(nameof(_bodyFatRecords))">
+            <div class="metric-label">Body Fat @(_expandedMetrics.Contains(nameof(_bodyFatRecords)) ? "▴" : "▾")</div>
+            @if (_bodyFat > 0)
+            {
+                <div class="metric-value">@_bodyFat.ToString("F1") <span class="metric-unit">%</span></div>
+            }
+            else
+            {
+                <div class="metric-empty">No data</div>
+            }
+            @if (_expandedMetrics.Contains(nameof(_bodyFatRecords)))
+            {
+                <div class="metric-details">
+                    @foreach (var r in _bodyFatRecords)
+                    {
+                        <div class="metric-detail-row">
+                            <div class="metric-detail-info">
+                                <span class="latest-record-id">@r.Id[..Math.Min(8, r.Id.Length)]...</span>
+                                <span class="latest-record-detail">@r.Percentage.ToString("F1")% &middot; @r.Timestamp.LocalDateTime.ToString("g")</span>
+                                <span class="latest-record-detail">Origin: @r.DataOrigin</span>
+                            </div>
+                            <button class="action-btn sm primary" @onclick:stopPropagation="true" @onclick="() => UseRecordIdAndSwitch(r.Id, TypeBodyFat)">Use</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
 }
 else if (_activeTab == 1)
 {
     <!-- Sessions Tab -->
-    <h1>Workout Session Management:</h1>
-    <div style="margin-bottom: 20px;">
-        <!-- Active Session Display -->
-        @if (_isSessionRunning)
-        {
-            <div style="padding: 15px; background-color: @(_isSessionPaused ? "#fff3cd" : "#d4edda"); border: 1px solid @(_isSessionPaused ? "#ffc107" : "#c3e6cb"); border-radius: 4px; margin-bottom: 15px;">
-                <strong style="color: @(_isSessionPaused ? "#856404" : "#155724");">
-                    @(_isSessionPaused ? "⏸ Active Session Paused" : "🏃 Active Session Running")
-                </strong>
-                @if (_activeSession != null)
-                {
-                    <div style="margin-top: 10px;">
-                        <p style="margin: 5px 0;"><strong>Activity:</strong> @_activeSession.ActivityType</p>
-                        <p style="margin: 5px 0;"><strong>Started:</strong> @_activeSession.StartTime.ToLocalTime().ToString("HH:mm:ss")</p>
-                        <p style="margin: 5px 0;"><strong>Duration:</strong> @((int)(DateTimeOffset.Now - _activeSession.StartTime).TotalMinutes) minutes</p>
-                        <p style="margin: 5px 0; font-size: 0.9em; color: #666;">ID: @_activeSession.Id</p>
-                    </div>
-                }
-            </div>
+    <h2 class="section-header">Workout Session</h2>
+
+    @if (_isSessionRunning)
+    {
+        <div class="session-box @(_isSessionPaused ? "paused" : "running")">
+            <strong>@(_isSessionPaused ? "Session Paused" : "Session Running")</strong>
+            @if (_activeSession is not null)
+            {
+                <p class="session-detail"><strong>Activity:</strong> @_activeSession.ActivityType</p>
+                <p class="session-detail"><strong>Started:</strong> @_activeSession.StartTime.ToLocalTime().ToString("HH:mm:ss")</p>
+                <p class="session-detail"><strong>Duration:</strong> @((int)(DateTimeOffset.Now - _activeSession.StartTime).TotalMinutes) minutes</p>
+                <p class="session-id">ID: @_activeSession.Id</p>
+            }
+        </div>
+
+        <div class="btn-group">
             @if (_isSessionPaused)
             {
-                <button @onclick="ResumeWorkoutSession" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                    ▶ Resume
-                </button>
+                <button class="action-btn success" @onclick="ResumeWorkoutSession">Resume</button>
             }
             else
             {
-                <button @onclick="PauseWorkoutSession" style="padding: 10px 20px; background-color: #ffc107; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                    ⏸ Pause
-                </button>
+                <button class="action-btn warning" @onclick="PauseWorkoutSession">Pause</button>
             }
-            <button @onclick="StopWorkoutSession" style="padding: 10px 20px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                ⏹ Stop Session
-            </button>
-        }
-        else
-        {
-            <button @onclick="StartWorkoutSession" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">
-                ▶ Start New Session
-            </button>
-        }
+            <button class="action-btn danger" @onclick="StopWorkoutSession">Stop Session</button>
+        </div>
+    }
+    else
+    {
+        <div class="btn-group">
+            <button class="action-btn success" @onclick="StartWorkoutSession">Start New Session</button>
+            <button class="action-btn info" @onclick="WriteManualWorkout">Write Manual Workout</button>
+        </div>
+    }
 
-        <button @onclick="WriteManualWorkout" style="padding: 10px 20px; background-color: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer;">
-            ✍ Write Manual Workout
-        </button>
+    @if (!string.IsNullOrEmpty(_sessionMessage))
+    {
+        <div class="status-msg @(_sessionSuccess ? "success" : "error")">@_sessionMessage</div>
+    }
 
-        @if (!string.IsNullOrEmpty(_sessionMessage))
-        {
-            <p style="color: @(_sessionSuccess ? "green" : "red"); margin-top: 10px;">@_sessionMessage</p>
-        }
-    </div>
+    <hr class="separator" />
 
-    <hr style="margin: 20px 0;" />
+    <h2 class="section-header">Today's Workouts</h2>
 
-    <h1>Today's Workouts:</h1>
-
-    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+    <div class="controls-row">
         <label>Duplicate threshold (minutes):</label>
-        <input type="number" @bind="_duplicateThresholdMinutes" min="1" max="60" style="width: 60px; padding: 5px;" />
-        <button @onclick="LoadHealthDataAsync" style="padding: 5px 10px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
-            Refresh
-        </button>
+        <input type="number" @bind="_duplicateThresholdMinutes" min="1" max="60" />
+        <button class="action-btn muted sm" @onclick="LoadHealthDataAsync">Refresh</button>
     </div>
 
     @if (_duplicateGroups.Any())
     {
-        <div style="padding: 15px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; margin-bottom: 15px;">
-            <strong style="color: #856404;">⚠️ Duplicate workouts detected!</strong>
-            <p style="margin: 10px 0 0 0; color: #856404;">
-                Found @_duplicateGroups.Count duplicate group(s). These workouts have matching activity types and overlapping times (within @_duplicateThresholdMinutes min) from different sources.
-                Consider deleting duplicates to keep your data clean.
-            </p>
+        <div class="duplicate-warning">
+            <strong>Duplicate workouts detected!</strong>
+            <p>Found @_duplicateGroups.Count duplicate group(s). These workouts have matching activity types and overlapping times (within @_duplicateThresholdMinutes min) from different sources.</p>
         </div>
     }
 
     @if (_workouts.Any())
     {
-        <ul style="list-style: none; padding: 0;">
+        <ul class="workout-list">
             @foreach (var workout in _workouts)
             {
                 var distanceKm = workout.Distance.HasValue ? (workout.Distance.Value / 1000.0).ToString("F2") : null;
                 var calories = workout.EnergyBurned.HasValue ? workout.EnergyBurned.Value.ToString("F0") : null;
                 var avgHR = workout.AverageHeartRate.HasValue ? workout.AverageHeartRate.Value.ToString("F0") : null;
 
-                // Extract pause metadata
                 var hasPauseData = workout.Metadata?.ContainsKey("ActiveDurationSeconds") == true;
                 var activeDuration = hasPauseData && workout.Metadata!.TryGetValue("ActiveDurationSeconds", out var ad) ? Convert.ToDouble(ad) : 0;
                 var pausedDuration = hasPauseData && workout.Metadata!.TryGetValue("PausedDurationSeconds", out var pd) ? Convert.ToDouble(pd) : 0;
                 var pauseCount = hasPauseData && workout.Metadata!.TryGetValue("PauseCount", out var pc) ? Convert.ToInt32(pc) : 0;
 
-                // Check for duplicates
                 var isDuplicate = IsDuplicate(workout);
                 var duplicateGroup = isDuplicate ? GetDuplicateGroup(workout) : null;
                 var matchingWorkout = duplicateGroup?.Workouts.FirstOrDefault(w => w.Id != workout.Id);
 
-                <li style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 10px; border-radius: 4px; background-color: @(isDuplicate ? "#fff3cd" : "transparent"); border: @(isDuplicate ? "1px solid #ffc107" : "1px solid #dee2e6");">
+                <li class="workout-card @(isDuplicate ? "duplicate" : "")">
                     <div>
                         @if (isDuplicate)
                         {
-                            <span style="background-color: #ffc107; color: #856404; padding: 2px 6px; border-radius: 3px; font-size: 0.8em; margin-right: 5px;">DUPLICATE</span>
+                            <span class="badge duplicate">DUPLICATE</span>
                         }
-                        <strong>@workout.ActivityType</strong> -
-                        @workout.StartTime.ToLocalTime().ToString("HH:mm") to @(workout.EndTime.HasValue ? workout.EndTime.Value.ToLocalTime().ToString("HH:mm") : "ACTIVE")
-                        @if (hasPauseData && pausedDuration > 0)
-                        {
-                            <span>(@((int)activeDuration / 60) min active / @((int)workout.DurationSeconds / 60) min total)</span>
-                        }
-                        else
-                        {
-                            <span>(@((int)workout.DurationSeconds / 60) minutes)</span>
-                        }
-                        @if (distanceKm != null)
-                        {
-                            <span> - @distanceKm km</span>
-                        }
-                        @if (calories != null)
-                        {
-                            <span> - @calories kcal</span>
-                        }
-                        @if (avgHR != null)
-                        {
-                            <span> - Avg HR: @avgHR BPM</span>
-                        }
-
-                        <br/>
-                        <small>Source: @workout.DataOrigin</small>
-                        @if (hasPauseData && pauseCount > 0)
-                        {
-                            <br/>
-                            <small style="color: #6c757d;">⏸ @pauseCount pause(s), @((int)pausedDuration / 60) min @((int)pausedDuration % 60) sec paused</small>
-                        }
-                        @if (isDuplicate && matchingWorkout != null)
-                        {
-                            <br/>
-                            <small style="color: #856404;">↔️ Matches with: @matchingWorkout.DataOrigin (@matchingWorkout.StartTime.ToLocalTime().ToString("HH:mm"))</small>
-                        }
+                        <strong>@workout.ActivityType</strong>
+                        <span class="workout-stats">
+                            @workout.StartTime.ToLocalTime().ToString("HH:mm") - @(workout.EndTime.HasValue ? workout.EndTime.Value.ToLocalTime().ToString("HH:mm") : "ACTIVE")
+                            @if (hasPauseData && pausedDuration > 0)
+                            {
+                                <span>(@((int)activeDuration / 60) min active / @((int)workout.DurationSeconds / 60) min total)</span>
+                            }
+                            else
+                            {
+                                <span>(@((int)workout.DurationSeconds / 60) min)</span>
+                            }
+                            @if (distanceKm is not null) { <span> - @distanceKm km</span> }
+                            @if (calories is not null) { <span> - @calories kcal</span> }
+                            @if (avgHR is not null) { <span> - @avgHR BPM</span> }
+                        </span>
+                        <div class="workout-meta">
+                            Source: @workout.DataOrigin
+                            @if (hasPauseData && pauseCount > 0)
+                            {
+                                <span> | @pauseCount pause(s), @((int)pausedDuration / 60)m @((int)pausedDuration % 60)s paused</span>
+                            }
+                            @if (isDuplicate && matchingWorkout is not null)
+                            {
+                                <span> | Matches: @matchingWorkout.DataOrigin (@matchingWorkout.StartTime.ToLocalTime().ToString("HH:mm"))</span>
+                            }
+                        </div>
                     </div>
-                    <button @onclick="() => DeleteWorkout(workout)" style="padding: 5px 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-left: 10px;">
-                        🗑️ Delete
-                    </button>
+                    <button class="action-btn danger sm" @onclick="() => DeleteWorkout(workout)">Delete</button>
                 </li>
             }
         </ul>
     }
     else
     {
-        <p>No workouts found for today</p>
+        <p class="metric-empty">No workouts found for today</p>
     }
+}
+else if (_activeTab == 2)
+{
+    <!-- Experimental APIs Tab -->
+    <h2 class="section-header">
+        Experimental APIs <span class="badge experimental">EXPERIMENTAL</span>
+    </h2>
+    <p class="section-description">These APIs are marked [Experimental] and may change in future versions.</p>
+
+    <!-- Aggregate -->
+    <div class="api-section">
+        <div class="api-section-title">Aggregate Health Data</div>
+        <p class="section-description">Fetch deduplicated totals/averages using platform-native aggregation (Android aggregate(), iOS HKStatisticsQuery).</p>
+        <button class="action-btn primary" @onclick="LoadAggregatedDataAsync" disabled="@_isAggregateLoading">
+            @(_isAggregateLoading ? "Loading..." : "Aggregate Today's Data")
+        </button>
+        @if (_aggregateSteps is not null || _aggregateCalories is not null)
+        {
+            <div class="result-card">
+                <div class="metric-grid">
+                    @if (_aggregateSteps is not null)
+                    {
+                        <div>
+                            <div class="result-label">Steps (aggregated)</div>
+                            <div class="result-value">@_aggregateSteps.Value.ToString("N0")</div>
+                        </div>
+                    }
+                    @if (_aggregateCalories is not null)
+                    {
+                        <div>
+                            <div class="result-label">Calories (aggregated)</div>
+                            <div class="result-value">@_aggregateCalories.Value.ToString("F0") <span class="metric-unit">kcal</span></div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(_aggregateMessage))
+        {
+            <div class="status-msg @(_aggregateSuccess ? "info" : "error")">@_aggregateMessage</div>
+        }
+    </div>
+
+    <!-- Aggregate by Interval -->
+    <div class="api-section">
+        <div class="api-section-title">Aggregate by Interval</div>
+        <p class="section-description">Fetch daily step totals for the last 7 days using aggregateGroupByDuration / HKStatisticsCollectionQuery.</p>
+        <button class="action-btn primary" @onclick="LoadAggregatedByIntervalAsync" disabled="@_isIntervalLoading">
+            @(_isIntervalLoading ? "Loading..." : "Load Daily Steps (7 days)")
+        </button>
+        @if (_intervalResults.Any())
+        {
+            <div class="result-card">
+                <table class="table-simple">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th class="text-right">Steps</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var result in _intervalResults)
+                        {
+                            var isToday = DateOnly.FromDateTime(result.StartTime.LocalDateTime) == DateOnly.FromDateTime(DateTime.Today);
+                            <tr class="@(isToday ? "highlight" : "")">
+                                <td>
+                                    @result.StartTime.LocalDateTime.ToString("ddd, MMM dd")
+                                    @if (isToday) { <span class="badge today">TODAY</span> }
+                                </td>
+                                <td class="text-right text-bold">@result.Value.ToString("N0")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(_intervalMessage))
+        {
+            <div class="status-msg @(_intervalSuccess ? "info" : "error")">@_intervalMessage</div>
+        }
+    </div>
+
+    <!-- Delete by ID -->
+    <div class="api-section">
+        <div class="api-section-title">Delete Record by ID</div>
+        <p class="section-description">Delete any health record using its platform-specific ID. Only records created by your app can be deleted.</p>
+        <button class="action-btn info" @onclick="LoadLatestRecordsAsync" disabled="@_isLoadingLatest">
+            @(_isLoadingLatest ? "Loading..." : "Show Latest Records")
+        </button>
+        @if (_latestRecords.Any())
+        {
+            <div class="latest-records">
+                @foreach (var record in _latestRecords)
+                {
+                    <div class="latest-record-row">
+                        <div class="latest-record-info">
+                            <span class="latest-record-id">@record.Id[..Math.Min(8, record.Id.Length)]...</span>
+                            <span class="latest-record-detail">@record.Count steps &middot; @record.Timestamp.LocalDateTime.ToString("g")</span>
+                            <span class="latest-record-detail">Origin: @record.DataOrigin</span>
+                            @if (_verifyResults.TryGetValue(record.Id, out var result))
+                            {
+                                <span class="latest-record-detail verify-result">@result</span>
+                            }
+                        </div>
+                        <div class="latest-record-actions">
+                            <button class="action-btn sm muted" @onclick="() => VerifyRecordByIdAsync(record.Id)">Verify</button>
+                            <button class="action-btn sm primary" @onclick="() => UseRecordId(record.Id)">Use</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        <div class="controls-row">
+            <input type="text" @bind="_deleteRecordId" placeholder="Record ID" />
+            <select @bind="_deleteRecordType">
+                <option value="@TypeSteps">Steps</option>
+                <option value="@TypeWeight">Weight</option>
+                <option value="@TypeCalories">Active Calories</option>
+                <option value="@TypeHeartRate">Heart Rate</option>
+                <option value="@TypeVo2Max">VO2 Max</option>
+                <option value="@TypeBodyFat">Body Fat</option>
+            </select>
+            <button class="action-btn danger" @onclick="DeleteRecordByIdAsync" disabled="@string.IsNullOrEmpty(_deleteRecordId)">Delete</button>
+        </div>
+        @if (!string.IsNullOrEmpty(_deleteMessage))
+        {
+            <div class="status-msg @(_deleteSuccess ? "success" : "error")">@_deleteMessage</div>
+        }
+    </div>
+
+    <!-- Differential Sync -->
+    <div class="api-section">
+        <div class="api-section-title">Differential Sync</div>
+        <p class="section-description">Track changes (upserts/deletions) using tokens. Get a token first, then poll for changes.</p>
+        <div class="btn-group">
+            <button class="action-btn primary" @onclick="GetChangesTokenAsync">Get Token</button>
+            <button class="action-btn info" @onclick="GetChangesAsync" disabled="@string.IsNullOrEmpty(_changesToken)">Get Changes</button>
+        </div>
+        @if (!string.IsNullOrEmpty(_changesToken))
+        {
+            <div class="result-card">
+                <div class="result-label">Current Token</div>
+                <div class="sync-token">@_changesToken</div>
+            </div>
+        }
+        @if (_changesResult is not null)
+        {
+            <div class="result-card">
+                <div class="result-label">Changes (@_changesResult.Changes.Count) | Has More: @_changesResult.HasMore</div>
+                @if (_changesResult.Changes.Any())
+                {
+                    <ul class="changes-list">
+                        @foreach (var change in _changesResult.Changes)
+                        {
+                            <li>
+                                <span class="change-type @(change.Type == Maui.Health.Enums.HealthChangeType.Upsert ? "upsert" : "deletion")">
+                                    @change.Type
+                                </span>
+                                <code>@change.RecordId</code>
+                                @if (change.DataType is not null) { <span class="workout-meta">(@change.DataType)</span> }
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="metric-empty">No changes since last token</p>
+                }
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(_changesMessage))
+        {
+            <div class="status-msg @(_changesSuccess ? "info" : "error")">@_changesMessage</div>
+        }
+    </div>
 }

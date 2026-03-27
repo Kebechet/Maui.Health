@@ -43,8 +43,8 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>3.0.0</Version>
-    <PackageReleaseNotes>Unified and simplified android health connect handling</PackageReleaseNotes>
+    <Version>3.1.0-preview.1</Version>
+    <PackageReleaseNotes>Exposed missing health methods</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -53,7 +53,7 @@
 	</ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
-	  <PackageReference Include="Xamarin.AndroidX.Health.Connect.ConnectClient" Version="1.1.0" />
+	  <PackageReference Include="Xamarin.AndroidX.Health.Connect.ConnectClient" Version="1.1.0.2" />
 
     <!--Health.Connect.ConnectClient pulls in newer AndroidX deps (Activity 1.12.x, Lifecycle 2.10.x, SavedState 1.4.x)
         but MAUI's transitive *.Ktx packages have tight version constraints expecting older versions-->

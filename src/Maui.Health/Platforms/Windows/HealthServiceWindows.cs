@@ -1,4 +1,5 @@
-﻿using Maui.Health.Models;
+using Maui.Health.Enums;
+using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Services;
@@ -12,16 +13,50 @@ public partial class HealthService : IHealthService
         return Task.FromResult(new RequestPermissionResult());
     }
 
-    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult<List<TDto>>([]);
     }
 
-    public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken)
+    public partial Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return Task.FromResult<TDto?>(null);
+    }
+
+    public partial Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult(false);
+    }
+
+    public partial Task<bool> DeleteHealthData<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return Task.FromResult(false);
+    }
+
+    public partial Task<AggregatedResult?> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return Task.FromResult<AggregatedResult?>(null);
+    }
+
+    public partial Task<List<AggregatedResult>> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return Task.FromResult<List<AggregatedResult>>([]);
+    }
+
+    public partial Task<string?> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<string?>(null);
+    }
+
+    public partial Task<HealthChangesResult?> GetChanges(string token, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<HealthChangesResult?>(null);
     }
 
     public partial void OpenStorePageOfHealthProvider() { }

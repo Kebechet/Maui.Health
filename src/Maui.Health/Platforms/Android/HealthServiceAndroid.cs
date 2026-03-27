@@ -3,6 +3,7 @@ using AndroidX.Activity;
 using AndroidX.Activity.Result;
 using AndroidX.Health.Connect.Client;
 using Java.Util;
+using Maui.Health.Constants;
 using Maui.Health.Enums;
 using Maui.Health.Enums.Errors;
 using Maui.Health.Extensions;
@@ -13,6 +14,7 @@ using Maui.Health.Platforms.Android.Callbacks;
 using Maui.Health.Platforms.Android.Extensions;
 using Maui.Health.Platforms.Android.Helpers;
 using Microsoft.Extensions.Logging;
+using static Maui.Health.Platforms.Android.AndroidConstant;
 
 namespace Maui.Health.Services;
 
@@ -123,13 +125,13 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return GetHealthDataInternal<TDto>(timeRange, cancellationToken);
+        return GetHealthDataInternal<TDto>(timeRange, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<List<TDto>> GetHealthDataInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    private async Task<List<TDto>> GetHealthDataInternal<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         try
@@ -143,12 +145,14 @@ public partial class HealthService : IHealthService
                 return [];
             }
 
-            // Request permission for the specific metric
-            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
-            if (requestPermissionResult.IsError)
+            if (shouldCheckPermissions)
             {
-                return [];
+                var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
+                if (requestPermissionResult.IsError)
+                {
+                    return [];
+                }
             }
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
@@ -174,13 +178,13 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken)
+    public partial Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return WriteHealthDataInternal(data, cancellationToken);
+        return WriteHealthDataInternal(data, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<bool> WriteHealthDataInternal<TDto>(TDto data, CancellationToken cancellationToken) where TDto : HealthMetricBase
+    private async Task<bool> WriteHealthDataInternal<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken) where TDto : HealthMetricBase
     {
         try
         {
@@ -190,17 +194,19 @@ public partial class HealthService : IHealthService
                 return false;
             }
 
-            // Request write permission for the specific metric
-            var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var writePermission = new HealthPermissionDto
+            if (shouldCheckPermissions)
             {
-                HealthDataType = readPermission.HealthDataType,
-                PermissionType = PermissionType.Write
-            };
-            var requestPermissionResult = await RequestPermissions([writePermission], false, cancellationToken);
-            if (requestPermissionResult.IsError)
-            {
-                return false;
+                var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var writePermission = new HealthPermissionDto
+                {
+                    HealthDataType = readPermission.HealthDataType,
+                    PermissionType = PermissionType.Write
+                };
+                var requestPermissionResult = await RequestPermissions([writePermission], false, cancellationToken);
+                if (requestPermissionResult.IsError)
+                {
+                    return false;
+                }
             }
 
             var record = data.ToAndroidRecord();
@@ -225,6 +231,322 @@ public partial class HealthService : IHealthService
             _logger.LogError(ex, "Error writing health data for {DtoName}", typeof(TDto).Name);
             return false;
         }
+    }
+
+    //https://github.com/Kebechet/Maui.Health/pull/8/files
+    //Split to `public partial` and `private async` method because of trimmer/linker issue
+    public partial Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return GetHealthRecordInternal<TDto>(id, shouldCheckPermissions, cancellationToken);
+    }
+
+    private async Task<TDto?> GetHealthRecordInternal<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        try
+        {
+            if (!_sdkStatus.IsSuccess)
+            {
+                return null;
+            }
+
+            if (shouldCheckPermissions)
+            {
+                var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
+                if (requestPermissionResult.IsError)
+                {
+                    return null;
+                }
+            }
+
+            // Read all records and find by ID since readRecord() is also a suspend function
+            // that would need additional reflection. Using the existing readRecords approach
+            // with the record ID filter is simpler.
+            var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
+            var recordClass = healthDataType.ToKotlinClass();
+
+            // Use a wide time range to find the record - Health Connect readRecords is the only
+            // reliable way without another reflection entry point
+            var timeRange = HealthTimeRange.FromDateTimeOffset(
+                DateTimeOffset.MinValue.AddYears(1),
+                DateTimeOffset.UtcNow.AddDays(1)
+            );
+
+            var response = await _healthConnectClient.ReadHealthRecords(recordClass, timeRange);
+            if (response is null)
+            {
+                return null;
+            }
+
+            var results = response.Records.ToDtoList<TDto>();
+            return results.FirstOrDefault(x => x.Id == id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching health record {Id} for {DtoName}", id, typeof(TDto).Name);
+            return null;
+        }
+    }
+
+    //https://github.com/Kebechet/Maui.Health/pull/8/files
+    //Split to `public partial` and `private async` method because of trimmer/linker issue
+    public partial Task<bool> DeleteHealthData<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return DeleteHealthDataInternal<TDto>(id, shouldCheckPermissions, cancellationToken);
+    }
+
+    private async Task<bool> DeleteHealthDataInternal<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        try
+        {
+            if (!_sdkStatus.IsSuccess)
+            {
+                return false;
+            }
+
+            if (shouldCheckPermissions)
+            {
+                var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var writePermission = new HealthPermissionDto
+                {
+                    HealthDataType = readPermission.HealthDataType,
+                    PermissionType = PermissionType.Write
+                };
+                var requestPermissionResult = await RequestPermissions([writePermission], false, cancellationToken);
+                if (requestPermissionResult.IsError)
+                {
+                    return false;
+                }
+            }
+
+            var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
+            var recordClass = healthDataType.ToKotlinClass();
+
+            var isDeleted = await _healthConnectClient.DeleteRecord(recordClass, id);
+
+            if (isDeleted)
+            {
+                _logger.LogInformation("Successfully deleted {DtoName} record {Id}", typeof(TDto).Name, id);
+            }
+            else
+            {
+                _logger.LogWarning("Failed to delete {DtoName} record {Id}", typeof(TDto).Name, id);
+            }
+
+            return isDeleted;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting {DtoName} record {Id}", typeof(TDto).Name, id);
+            return false;
+        }
+    }
+
+    //https://github.com/Kebechet/Maui.Health/pull/8/files
+    //Split to `public partial` and `private async` method because of trimmer/linker issue
+    public partial Task<AggregatedResult?> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return GetAggregatedHealthDataInternal<TDto>(timeRange, cancellationToken);
+    }
+
+    private async Task<AggregatedResult?> GetAggregatedHealthDataInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        try
+        {
+            if (!_sdkStatus.IsSuccess)
+            {
+                return null;
+            }
+
+            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+            var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
+            if (requestPermissionResult.IsError)
+            {
+                return null;
+            }
+
+            var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
+            var (recordClassName, metricFieldName, unit) = GetAggregateMetricInfo(healthDataType);
+            if (recordClassName is null || metricFieldName is null)
+            {
+                _logger.LogWarning("Aggregation not supported for {DtoName}", typeof(TDto).Name);
+                return null;
+            }
+
+            var result = await _healthConnectClient.AggregateHealthRecords(recordClassName, metricFieldName, timeRange);
+            if (result is null)
+            {
+                _logger.LogInformation("No aggregate data found for {DtoName}", typeof(TDto).Name);
+                return null;
+            }
+
+            double numericValue = 0;
+            if (result is Java.Lang.Number number)
+            {
+                numericValue = number.DoubleValue();
+            }
+            else
+            {
+                // Aggregate Energy objects from JNI reflection have getValue() returning kcal,
+                // unlike individual record Energy objects where getValue() returns calories.
+                // Try extracting kcal directly first, fall back to ExtractEnergyValue for other types.
+                if (unit == Units.Kilocalorie
+                    && (result.TryCallMethod("getInKilocalories", out double kcalValue)
+                        || result.TryGetPropertyValue("value", out kcalValue)))
+                {
+                    numericValue = kcalValue;
+                }
+                else
+                {
+                    numericValue = result.ExtractEnergyValue();
+                }
+            }
+
+            _logger.LogInformation("Aggregated {DtoName}: {Value}", typeof(TDto).Name, numericValue);
+
+            return new AggregatedResult
+            {
+                StartTime = timeRange.StartTime,
+                EndTime = timeRange.EndTime,
+                Value = numericValue,
+                Unit = unit,
+                DataType = healthDataType
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error aggregating health data for {DtoName}", typeof(TDto).Name);
+            return null;
+        }
+    }
+
+    //https://github.com/Kebechet/Maui.Health/pull/8/files
+    //Split to `public partial` and `private async` method because of trimmer/linker issue
+    public partial Task<List<AggregatedResult>> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return GetAggregatedHealthDataByIntervalInternal<TDto>(timeRange, interval, cancellationToken);
+    }
+
+    private async Task<List<AggregatedResult>> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        try
+        {
+            if (!_sdkStatus.IsSuccess)
+            {
+                return [];
+            }
+
+            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+            var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
+            if (requestPermissionResult.IsError)
+            {
+                return [];
+            }
+
+            var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
+            var (recordClassName, metricFieldName, unit) = GetAggregateMetricInfo(healthDataType);
+            if (recordClassName is null || metricFieldName is null)
+            {
+                _logger.LogWarning("Interval aggregation not supported for {DtoName}", typeof(TDto).Name);
+                return [];
+            }
+
+            var results = await _healthConnectClient.AggregateHealthRecordsByDuration(
+                recordClassName, metricFieldName, timeRange, interval, healthDataType, unit);
+
+            _logger.LogInformation("Found {Count} interval buckets for {DtoName}", results.Count, typeof(TDto).Name);
+            return results;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error aggregating health data by interval for {DtoName}", typeof(TDto).Name);
+            return [];
+        }
+    }
+
+    public async partial Task<string?> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (!_sdkStatus.IsSuccess)
+            {
+                return null;
+            }
+
+            // Request read permissions for all requested data types
+            var permissions = dataTypes
+                .Select(dt => new HealthPermissionDto { HealthDataType = dt, PermissionType = PermissionType.Read })
+                .ToList();
+
+            var requestPermissionResult = await RequestPermissions(permissions, false, cancellationToken);
+            if (requestPermissionResult.IsError)
+            {
+                return null;
+            }
+
+            var recordTypes = dataTypes
+                .Select(dt => dt.ToKotlinClass())
+                .ToList();
+
+            var token = await _healthConnectClient.GetHealthChangesToken(recordTypes);
+
+            _logger.LogInformation("Got changes token for {Count} data types", dataTypes.Count);
+            return token;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting changes token");
+            return null;
+        }
+    }
+
+    public async partial Task<HealthChangesResult?> GetChanges(string token, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (!_sdkStatus.IsSuccess)
+            {
+                return null;
+            }
+
+            var result = await _healthConnectClient.GetHealthChanges(token);
+
+            if (result is not null)
+            {
+                _logger.LogInformation("Got {Count} changes, hasMore: {HasMore}", result.Changes.Count, result.HasMore);
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting health changes");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Maps a HealthDataType to its Android aggregate metric info (record class name, metric field name, unit).
+    /// </summary>
+    private static (string? RecordClassName, string? MetricFieldName, string? Unit) GetAggregateMetricInfo(HealthDataType healthDataType)
+    {
+        return healthDataType switch
+        {
+            HealthDataType.Steps => (Reflection.StepsRecordClassName, Reflection.CountTotalMetricName, null),
+            HealthDataType.ActiveCaloriesBurned => (Reflection.ActiveCaloriesBurnedRecordClassName, Reflection.ActiveCaloriesTotalMetricName, Units.Kilocalorie),
+            HealthDataType.Hydration => (Reflection.HydrationRecordClassName, Reflection.VolumeTotalMetricName, Units.Liter),
+            HealthDataType.Weight => (Reflection.WeightRecordClassName, Reflection.WeightAvgMetricName, Units.Kilogram),
+            HealthDataType.HeartRate => (Reflection.HeartRateRecordClassName, Reflection.BpmAvgMetricName, Units.BeatsPerMinute),
+            _ => (null, null, null)
+        };
     }
 
     public partial void OpenStorePageOfHealthProvider()

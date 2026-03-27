@@ -1,4 +1,5 @@
-﻿using Maui.Health.Models;
+﻿using Maui.Health.Enums;
+using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using Microsoft.Extensions.Logging;
 
@@ -33,12 +34,34 @@ public partial class HealthService : IHealthService
     public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
 
     /// <inheritdoc/>
-    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken = default)
+    public partial Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
+
+    /// <inheritdoc/>
+    public partial Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase;
+
+    /// <inheritdoc/>
+    public partial Task<bool> DeleteHealthData<TDto>(string id, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase;
+
+    /// <inheritdoc/>
+    public partial Task<AggregatedResult?> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase;
+
+    /// <inheritdoc/>
+    public partial Task<List<AggregatedResult>> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase;
+
+    /// <inheritdoc/>
+    public partial Task<string?> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken = default);
+
+    /// <inheritdoc/>
+    public partial Task<HealthChangesResult?> GetChanges(string token, CancellationToken cancellationToken = default);
 
     /// <inheritdoc/>
     public partial void OpenStorePageOfHealthProvider();
