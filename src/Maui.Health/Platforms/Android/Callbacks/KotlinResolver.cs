@@ -65,7 +65,7 @@ internal static class KotlinResolver
             }
         }
 
-        if (result is JavaList javaList)
+        if (result is Java.Util.IList javaList)
         {
             var aggregationResults = new List<AggregationResultGroupedByDuration>();
             for (int i = 0; i < javaList.Size(); i++)

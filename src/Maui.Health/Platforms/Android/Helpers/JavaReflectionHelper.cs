@@ -330,7 +330,9 @@ internal static class JavaReflectionHelper
                 Java.Lang.Class.FromType(typeof(IKClass)),
                 Java.Lang.Class.FromType(typeof(Java.Util.IList)),
                 Java.Lang.Class.FromType(typeof(Java.Util.IList)),
-                Java.Lang.Class.FromType(typeof(Kotlin.Coroutines.IContinuation)));
+                Java.Lang.Class.FromType(typeof(Kotlin.Coroutines.IContinuation)))
+                ?? clientClass.GetMethods()?.FirstOrDefault(m =>
+                    m?.Name == "deleteRecords" && m.GetParameterTypes()?.Length == 4);
 
             if (deleteMethod is null)
             {
@@ -489,9 +491,15 @@ internal static class JavaReflectionHelper
             }
 
             // Result is a List<AggregationResultGroupedByDuration>
+            // May be JavaList or java.util.Arrays$ArrayList (IList)
             var results = new List<AggregatedResult>();
 
-            if (result is not JavaList javaList)
+            Java.Util.IList javaList;
+            if (result is Java.Util.IList iList)
+            {
+                javaList = iList;
+            }
+            else
             {
                 return [];
             }
@@ -508,7 +516,8 @@ internal static class JavaReflectionHelper
                 var endInstant = InvokeAccessibleMethod(item, "getEndTime") as Java.Time.Instant;
 
                 // Get the AggregationResult from the grouped item
-                var getResultMethod = item.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getResult");
+                var getResultMethod = item.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getResult")
+                    ?? item.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getResult");
                 if (getResultMethod is null)
                 {
                     continue;
@@ -649,13 +658,14 @@ internal static class JavaReflectionHelper
             var changes = new List<HealthChange>();
 
             // Extract changes list
-            var getChangesMethod = result.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getChanges");
+            var getChangesMethod = result.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getChanges")
+                ?? result.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getChanges");
             if (getChangesMethod is not null)
             {
                 getChangesMethod.Accessible = true;
                 var changesList = getChangesMethod.Invoke(result);
 
-                if (changesList is JavaList javaChangesList)
+                if (changesList is Java.Util.IList javaChangesList)
                 {
                     for (int i = 0; i < javaChangesList.Size(); i++)
                     {
@@ -669,19 +679,22 @@ internal static class JavaReflectionHelper
 
                         if (className.Contains("UpsertionChange"))
                         {
-                            var getRecordMethod = change.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getRecord");
+                            var getRecordMethod = change.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getRecord")
+                                ?? change.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getRecord");
                             if (getRecordMethod is not null)
                             {
                                 getRecordMethod.Accessible = true;
                                 var record = getRecordMethod.Invoke(change);
-                                var metadataField = record?.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getMetadata");
+                                var metadataField = record?.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getMetadata")
+                                    ?? record?.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getMetadata");
                                 string? recordId = null;
 
                                 if (metadataField is not null)
                                 {
                                     metadataField.Accessible = true;
                                     var metadata = metadataField.Invoke(record);
-                                    var idMethod = metadata?.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getId");
+                                    var idMethod = metadata?.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getId")
+                                        ?? metadata?.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getId");
                                     if (idMethod is not null)
                                     {
                                         idMethod.Accessible = true;
@@ -702,7 +715,9 @@ internal static class JavaReflectionHelper
                         else if (className.Contains("DeletionChange"))
                         {
                             var getIdMethod = change.Class?.GetDeclaredMethods()?.FirstOrDefault(m =>
-                                m?.Name == "getDeletedRecordId" || m?.Name == "getRecordId");
+                                m?.Name == "getDeletedRecordId" || m?.Name == "getRecordId")
+                                ?? change.Class?.GetMethods()?.FirstOrDefault(m =>
+                                    m?.Name == "getDeletedRecordId" || m?.Name == "getRecordId");
                             if (getIdMethod is not null)
                             {
                                 getIdMethod.Accessible = true;
@@ -722,7 +737,8 @@ internal static class JavaReflectionHelper
             }
 
             // Extract next token
-            var getNextTokenMethod = result.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getNextChangesToken");
+            var getNextTokenMethod = result.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getNextChangesToken")
+                ?? result.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getNextChangesToken");
             string? nextToken = null;
             if (getNextTokenMethod is not null)
             {
@@ -731,7 +747,8 @@ internal static class JavaReflectionHelper
             }
 
             // Extract hasMore
-            var hasMoreMethod = result.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getHasMore" || m?.Name == "hasMore");
+            var hasMoreMethod = result.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getHasMore" || m?.Name == "hasMore")
+                ?? result.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getHasMore" || m?.Name == "hasMore");
             bool hasMore = false;
             if (hasMoreMethod is not null)
             {
@@ -804,7 +821,9 @@ internal static class JavaReflectionHelper
         Java.Lang.Object parameter)
     {
         var method = clientClass.GetDeclaredMethods()?.FirstOrDefault(m =>
-            m?.Name == methodName && m.GetParameterTypes()?.Length == 2);
+            m?.Name == methodName && m.GetParameterTypes()?.Length == 2)
+            ?? clientClass.GetMethods()?.FirstOrDefault(m =>
+                m?.Name == methodName && m.GetParameterTypes()?.Length == 2);
 
         if (method is null)
         {
@@ -929,7 +948,8 @@ internal static class JavaReflectionHelper
     /// </summary>
     private static Java.Lang.Object? InvokeAccessibleMethod(Java.Lang.Object obj, string methodName)
     {
-        var method = obj.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == methodName);
+        var method = obj.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == methodName)
+            ?? obj.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == methodName);
         if (method is null)
         {
             return null;
