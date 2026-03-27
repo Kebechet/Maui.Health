@@ -19,6 +19,7 @@
     <div class="btn-group">
         <button class="action-btn primary" @onclick="PopulateDemoData">Populate Demo Data</button>
         <button class="action-btn muted" @onclick="LoadHealthDataAsync">Refresh</button>
+        <button class="action-btn muted" @onclick="ClearAllDemoData" style="color: #dc3545;">Clear</button>
     </div>
     @if (!string.IsNullOrEmpty(_demoDataMessage))
     {

@@ -205,6 +205,69 @@ public partial class Home
         }
     }
 
+    private async Task ClearAllDemoData()
+    {
+        try
+        {
+            _demoDataMessage = "Clearing all demo data...";
+            _demoDataSuccess = false;
+            StateHasChanged();
+
+            var today = DateTime.Today;
+            var todayRange = HealthTimeRange.FromDateTime(today, today.AddDays(1));
+
+            foreach (var record in _stepsRecords)
+            {
+                await _healthService.DeleteHealthData<StepsDto>(record.Id);
+            }
+
+            foreach (var record in _weightRecords)
+            {
+                await _healthService.DeleteHealthData<WeightDto>(record.Id);
+            }
+
+            foreach (var record in _caloriesRecords)
+            {
+                await _healthService.DeleteHealthData<ActiveCaloriesBurnedDto>(record.Id);
+            }
+
+            foreach (var record in _heartRateRecords)
+            {
+                await _healthService.DeleteHealthData<HeartRateDto>(record.Id);
+            }
+
+            foreach (var record in _vo2MaxRecords)
+            {
+                await _healthService.DeleteHealthData<Vo2MaxDto>(record.Id);
+            }
+
+            foreach (var record in _bodyFatRecords)
+            {
+                await _healthService.DeleteHealthData<BodyFatDto>(record.Id);
+            }
+
+            foreach (var workout in _workouts)
+            {
+                await _healthService.Activity.Delete(workout);
+            }
+
+            _demoDataMessage = "All demo data cleared! Refreshing...";
+            _demoDataSuccess = true;
+            StateHasChanged();
+
+            await LoadHealthDataAsync();
+
+            _demoDataMessage = "All demo data cleared successfully!";
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _demoDataMessage = $"Error clearing: {ex.Message}";
+            _demoDataSuccess = false;
+            StateHasChanged();
+        }
+    }
+
     private async Task LoadHealthDataAsync()
     {
         try
