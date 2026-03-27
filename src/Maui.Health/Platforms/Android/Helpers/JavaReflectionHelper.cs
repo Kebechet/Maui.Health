@@ -205,7 +205,7 @@ internal static class JavaReflectionHelper
     }
 
     /// <summary>
-    /// Inserts a record into Health Connect using reflection to call the Kotlin suspend function.
+    /// Inserts a record into Health Connect using the direct binding method via KotlinResolver.
     /// </summary>
     /// <param name="healthConnectClient">The Health Connect client instance</param>
     /// <param name="record">The record to insert</param>
@@ -214,55 +214,22 @@ internal static class JavaReflectionHelper
     {
         try
         {
-            var recordsList = new Java.Util.ArrayList();
-            recordsList.Add(record);
+            // Wrap the Java object as IRecord using the JNI handle to avoid managed cast issues
+            var irecord = Java.Lang.Object.GetObject<AndroidX.Health.Connect.Client.Records.IRecord>(
+                record.Handle, JniHandleOwnership.DoNotTransfer);
 
-            var clientType = healthConnectClient.GetType();
-            var handleField = clientType.GetField(JniHandleFieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-
-            if (handleField is null)
+            if (irecord is null)
             {
-                Debug.WriteLine("Could not find handle field via reflection");
+                Debug.WriteLine("Could not wrap record as IRecord");
                 return false;
             }
 
-            var handle = handleField.GetValue(healthConnectClient);
-            if (handle is not IntPtr jniHandle || jniHandle == IntPtr.Zero)
-            {
-                Debug.WriteLine("Invalid JNI handle for Health Connect client");
-                return false;
-            }
+            var recordsList = new System.Collections.Generic.List<AndroidX.Health.Connect.Client.Records.IRecord> { irecord };
 
-            var classHandle = JNIEnv.GetObjectClass(jniHandle);
-            var clientClass = Java.Lang.Object.GetObject<Java.Lang.Class>(classHandle, JniHandleOwnership.DoNotTransfer);
-            var clientObject = Java.Lang.Object.GetObject<Java.Lang.Object>(jniHandle, JniHandleOwnership.DoNotTransfer);
+            var response = await KotlinResolver.Process<InsertRecordsResponse, System.Collections.Generic.IList<AndroidX.Health.Connect.Client.Records.IRecord>>(
+                healthConnectClient.InsertRecords, recordsList);
 
-            var insertMethod = clientClass?.GetDeclaredMethod("insertRecords",
-                Java.Lang.Class.FromType(typeof(Java.Util.IList)),
-                Java.Lang.Class.FromType(typeof(Kotlin.Coroutines.IContinuation)));
-
-            if (insertMethod is null || clientObject is null)
-            {
-                Debug.WriteLine("Could not find insertRecords method or client object");
-                return false;
-            }
-
-            var taskCompletionSource = new TaskCompletionSource<Java.Lang.Object>();
-            var continuation = new Continuation(taskCompletionSource, default);
-
-            insertMethod.Accessible = true;
-            var result = insertMethod.Invoke(clientObject, recordsList, continuation);
-
-            if (result is Java.Lang.Enum javaEnum)
-            {
-                var currentState = Enum.Parse<CoroutineState>(javaEnum.ToString());
-                if (currentState == CoroutineState.COROUTINE_SUSPENDED)
-                {
-                    await taskCompletionSource.Task;
-                }
-            }
-
-            return true;
+            return response is not null;
         }
         catch (Exception ex)
         {

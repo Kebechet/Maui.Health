@@ -92,17 +92,16 @@ public partial class Home
             _demoDataMessage = "Writing demo data...";
             StateHasChanged();
 
-            var today = DateTime.Today;
-            var now = DateTime.Now;
-            var localOffset = DateTimeOffset.Now.Offset;
+            // Use timestamps relative to now (in the past) so Android Health Connect accepts them
+            var now = DateTimeOffset.Now;
 
-            // Write Steps data (multiple entries throughout the day)
+            // Write Steps data (multiple entries spread over the last 40 minutes)
             var stepsData = new[]
             {
-                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 1500, StartTime = new DateTimeOffset(today.AddHours(8), localOffset), EndTime = new DateTimeOffset(today.AddHours(9), localOffset), Timestamp = new DateTimeOffset(today.AddHours(8), localOffset) },
-                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 2300, StartTime = new DateTimeOffset(today.AddHours(10), localOffset), EndTime = new DateTimeOffset(today.AddHours(12), localOffset), Timestamp = new DateTimeOffset(today.AddHours(10), localOffset) },
-                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 3200, StartTime = new DateTimeOffset(today.AddHours(14), localOffset), EndTime = new DateTimeOffset(today.AddHours(16), localOffset), Timestamp = new DateTimeOffset(today.AddHours(14), localOffset) },
-                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 1800, StartTime = new DateTimeOffset(today.AddHours(17), localOffset), EndTime = new DateTimeOffset(today.AddHours(18), localOffset), Timestamp = new DateTimeOffset(today.AddHours(17), localOffset) }
+                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 1500, StartTime = now.AddMinutes(-40), EndTime = now.AddMinutes(-30), Timestamp = now.AddMinutes(-40) },
+                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 2300, StartTime = now.AddMinutes(-30), EndTime = now.AddMinutes(-20), Timestamp = now.AddMinutes(-30) },
+                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 3200, StartTime = now.AddMinutes(-20), EndTime = now.AddMinutes(-15), Timestamp = now.AddMinutes(-20) },
+                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 1800, StartTime = now.AddMinutes(-15), EndTime = now.AddMinutes(-10), Timestamp = now.AddMinutes(-15) }
             };
 
             foreach (var step in stepsData)
@@ -116,15 +115,15 @@ public partial class Home
                 Id = "",
                 DataOrigin = "DemoApp",
                 Value = 75.5,
-                Timestamp = new DateTimeOffset(today.AddHours(7), localOffset),
+                Timestamp = now.AddMinutes(-10),
                 Unit = "kg"
             };
             await _healthService.WriteHealthData(weightData);
 
-            // Write Active Calories Burned data (multiple sessions)
+            // Write Active Calories Burned data
             var caloriesData = new[]
             {
-                new ActiveCaloriesBurnedDto { Id = "", DataOrigin = "DemoApp", Energy = 120, StartTime = new DateTimeOffset(today.AddHours(8), localOffset), EndTime = new DateTimeOffset(today.AddHours(9), localOffset), Timestamp = new DateTimeOffset(today.AddHours(8), localOffset), Unit = "kcal" },
+                new ActiveCaloriesBurnedDto { Id = "", DataOrigin = "DemoApp", Energy = 120, StartTime = now.AddMinutes(-30), EndTime = now.AddMinutes(-20), Timestamp = now.AddMinutes(-30), Unit = "kcal" },
             };
 
             foreach (var calories in caloriesData)
@@ -132,15 +131,15 @@ public partial class Home
                 await _healthService.WriteHealthData(calories);
             }
 
-            // Write Heart Rate data during exercise time (14:00-17:00)
+            // Write Heart Rate data (spread over the last hour)
             var heartRateData = new[]
             {
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 125, Timestamp = new DateTimeOffset(today.AddHours(14).AddMinutes(5), localOffset), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 138, Timestamp = new DateTimeOffset(today.AddHours(14).AddMinutes(15), localOffset), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 145, Timestamp = new DateTimeOffset(today.AddHours(14).AddMinutes(25), localOffset), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 142, Timestamp = new DateTimeOffset(today.AddHours(14).AddMinutes(35), localOffset), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 135, Timestamp = new DateTimeOffset(today.AddHours(14).AddMinutes(45), localOffset), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 128, Timestamp = new DateTimeOffset(today.AddHours(14).AddMinutes(55), localOffset), Unit = "BPM" }
+                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 125, Timestamp = now.AddMinutes(-55), Unit = "BPM" },
+                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 138, Timestamp = now.AddMinutes(-45), Unit = "BPM" },
+                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 145, Timestamp = now.AddMinutes(-35), Unit = "BPM" },
+                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 142, Timestamp = now.AddMinutes(-25), Unit = "BPM" },
+                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 135, Timestamp = now.AddMinutes(-15), Unit = "BPM" },
+                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 128, Timestamp = now.AddMinutes(-5), Unit = "BPM" }
             };
 
             foreach (var heartRate in heartRateData)
@@ -154,7 +153,7 @@ public partial class Home
                 Id = "",
                 DataOrigin = "DemoApp",
                 Value = 42.5,
-                Timestamp = new DateTimeOffset(today.AddHours(7), localOffset),
+                Timestamp = now.AddMinutes(-10),
                 Unit = "ml/kg/min"
             };
             await _healthService.WriteHealthData(vo2MaxData);
@@ -165,23 +164,21 @@ public partial class Home
                 Id = "",
                 DataOrigin = "DemoApp",
                 Percentage = 18.5,
-                Timestamp = new DateTimeOffset(today.AddHours(7), localOffset),
+                Timestamp = now.AddMinutes(-10),
                 Unit = "%"
             };
             await _healthService.WriteHealthData(bodyFatData);
 
             // Write a strength training workout
-            var workoutStart = now.AddHours(-1);
-            var workoutEnd = now;
             var strengthTrainingWorkout = new WorkoutDto
             {
                 Id = "",
                 DataOrigin = "DemoApp",
                 ActivityType = ActivityType.StrengthTraining,
                 Title = "Strength Training",
-                StartTime = new DateTimeOffset(workoutStart, localOffset),
-                EndTime = new DateTimeOffset(workoutEnd, localOffset),
-                Timestamp = new DateTimeOffset(workoutStart, localOffset),
+                StartTime = now.AddMinutes(-30),
+                EndTime = now.AddMinutes(-10),
+                Timestamp = now.AddMinutes(-30),
                 EnergyBurned = 250,
                 Distance = null
             };
@@ -229,9 +226,9 @@ public partial class Home
 
             var today = DateTime.Today;
 
-            // Use end of day so demo data written with future timestamps (e.g. 14:00) is always included
             var todayRange = HealthTimeRange.FromDateTime(today, today.AddDays(1));
-            var exerciseRange = HealthTimeRange.FromDateTime(today.AddHours(14), today.AddHours(17)); // 14:00 - 17:00
+            // Heart rate: use full day range to capture demo data written relative to now
+            var exerciseRange = todayRange;
 
             // Load data with individual try-catch to continue on permission errors
             try
