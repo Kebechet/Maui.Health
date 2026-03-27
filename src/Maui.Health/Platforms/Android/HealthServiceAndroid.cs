@@ -383,7 +383,19 @@ public partial class HealthService : IHealthService
             }
             else
             {
-                numericValue = result.ExtractEnergyValue();
+                // Aggregate Energy objects from JNI reflection have getValue() returning kcal,
+                // unlike individual record Energy objects where getValue() returns calories.
+                // Try extracting kcal directly first, fall back to ExtractEnergyValue for other types.
+                if (unit == Units.Kilocalorie
+                    && (result.TryCallMethod("getInKilocalories", out double kcalValue)
+                        || result.TryGetPropertyValue("value", out kcalValue)))
+                {
+                    numericValue = kcalValue;
+                }
+                else
+                {
+                    numericValue = result.ExtractEnergyValue();
+                }
             }
 
             _logger.LogInformation("Aggregated {DtoName}: {Value}", typeof(TDto).Name, numericValue);

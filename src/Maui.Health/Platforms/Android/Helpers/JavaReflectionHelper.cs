@@ -31,9 +31,13 @@ internal static class JavaReflectionHelper
         try
         {
             var objClass = obj.Class;
+            // Search declared methods first, then all methods (including inherited) as fallback
             var inUnitMethod = objClass?.GetDeclaredMethods()?.FirstOrDefault(m =>
                 m != null && (m.Name.Equals("InUnit", StringComparison.OrdinalIgnoreCase) ||
-                              m.Name.Equals("inUnit", StringComparison.OrdinalIgnoreCase)));
+                              m.Name.Equals("inUnit", StringComparison.OrdinalIgnoreCase)))
+                ?? objClass?.GetMethods()?.FirstOrDefault(m =>
+                    m != null && (m.Name.Equals("InUnit", StringComparison.OrdinalIgnoreCase) ||
+                                  m.Name.Equals("inUnit", StringComparison.OrdinalIgnoreCase)));
 
             if (inUnitMethod is null)
             {
@@ -94,7 +98,11 @@ internal static class JavaReflectionHelper
         try
         {
             var objClass = obj.Class;
-            var method = objClass?.GetDeclaredMethod(methodName);
+            // GetDeclaredMethod only searches the exact class, not parent classes.
+            // Fall back to searching all methods (including inherited) by name.
+            var method = objClass?.GetDeclaredMethod(methodName)
+                ?? objClass?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == methodName && m.GetParameterTypes()?.Length == 0)
+                ?? objClass?.GetMethods()?.FirstOrDefault(m => m?.Name == methodName && m.GetParameterTypes()?.Length == 0);
 
             if (method is null)
             {
@@ -756,20 +764,27 @@ internal static class JavaReflectionHelper
     private static (Java.Lang.Class? ClientClass, Java.Lang.Object? ClientObject) GetJniClientObjects(
         this IHealthConnectClient healthConnectClient)
     {
-        var clientType = healthConnectClient.GetType();
-        var handleField = clientType.GetField(JniHandleFieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-
-        if (handleField is null)
+        var jniHandle = healthConnectClient.Handle;
+        if (jniHandle == IntPtr.Zero)
         {
-            Debug.WriteLine("Could not find handle field via reflection");
-            return (null, null);
-        }
+            // Fallback: try private field reflection for older bindings
+            var clientType = healthConnectClient.GetType();
+            var handleField = clientType.GetField(JniHandleFieldName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
 
-        var handle = handleField.GetValue(healthConnectClient);
-        if (handle is not IntPtr jniHandle || jniHandle == IntPtr.Zero)
-        {
-            Debug.WriteLine("Invalid JNI handle for Health Connect client");
-            return (null, null);
+            if (handleField is null)
+            {
+                Debug.WriteLine("Could not find handle field via reflection");
+                return (null, null);
+            }
+
+            var handle = handleField.GetValue(healthConnectClient);
+            if (handle is not IntPtr fallbackHandle || fallbackHandle == IntPtr.Zero)
+            {
+                Debug.WriteLine("Invalid JNI handle for Health Connect client");
+                return (null, null);
+            }
+
+            jniHandle = fallbackHandle;
         }
 
         var classHandle = JNIEnv.GetObjectClass(jniHandle);
