@@ -34,19 +34,19 @@ public partial class HealthService : IHealthService
     public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
 
     /// <inheritdoc/>
-    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<TDto?> GetHealthRecord<TDto>(string id, CancellationToken cancellationToken = default)
+    public partial Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken = default)
+    public partial Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<bool> DeleteHealthData<TDto>(string id, CancellationToken cancellationToken = default)
+    public partial Task<bool> DeleteHealthData<TDto>(string id, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>

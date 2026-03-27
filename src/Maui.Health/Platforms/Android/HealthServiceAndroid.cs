@@ -125,13 +125,13 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return GetHealthDataInternal<TDto>(timeRange, cancellationToken);
+        return GetHealthDataInternal<TDto>(timeRange, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<List<TDto>> GetHealthDataInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    private async Task<List<TDto>> GetHealthDataInternal<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         try
@@ -145,12 +145,14 @@ public partial class HealthService : IHealthService
                 return [];
             }
 
-            // Request permission for the specific metric
-            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
-            if (requestPermissionResult.IsError)
+            if (shouldCheckPermissions)
             {
-                return [];
+                var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
+                if (requestPermissionResult.IsError)
+                {
+                    return [];
+                }
             }
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
@@ -176,13 +178,13 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken)
+    public partial Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return WriteHealthDataInternal(data, cancellationToken);
+        return WriteHealthDataInternal(data, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<bool> WriteHealthDataInternal<TDto>(TDto data, CancellationToken cancellationToken) where TDto : HealthMetricBase
+    private async Task<bool> WriteHealthDataInternal<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken) where TDto : HealthMetricBase
     {
         try
         {
@@ -192,17 +194,19 @@ public partial class HealthService : IHealthService
                 return false;
             }
 
-            // Request write permission for the specific metric
-            var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var writePermission = new HealthPermissionDto
+            if (shouldCheckPermissions)
             {
-                HealthDataType = readPermission.HealthDataType,
-                PermissionType = PermissionType.Write
-            };
-            var requestPermissionResult = await RequestPermissions([writePermission], false, cancellationToken);
-            if (requestPermissionResult.IsError)
-            {
-                return false;
+                var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var writePermission = new HealthPermissionDto
+                {
+                    HealthDataType = readPermission.HealthDataType,
+                    PermissionType = PermissionType.Write
+                };
+                var requestPermissionResult = await RequestPermissions([writePermission], false, cancellationToken);
+                if (requestPermissionResult.IsError)
+                {
+                    return false;
+                }
             }
 
             var record = data.ToAndroidRecord();
@@ -231,13 +235,13 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<TDto?> GetHealthRecord<TDto>(string id, CancellationToken cancellationToken)
+    public partial Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return GetHealthRecordInternal<TDto>(id, cancellationToken);
+        return GetHealthRecordInternal<TDto>(id, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<TDto?> GetHealthRecordInternal<TDto>(string id, CancellationToken cancellationToken)
+    private async Task<TDto?> GetHealthRecordInternal<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         try
@@ -247,11 +251,14 @@ public partial class HealthService : IHealthService
                 return null;
             }
 
-            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
-            if (requestPermissionResult.IsError)
+            if (shouldCheckPermissions)
             {
-                return null;
+                var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
+                if (requestPermissionResult.IsError)
+                {
+                    return null;
+                }
             }
 
             // Read all records and find by ID since readRecord() is also a suspend function
@@ -285,13 +292,13 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<bool> DeleteHealthData<TDto>(string id, CancellationToken cancellationToken)
+    public partial Task<bool> DeleteHealthData<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return DeleteHealthDataInternal<TDto>(id, cancellationToken);
+        return DeleteHealthDataInternal<TDto>(id, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<bool> DeleteHealthDataInternal<TDto>(string id, CancellationToken cancellationToken)
+    private async Task<bool> DeleteHealthDataInternal<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         try
@@ -301,16 +308,19 @@ public partial class HealthService : IHealthService
                 return false;
             }
 
-            var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var writePermission = new HealthPermissionDto
+            if (shouldCheckPermissions)
             {
-                HealthDataType = readPermission.HealthDataType,
-                PermissionType = PermissionType.Write
-            };
-            var requestPermissionResult = await RequestPermissions([writePermission], false, cancellationToken);
-            if (requestPermissionResult.IsError)
-            {
-                return false;
+                var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var writePermission = new HealthPermissionDto
+                {
+                    HealthDataType = readPermission.HealthDataType,
+                    PermissionType = PermissionType.Write
+                };
+                var requestPermissionResult = await RequestPermissions([writePermission], false, cancellationToken);
+                if (requestPermissionResult.IsError)
+                {
+                    return false;
+                }
             }
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();

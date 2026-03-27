@@ -13,25 +13,25 @@ public partial class HealthService : IHealthService
         return Task.FromResult(new RequestPermissionResult());
     }
 
-    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult<List<TDto>>([]);
     }
 
-    public partial Task<TDto?> GetHealthRecord<TDto>(string id, CancellationToken cancellationToken)
+    public partial Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult<TDto?>(null);
     }
 
-    public partial Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken)
+    public partial Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult(false);
     }
 
-    public partial Task<bool> DeleteHealthData<TDto>(string id, CancellationToken cancellationToken)
+    public partial Task<bool> DeleteHealthData<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult(false);

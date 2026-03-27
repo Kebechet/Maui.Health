@@ -38,9 +38,10 @@ public interface IHealthService
     /// </summary>
     /// <typeparam name="TDto">The type of health metric DTO to retrieve</typeparam>
     /// <param name="timeRange">The time range for data retrieval</param>
+    /// <param name="shouldCheckPermissions">When false, skips the internal permission check. Use when permissions were already requested upfront via <see cref="RequestPermissions"/>.</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>List of health metric DTOs</returns>
-    Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+    Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <summary>
@@ -50,10 +51,11 @@ public interface IHealthService
     /// </summary>
     /// <typeparam name="TDto">The type of health metric DTO to retrieve</typeparam>
     /// <param name="id">The platform-specific record ID</param>
+    /// <param name="shouldCheckPermissions">When false, skips the internal permission check. Use when permissions were already requested upfront via <see cref="RequestPermissions"/>.</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The health record, or null if not found</returns>
     [Experimental("MH001")]
-    Task<TDto?> GetHealthRecord<TDto>(string id, CancellationToken cancellationToken = default)
+    Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <summary>
@@ -61,9 +63,10 @@ public interface IHealthService
     /// </summary>
     /// <typeparam name="TDto">The type of health metric DTO to write</typeparam>
     /// <param name="data">The health data to write</param>
+    /// <param name="shouldCheckPermissions">When false, skips the internal permission check. Use when permissions were already requested upfront via <see cref="RequestPermissions"/>.</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if successful, false otherwise</returns>
-    Task<bool> WriteHealthData<TDto>(TDto data, CancellationToken cancellationToken = default)
+    Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <summary>
@@ -72,10 +75,11 @@ public interface IHealthService
     /// </summary>
     /// <typeparam name="TDto">The type of health metric DTO to delete</typeparam>
     /// <param name="id">The platform-specific record ID</param>
+    /// <param name="shouldCheckPermissions">When false, skips the internal permission check. Use when permissions were already requested upfront via <see cref="RequestPermissions"/>.</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if deleted successfully, false otherwise</returns>
     [Experimental("MH002")]
-    Task<bool> DeleteHealthData<TDto>(string id, CancellationToken cancellationToken = default)
+    Task<bool> DeleteHealthData<TDto>(string id, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <summary>
