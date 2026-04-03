@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+		<PackageReference Include="xunit" Version="2.*" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="2.*" />
+	</ItemGroup>
+
+	<!-- Reference shared source files directly since the main project targets MAUI platform TFMs -->
+	<ItemGroup>
+		<Compile Include="..\..\src\Maui.Health\Extensions\DateRangeExtensions.cs" Link="Shared\DateRangeExtensions.cs" />
+		<Compile Include="..\..\src\Maui.Health\Extensions\MetricDtoExtensions.cs" Link="Shared\MetricDtoExtensions.cs" />
+		<Compile Include="..\..\src\Maui.Health\Extensions\WorkoutSessionExtensions.cs" Link="Shared\WorkoutSessionExtensions.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\DateRange.cs" Link="Shared\DateRange.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Result.cs" Link="Shared\Result.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\RequestPermissionResult.cs" Link="Shared\RequestPermissionResult.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\DeviceDetail.cs" Link="Shared\DeviceDetail.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\WorkoutSession.cs" Link="Shared\WorkoutSession.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\HealthMetricBase.cs" Link="Shared\HealthMetricBase.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\WorkoutDto.cs" Link="Shared\WorkoutDto.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\ActiveCaloriesBurnedDto.cs" Link="Shared\ActiveCaloriesBurnedDto.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\StepsDto.cs" Link="Shared\StepsDto.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\WeightDto.cs" Link="Shared\WeightDto.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\HeightDto.cs" Link="Shared\HeightDto.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\HeartRateDto.cs" Link="Shared\HeartRateDto.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\BodyFatDto.cs" Link="Shared\BodyFatDto.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\Vo2MaxDto.cs" Link="Shared\Vo2MaxDto.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\IHealthTimeRange.cs" Link="Shared\IHealthTimeRange.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\HealthTimeRange.cs" Link="Shared\HealthTimeRange.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\HealthPermissionDto.cs" Link="Shared\HealthPermissionDto.cs" />
+		<Compile Include="..\..\src\Maui.Health\Enums\ActivityType.cs" Link="Shared\ActivityType.cs" />
+		<Compile Include="..\..\src\Maui.Health\Enums\HealthDataType.cs" Link="Shared\HealthDataType.cs" />
+		<Compile Include="..\..\src\Maui.Health\Enums\PermissionType.cs" Link="Shared\PermissionType.cs" />
+		<Compile Include="..\..\src\Maui.Health\Enums\WorkoutSessionState.cs" Link="Shared\WorkoutSessionState.cs" />
+		<Compile Include="..\..\src\Maui.Health\Enums\HealthChangeType.cs" Link="Shared\HealthChangeType.cs" />
+		<Compile Include="..\..\src\Maui.Health\Enums\Errors\RequestPermissionError.cs" Link="Shared\RequestPermissionError.cs" />
+		<Compile Include="..\..\src\Maui.Health\Constants\WorkoutMetadata.cs" Link="Shared\WorkoutMetadata.cs" />
+	</ItemGroup>
+
+</Project>
