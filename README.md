@@ -57,6 +57,13 @@ Then setup all [Android and iOS necessities](https://github.com/Kebechet/Maui.He
     - in Google Play console give [Health permissions to the app](https://support.google.com/googleplay/android-developer/answer/14738291?hl=en)
     - for successful app approval your Policy page must contain `Health data collection and use`, `Data retention policy`
     - change of `AndroidManifest.xml` + new activity showing [privacy policy](https://developer.android.com/health-and-fitness/guides/health-connect/develop/get-started#show-privacy-policy)
+    - add `<queries>` element to `AndroidManifest.xml` (inside `<manifest>`, outside `<application>`):
+      ```xml
+      <queries>
+          <package android:name="com.google.android.apps.healthdata" />
+      </queries>
+      ```
+      This is required on Android 11–13 due to [package visibility filtering](https://developer.android.com/training/package-visibility). Without it, `getSdkStatus()` cannot detect Health Connect even when it's installed, causing permission requests to silently fail. On Android 14+ Health Connect is a system service so this isn't strictly needed, but it does no harm.
     - change of min. Android version to v26
 - iOS (3)  [docs](https://learn.microsoft.com/en-us/previous-versions/xamarin/ios/platform/healthkit), [docs2](https://developer.apple.com/documentation/healthkit)
     - generating new provisioning profile containing HealthKit permissions. These permissions are changed in [Identifiers](https://developer.apple.com/account/resources/identifiers/list)
