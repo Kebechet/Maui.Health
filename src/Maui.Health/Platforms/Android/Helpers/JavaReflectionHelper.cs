@@ -311,7 +311,8 @@ internal static class JavaReflectionHelper
                 return null;
             }
 
-            var getRecordMethod = result.Class.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getRecord");
+            var getRecordMethod = result.Class.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getRecord")
+                ?? result.Class.GetMethods()?.FirstOrDefault(m => m?.Name == "getRecord");
             if (getRecordMethod is null)
             {
                 return null;
