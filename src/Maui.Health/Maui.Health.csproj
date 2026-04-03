@@ -43,8 +43,8 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>3.1.0-preview.1</Version>
-    <PackageReleaseNotes>Exposed missing health methods</PackageReleaseNotes>
+    <Version>3.1.0-preview.2</Version>
+    <PackageReleaseNotes>Improved overall stability, docs and demo</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
