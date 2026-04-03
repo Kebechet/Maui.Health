@@ -123,6 +123,66 @@ public partial class HealthService : IHealthService
         }
     }
 
+    public async partial Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken)
+    {
+        if (!IsSupported)
+        {
+            return permissions
+                .Select(p => new HealthPermissionStatusResult
+                {
+                    Permission = p,
+                    Status = HealthPermissionStatus.NotDetermined
+                })
+                .ToList();
+        }
+
+        var grantedPermissions = await KotlinResolver.ProcessList<Java.Lang.String>(_healthConnectClient.PermissionController.GetGrantedPermissions);
+
+        if (grantedPermissions is null)
+        {
+            return permissions
+                .Select(p => new HealthPermissionStatusResult
+                {
+                    Permission = p,
+                    Status = HealthPermissionStatus.NotDetermined
+                })
+                .ToList();
+        }
+
+        var grantedSet = grantedPermissions
+            .Select(p => p?.ToString())
+            .Where(p => p is not null)
+            .ToHashSet();
+
+        var results = new List<HealthPermissionStatusResult>();
+
+        foreach (var permission in permissions)
+        {
+            var androidStrings = permission.ToStrings();
+
+            foreach (var androidPermission in androidStrings)
+            {
+                var status = grantedSet.Contains(androidPermission)
+                    ? HealthPermissionStatus.Granted
+                    : HealthPermissionStatus.Denied;
+
+                var individualPermission = new HealthPermissionDto
+                {
+                    HealthDataType = permission.HealthDataType,
+                    PermissionType = androidPermission.Contains("READ_") ? PermissionType.Read : PermissionType.Write
+                };
+
+                results.Add(new HealthPermissionStatusResult
+                {
+                    Permission = individualPermission,
+                    Status = status
+                });
+            }
+        }
+
+        return results;
+    }
+
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
     public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)

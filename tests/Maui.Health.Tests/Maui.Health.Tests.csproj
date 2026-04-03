@@ -42,6 +42,8 @@
 		<Compile Include="..\..\src\Maui.Health\Enums\HealthChangeType.cs" Link="Shared\HealthChangeType.cs" />
 		<Compile Include="..\..\src\Maui.Health\Enums\Errors\RequestPermissionError.cs" Link="Shared\RequestPermissionError.cs" />
 		<Compile Include="..\..\src\Maui.Health\Constants\WorkoutMetadata.cs" Link="Shared\WorkoutMetadata.cs" />
+		<Compile Include="..\..\src\Maui.Health\Enums\HealthPermissionStatus.cs" Link="Shared\HealthPermissionStatus.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\HealthPermissionStatusResult.cs" Link="Shared\HealthPermissionStatusResult.cs" />
 	</ItemGroup>
 
 </Project>

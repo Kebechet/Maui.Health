@@ -115,6 +115,78 @@ public partial class HealthService : IHealthService
         return new();
     }
 
+    public partial Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken)
+    {
+        if (!IsSupported)
+        {
+            IList<HealthPermissionStatusResult> unsupportedResults = permissions
+                .Select(p => new HealthPermissionStatusResult
+                {
+                    Permission = p,
+                    Status = HealthPermissionStatus.NotDetermined
+                })
+                .ToList();
+
+            return Task.FromResult(unsupportedResults);
+        }
+
+        using var healthStore = new HKHealthStore();
+        var results = new List<HealthPermissionStatusResult>();
+
+        foreach (var permission in permissions)
+        {
+            //https://developer.apple.com/documentation/healthkit/hkhealthstore/1614154-authorizationstatus#discussion
+            //Apple does not expose read authorization status to prevent leaking sensitive health information.
+            if (!permission.PermissionType.HasFlag(PermissionType.Write))
+            {
+                results.Add(new HealthPermissionStatusResult
+                {
+                    Permission = permission,
+                    Status = HealthPermissionStatus.NotDetermined
+                });
+                continue;
+            }
+
+            HKObjectType? type = null;
+
+            if (permission.HealthDataType == HealthDataType.ExerciseSession)
+            {
+                type = HKWorkoutType.WorkoutType;
+            }
+            else
+            {
+                type = HKQuantityType.Create(permission.HealthDataType.ToHKQuantityTypeIdentifier());
+            }
+
+            if (type is null)
+            {
+                results.Add(new HealthPermissionStatusResult
+                {
+                    Permission = permission,
+                    Status = HealthPermissionStatus.NotDetermined
+                });
+                continue;
+            }
+
+            var authStatus = healthStore.GetAuthorizationStatus(type);
+            var status = authStatus switch
+            {
+                HKAuthorizationStatus.SharingAuthorized => HealthPermissionStatus.Granted,
+                HKAuthorizationStatus.SharingDenied => HealthPermissionStatus.Denied,
+                _ => HealthPermissionStatus.NotDetermined
+            };
+
+            results.Add(new HealthPermissionStatusResult
+            {
+                Permission = permission,
+                Status = status
+            });
+        }
+
+        IList<HealthPermissionStatusResult> resultList = results;
+        return Task.FromResult(resultList);
+    }
+
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
     public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)

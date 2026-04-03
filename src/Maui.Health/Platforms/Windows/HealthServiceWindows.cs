@@ -13,6 +13,19 @@ public partial class HealthService : IHealthService
         return Task.FromResult(new RequestPermissionResult());
     }
 
+    public partial Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken)
+    {
+        IList<HealthPermissionStatusResult> results = permissions
+            .Select(p => new HealthPermissionStatusResult
+            {
+                Permission = p,
+                Status = HealthPermissionStatus.NotDetermined
+            })
+            .ToList();
+
+        return Task.FromResult(results);
+    }
+
     public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {

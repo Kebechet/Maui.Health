@@ -34,6 +34,17 @@ public interface IHealthService
     Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Get the current authorization status of the specified health permissions without triggering the permission UI.
+    /// On Android: accurately reports both read and write permission status.
+    /// On iOS: accurately reports write permission status. Read permissions always return <see cref="Enums.HealthPermissionStatus.NotDetermined"/>
+    /// because Apple does not expose read authorization status.
+    /// </summary>
+    /// <param name="permissions">The permissions to check status for</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>A list of results pairing each input permission with its current status</returns>
+    Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Get health data for a specific metric type within a time range
     /// </summary>
     /// <typeparam name="TDto">The type of health metric DTO to retrieve</typeparam>
