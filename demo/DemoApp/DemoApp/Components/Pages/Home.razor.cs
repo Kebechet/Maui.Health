@@ -5,6 +5,7 @@ using Maui.Health.Services;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Models;
 using Maui.Health.Enums;
+using Maui.Health.Enums.Errors;
 
 using DuplicateWorkoutGroup = Maui.Health.Models.DuplicateWorkoutGroup;
 
@@ -50,8 +51,16 @@ public partial class Home
     private bool _sessionSuccess { get; set; } = false;
     private string _sessionStatusMessage { get; set; } = string.Empty;
 
+    // SDK status tracking
+    private bool _needsRestart { get; set; } = false;
+    private bool _wasSdkUnavailable { get; set; } = false;
+    private string _sdkErrorMessage { get; set; } = string.Empty;
+
     protected override async Task OnInitializedAsync()
     {
+        // Check initial SDK availability
+        _wasSdkUnavailable = !_healthService.IsSupported;
+
         // Load health data - permissions will be requested automatically if needed
         await LoadHealthDataAsync();
 
@@ -272,6 +281,23 @@ public partial class Home
     {
         try
         {
+            _sdkErrorMessage = string.Empty;
+
+            if (!_healthService.IsSupported)
+            {
+                _sdkErrorMessage = "Health tracking is not supported on this device or Health Connect is not installed.";
+                StateHasChanged();
+                return;
+            }
+
+            // If it was previously unavailable but is now supported, we might need a restart on Android 13-
+            // (Health Connect doesn't always discover the app immediately after installation while running)
+            if (_wasSdkUnavailable)
+            {
+                _needsRestart = true;
+                _wasSdkUnavailable = false; // Only show once per session transition
+            }
+
             // Request read permissions for all health data types
             var permissions = new List<HealthPermissionDto>
             {
@@ -285,7 +311,14 @@ public partial class Home
             };
 
             // Request permissions - if denied, individual reads will fail gracefully
-            await _healthService.RequestPermissions(permissions);
+            var permissionResult = await _healthService.RequestPermissions(permissions);
+
+            if (permissionResult.Error == RequestPermissionError.SdkUnavailableProviderUpdateRequired)
+            {
+                _sdkErrorMessage = "Health Connect needs to be updated to continue.";
+                StateHasChanged();
+                return;
+            }
 
             var today = DateTime.Today;
 

@@ -13,6 +13,23 @@
     </button>
 </div>
 
+@if (_needsRestart)
+{
+    <div class="status-msg warning">
+        <strong>⚠️ Restart Required</strong><br/>
+        Health Connect was recently installed or updated. Please restart the app for permissions to work correctly.
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(_sdkErrorMessage))
+{
+    <div class="status-msg error">
+        <strong>⚠️ Health Connect Error</strong><br/>
+        @_sdkErrorMessage
+        <button class="action-btn sm" @onclick="() => _healthService.OpenStorePageOfHealthProvider()">Open Play Store</button>
+    </div>
+}
+
 @if (_activeTab == 0)
 {
     <!-- Measurements Tab -->
