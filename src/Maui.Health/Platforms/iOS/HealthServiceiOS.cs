@@ -588,19 +588,19 @@ public partial class HealthService : IHealthService
             var unit = GetUnitString(healthDataType);
             var isCumulative = IsCumulativeType(healthDataType);
 
-            var intervalComponents = new NSDateComponents();
-            if (interval.TotalDays >= 1)
+            if (interval <= TimeSpan.Zero)
             {
-                intervalComponents.Day = (nint)interval.TotalDays;
+                throw new ArgumentOutOfRangeException(nameof(interval), interval, "Interval must be greater than zero.");
             }
-            else if (interval.TotalHours >= 1)
+
+            var intervalComponents = new NSDateComponents
             {
-                intervalComponents.Hour = (nint)interval.TotalHours;
-            }
-            else
-            {
-                intervalComponents.Minute = (nint)interval.TotalMinutes;
-            }
+                Day = (nint)interval.Days,
+                Hour = (nint)interval.Hours,
+                Minute = (nint)interval.Minutes,
+                Second = (nint)interval.Seconds,
+                Nanosecond = (nint)UnitsNet.Duration.FromMilliseconds(interval.Milliseconds).Nanoseconds,
+            };
 
             var tcs = new TaskCompletionSource<List<AggregatedResult>>();
 
