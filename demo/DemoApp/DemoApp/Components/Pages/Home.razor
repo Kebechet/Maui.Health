@@ -517,6 +517,8 @@ else if (_activeTab == 2)
         <div class="btn-group">
             <button class="action-btn primary" @onclick="GetChangesTokenAsync">Get Token</button>
             <button class="action-btn info" @onclick="GetChangesAsync" disabled="@string.IsNullOrEmpty(_changesToken)">Get Changes</button>
+            <button class="action-btn success" @onclick="WriteSyncStepsAsync">+10 Steps</button>
+            <span class="sync-token" style="margin-left: 8px;">Steps: @_steps</span>
         </div>
         @if (!string.IsNullOrEmpty(_changesToken))
         {

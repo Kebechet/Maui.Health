@@ -949,6 +949,44 @@ public partial class Home
     }
 
 
+    private async Task WriteSyncStepsAsync()
+    {
+        try
+        {
+
+            var now = DateTime.Now;
+            var stepsDto = new StepsDto
+            {
+                Id = "",
+                DataOrigin = "DemoApp",
+                Count = 10,
+                StartTime = now.AddMinutes(-1),
+                EndTime = now,
+                Timestamp = now
+            };
+
+            await _healthService.WriteHealthData(stepsDto);
+
+            var today = DateTime.Today;
+            var todayRange = HealthTimeRange.FromDateTime(today, today.AddDays(1));
+            var stepsData = await _healthService.GetHealthData<StepsDto>(todayRange, shouldCheckPermissions: false);
+            _stepsRecords = stepsData;
+            _steps = stepsData.Sum(s => s.Count);
+
+            _changesMessage = "Wrote 10 steps";
+            _changesSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _changesMessage = $"Error writing steps: {ex.Message}";
+            _changesSuccess = false;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
     private async Task GetChangesTokenAsync()
     {
         try
