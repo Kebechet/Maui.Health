@@ -301,7 +301,7 @@ public partial class HealthWorkoutService
                 "Android HealthWorkoutService: Total elapsed: {TotalElapsed}s, Paused: {Paused}s, Active: {Active}s",
                 totalElapsed, _activeWorkoutSession.TotalPausedSeconds, activeDuration);
 
-            var completedWorkout = _activeWorkoutSession.ToWorkoutDto(endTime);
+            var completedWorkout = _activeWorkoutSession.ToWorkoutDto(HealthDataSdk.GoogleHealthConnect, endTime);
 
             _activeWorkoutSession = null;
 

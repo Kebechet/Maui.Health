@@ -596,6 +596,7 @@ public partial class HealthService : IHealthService
                         Value = value,
                         Unit = unit,
                         DataType = healthDataType,
+                        DataSdk = HealthDataSdk.AppleHealthKit,
                         DataOrigins = dataOrigins
                     });
                 }
@@ -722,6 +723,7 @@ public partial class HealthService : IHealthService
                             Value = value,
                             Unit = unit,
                             DataType = healthDataType,
+                            DataSdk = HealthDataSdk.AppleHealthKit,
                             DataOrigins = dataOrigins
                         });
                     });
@@ -1060,6 +1062,7 @@ public partial class HealthService : IHealthService
                     {
                         Id = Guid.NewGuid().ToString(),
                         DataOrigin = DataOrigin.HealthKitOrigin,
+                        DataSdk = HealthDataSdk.AppleHealthKit,
                         Timestamp = timeRange.StartTime,
                         Count = (long)sum.GetDoubleValue(HKUnit.Count),
                         StartTime = timeRange.StartTime,
@@ -1072,6 +1075,7 @@ public partial class HealthService : IHealthService
                     {
                         Id = Guid.NewGuid().ToString(),
                         DataOrigin = DataOrigin.HealthKitOrigin,
+                        DataSdk = HealthDataSdk.AppleHealthKit,
                         Timestamp = timeRange.StartTime,
                         Energy = sum.GetDoubleValue(HKUnit.Kilocalorie),
                         StartTime = timeRange.StartTime,

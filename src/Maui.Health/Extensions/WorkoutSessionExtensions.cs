@@ -23,6 +23,7 @@ public static class WorkoutSessionExtensions
     /// <returns>A WorkoutDto representing the completed workout</returns>
     public static WorkoutDto ToWorkoutDto(
         this WorkoutSession session,
+        HealthDataSdk dataSdk,
         DateTimeOffset? endTime = null,
         double? energyBurned = null,
         double? distance = null,
@@ -39,6 +40,7 @@ public static class WorkoutSessionExtensions
         return new WorkoutDto
         {
             Id = session.Id,
+            DataSdk = dataSdk,
             DataOrigin = session.DataOrigin,
             Timestamp = session.StartTime,
             ActivityType = session.ActivityType,
@@ -103,6 +105,7 @@ public static class WorkoutSessionExtensions
         DateTimeOffset? endTime = null)
     {
         return session.ToWorkoutDto(
+            existingWorkout.DataSdk,
             endTime,
             existingWorkout.EnergyBurned,
             existingWorkout.Distance,

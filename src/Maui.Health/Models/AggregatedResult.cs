@@ -36,6 +36,13 @@ public class AggregatedResult
     public required HealthDataType DataType { get; init; }
 
     /// <summary>
+    /// The primary health platform that produced this aggregated result.
+    /// On Android: <see cref="HealthDataSdk.GoogleHealthConnect"/>.
+    /// On iOS: <see cref="HealthDataSdk.AppleHealthKit"/>.
+    /// </summary>
+    public required HealthDataSdk DataSdk { get; init; }
+
+    /// <summary>
     /// Data sources that contributed to this aggregated value.
     /// On Android: package names from Health Connect DataOrigin.
     /// On iOS: source names from HealthKit HKSource.

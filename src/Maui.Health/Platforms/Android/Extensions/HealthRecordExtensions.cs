@@ -16,6 +16,7 @@ using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSes
 using HealthDeviceType = Android.Health.Connect.DataTypes.HealthDeviceType;
 using System.Collections;
 using Device = AndroidX.Health.Connect.Client.Records.Metadata.Device;
+using Maui.Health.Enums;
 using DataOrigin = Maui.Health.Constants.DataOrigin;
 
 namespace Maui.Health.Platforms.Android.Extensions;
@@ -97,6 +98,7 @@ internal static class HealthRecordExtensions
         {
             Id = stepsRecord.Metadata.Id,
             DataOrigin = stepsRecord.Metadata.DataOrigin.PackageName,
+            DataSdk = HealthDataSdk.GoogleHealthConnect,
             Device = CreateDeviceDetail(stepsRecord.Metadata.Device),
             Timestamp = startTime,
             Count = stepsRecord.Count,
@@ -119,6 +121,7 @@ internal static class HealthRecordExtensions
         {
             Id = weightRecord.Metadata.Id,
             DataOrigin = weightRecord.Metadata.DataOrigin.PackageName,
+            DataSdk = HealthDataSdk.GoogleHealthConnect,
             Device = CreateDeviceDetail(weightRecord.Metadata.Device),
             Timestamp = timestamp,
             Value = weightValue,
@@ -140,6 +143,7 @@ internal static class HealthRecordExtensions
         {
             Id = heightRecord.Metadata.Id,
             DataOrigin = heightRecord.Metadata.DataOrigin.PackageName,
+            DataSdk = HealthDataSdk.GoogleHealthConnect,
             Device = CreateDeviceDetail(heightRecord.Metadata.Device),
             Timestamp = timestamp,
             Value = heightValue,
@@ -162,6 +166,7 @@ internal static class HealthRecordExtensions
         {
             Id = caloriesRecord.Metadata.Id,
             DataOrigin = caloriesRecord.Metadata.DataOrigin.PackageName,
+            DataSdk = HealthDataSdk.GoogleHealthConnect,
             Device = CreateDeviceDetail(caloriesRecord.Metadata.Device),
             Timestamp = startTime,
             Energy = energyValue,
@@ -194,6 +199,7 @@ internal static class HealthRecordExtensions
         {
             Id = heartRateRecord.Metadata.Id,
             DataOrigin = heartRateRecord.Metadata.DataOrigin.PackageName,
+            DataSdk = HealthDataSdk.GoogleHealthConnect,
             Device = CreateDeviceDetail(heartRateRecord.Metadata.Device),
             Timestamp = timestamp,
             BeatsPerMinute = beatsPerMinute,
@@ -216,6 +222,7 @@ internal static class HealthRecordExtensions
         {
             Id = bodyFatRecord.Metadata.Id,
             DataOrigin = bodyFatRecord.Metadata.DataOrigin.PackageName,
+            DataSdk = HealthDataSdk.GoogleHealthConnect,
             Device = CreateDeviceDetail(bodyFatRecord.Metadata.Device),
             Timestamp = timestamp,
             Percentage = percentage,
@@ -238,6 +245,7 @@ internal static class HealthRecordExtensions
         {
             Id = vo2MaxRecord.Metadata.Id,
             DataOrigin = vo2MaxRecord.Metadata.DataOrigin.PackageName,
+            DataSdk = HealthDataSdk.GoogleHealthConnect,
             Device = CreateDeviceDetail(vo2MaxRecord.Metadata.Device),
             Timestamp = timestamp,
             Value = value,

@@ -28,6 +28,7 @@ internal static class WorkoutExtensions
         {
             Id = exerciseRecord.Metadata.Id,
             DataOrigin = exerciseRecord.Metadata.DataOrigin.PackageName,
+            DataSdk = HealthDataSdk.GoogleHealthConnect,
             Timestamp = startTime,
             ActivityType = activityType,
             Title = title,

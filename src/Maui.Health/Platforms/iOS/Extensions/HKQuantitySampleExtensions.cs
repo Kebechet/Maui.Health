@@ -1,5 +1,6 @@
 using HealthKit;
 using Maui.Health.Constants;
+using Maui.Health.Enums;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using UnitsNet;
@@ -52,6 +53,7 @@ internal static class HKQuantitySampleExtensions
         {
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            DataSdk = HealthDataSdk.AppleHealthKit,
             Device = CreateDeviceDetail(sample.Device),
             Timestamp = startTime, // Use start time as the representative timestamp
             Count = (long)value,
@@ -70,6 +72,7 @@ internal static class HKQuantitySampleExtensions
         {
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            DataSdk = HealthDataSdk.AppleHealthKit,
             Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
             Value = value,
@@ -87,6 +90,7 @@ internal static class HKQuantitySampleExtensions
         {
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            DataSdk = HealthDataSdk.AppleHealthKit,
             Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
             Value = value,
@@ -104,6 +108,7 @@ internal static class HKQuantitySampleExtensions
         {
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            DataSdk = HealthDataSdk.AppleHealthKit,
             Device = CreateDeviceDetail(sample.Device),
             Timestamp = startTime, // Use start time as the representative timestamp
             Energy = valueInKilocalories,
@@ -122,6 +127,7 @@ internal static class HKQuantitySampleExtensions
         {
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            DataSdk = HealthDataSdk.AppleHealthKit,
             Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
             BeatsPerMinute = beatsPerMinute,
@@ -139,6 +145,7 @@ internal static class HKQuantitySampleExtensions
         {
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            DataSdk = HealthDataSdk.AppleHealthKit,
             Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
             Percentage = percentage,
@@ -155,6 +162,7 @@ internal static class HKQuantitySampleExtensions
         {
             Id = sample.Uuid.ToString(),
             DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            DataSdk = HealthDataSdk.AppleHealthKit,
             Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
             Value = value,

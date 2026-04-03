@@ -314,7 +314,7 @@ public partial class HealthWorkoutService
                 "iOS HealthWorkoutService: Total elapsed: {TotalElapsed}s, Paused: {Paused}s, Active: {Active}s",
                 totalElapsed, _activeWorkoutSession.TotalPausedSeconds, activeDuration);
 
-            var completedWorkout = _activeWorkoutSession.ToWorkoutDto(endTime);
+            var completedWorkout = _activeWorkoutSession.ToWorkoutDto(HealthDataSdk.AppleHealthKit, endTime);
 
             _activeWorkoutSession = null;
             ClearSessionPreferences();

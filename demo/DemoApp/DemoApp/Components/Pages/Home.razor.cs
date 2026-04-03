@@ -13,6 +13,14 @@ namespace DemoApp.Components.Pages;
 
 public partial class Home
 {
+#if ANDROID
+    private static readonly HealthDataSdk sdk = HealthDataSdk.GoogleHealthConnect;
+#elif IOS
+    private static readonly HealthDataSdk sdk = HealthDataSdk.AppleHealthKit;
+#else
+    private static readonly HealthDataSdk sdk = HealthDataSdk.Unknown;
+#endif
+
     [Inject] public required IHealthService _healthService { get; set; }
 
     private long _steps { get; set; } = 0;
@@ -107,10 +115,46 @@ public partial class Home
             // Write Steps data (multiple entries spread over the last 40 minutes)
             var stepsData = new[]
             {
-                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 1500, StartTime = now.AddMinutes(-40), EndTime = now.AddMinutes(-30), Timestamp = now.AddMinutes(-40) },
-                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 2300, StartTime = now.AddMinutes(-30), EndTime = now.AddMinutes(-20), Timestamp = now.AddMinutes(-30) },
-                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 3200, StartTime = now.AddMinutes(-20), EndTime = now.AddMinutes(-15), Timestamp = now.AddMinutes(-20) },
-                new StepsDto { Id = "", DataOrigin = "DemoApp", Count = 1800, StartTime = now.AddMinutes(-15), EndTime = now.AddMinutes(-10), Timestamp = now.AddMinutes(-15) }
+                new StepsDto
+                {
+                    Id = "",
+                    DataSdk = sdk,
+                    DataOrigin = "DemoApp",
+                    Count = 1500,
+                    StartTime = now.AddMinutes(-40),
+                    EndTime = now.AddMinutes(-30),
+                    Timestamp = now.AddMinutes(-40)
+                },
+                new StepsDto
+                {
+                    Id = "",
+                    DataSdk = sdk,
+                    DataOrigin = "DemoApp",
+                    Count = 2300,
+                    StartTime = now.AddMinutes(-30),
+                    EndTime = now.AddMinutes(-20),
+                    Timestamp = now.AddMinutes(-30)
+                },
+                new StepsDto
+                {
+                    Id = "",
+                    DataSdk = sdk,
+                    DataOrigin = "DemoApp",
+                    Count = 3200,
+                    StartTime = now.AddMinutes(-20),
+                    EndTime = now.AddMinutes(-15),
+                    Timestamp = now.AddMinutes(-20)
+                },
+                new StepsDto
+                {
+                    Id = "",
+                    DataSdk = sdk,
+                    DataOrigin = "DemoApp",
+                    Count = 1800,
+                    StartTime = now.AddMinutes(-15),
+                    EndTime = now.AddMinutes(-10),
+                    Timestamp = now.AddMinutes(-15)
+                }
             };
 
             foreach (var step in stepsData)
@@ -122,6 +166,7 @@ public partial class Home
             var weightData = new WeightDto
             {
                 Id = "",
+                DataSdk = sdk,
                 DataOrigin = "DemoApp",
                 Value = 75.5,
                 Timestamp = now.AddMinutes(-10),
@@ -132,7 +177,17 @@ public partial class Home
             // Write Active Calories Burned data
             var caloriesData = new[]
             {
-                new ActiveCaloriesBurnedDto { Id = "", DataOrigin = "DemoApp", Energy = 120, StartTime = now.AddMinutes(-30), EndTime = now.AddMinutes(-20), Timestamp = now.AddMinutes(-30), Unit = "kcal" },
+                new ActiveCaloriesBurnedDto
+                {
+                    Id = "",
+                    DataSdk = sdk,
+                    DataOrigin = "DemoApp",
+                    Energy = 120,
+                    StartTime = now.AddMinutes(-30),
+                    EndTime = now.AddMinutes(-20),
+                    Timestamp = now.AddMinutes(-30),
+                    Unit = "kcal"
+                },
             };
 
             foreach (var calories in caloriesData)
@@ -143,12 +198,60 @@ public partial class Home
             // Write Heart Rate data (spread over the last hour)
             var heartRateData = new[]
             {
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 125, Timestamp = now.AddMinutes(-55), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 138, Timestamp = now.AddMinutes(-45), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 145, Timestamp = now.AddMinutes(-35), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 142, Timestamp = now.AddMinutes(-25), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 135, Timestamp = now.AddMinutes(-15), Unit = "BPM" },
-                new HeartRateDto { Id = "", DataOrigin = "DemoApp", BeatsPerMinute = 128, Timestamp = now.AddMinutes(-5), Unit = "BPM" }
+                new HeartRateDto
+                {
+                    Id = "",
+                    DataSdk = sdk,
+                    DataOrigin = "DemoApp",
+                    BeatsPerMinute = 125,
+                    Timestamp = now.AddMinutes(-55),
+                    Unit = "BPM"
+                },
+                new HeartRateDto
+                {
+                    Id = "",
+                    DataSdk = sdk,
+                    DataOrigin = "DemoApp",
+                    BeatsPerMinute = 138,
+                    Timestamp = now.AddMinutes(-45),
+                    Unit = "BPM"
+                },
+                new HeartRateDto
+                {
+                    Id = "",
+                    DataSdk = sdk,
+                    DataOrigin = "DemoApp",
+                    BeatsPerMinute = 145,
+                    Timestamp = now.AddMinutes(-35),
+                    Unit = "BPM"
+                },
+                new HeartRateDto
+                {
+                    Id = "",
+                    DataSdk = sdk,
+                    DataOrigin = "DemoApp",
+                    BeatsPerMinute = 142,
+                    Timestamp = now.AddMinutes(-25),
+                    Unit = "BPM"
+                },
+                new HeartRateDto
+                {
+                    Id = "",
+                    DataSdk = sdk,
+                    DataOrigin = "DemoApp",
+                    BeatsPerMinute = 135,
+                    Timestamp = now.AddMinutes(-15),
+                    Unit = "BPM"
+                },
+                new HeartRateDto
+                {
+                    Id = "",
+                    DataSdk = sdk,
+                    DataOrigin = "DemoApp",
+                    BeatsPerMinute = 128,
+                    Timestamp = now.AddMinutes(-5),
+                    Unit = "BPM"
+                }
             };
 
             foreach (var heartRate in heartRateData)
@@ -160,6 +263,7 @@ public partial class Home
             var vo2MaxData = new Vo2MaxDto
             {
                 Id = "",
+                DataSdk = sdk,
                 DataOrigin = "DemoApp",
                 Value = 42.5,
                 Timestamp = now.AddMinutes(-10),
@@ -171,6 +275,7 @@ public partial class Home
             var bodyFatData = new BodyFatDto
             {
                 Id = "",
+                DataSdk = sdk,
                 DataOrigin = "DemoApp",
                 Percentage = 18.5,
                 Timestamp = now.AddMinutes(-10),
@@ -182,6 +287,7 @@ public partial class Home
             var strengthTrainingWorkout = new WorkoutDto
             {
                 Id = "",
+                DataSdk = sdk,
                 DataOrigin = "DemoApp",
                 ActivityType = ActivityType.StrengthTraining,
                 Title = "Strength Training",
@@ -670,6 +776,7 @@ public partial class Home
             var workout = new WorkoutDto
             {
                 Id = Guid.NewGuid().ToString(),
+                DataSdk = sdk,
                 DataOrigin = "DemoApp",
                 ActivityType = ActivityType.Cycling,
                 Title = "Manual Cycling Session",
@@ -958,6 +1065,7 @@ public partial class Home
             var stepsDto = new StepsDto
             {
                 Id = "",
+                DataSdk = sdk,
                 DataOrigin = "DemoApp",
                 Count = 10,
                 StartTime = now.AddMinutes(-1),

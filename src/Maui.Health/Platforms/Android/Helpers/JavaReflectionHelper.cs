@@ -607,6 +607,7 @@ internal static class JavaReflectionHelper
                     Value = numericValue,
                     Unit = unit,
                     DataType = dataType,
+                    DataSdk = HealthDataSdk.GoogleHealthConnect,
                     DataOrigins = dataOrigins
                 });
             }

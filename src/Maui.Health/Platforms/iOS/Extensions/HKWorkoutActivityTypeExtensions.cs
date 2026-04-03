@@ -160,6 +160,7 @@ internal static class HKWorkoutActivityTypeExtensions
         {
             Id = workout.Uuid.ToString(),
             DataOrigin = workout.SourceRevision?.Source?.Name ?? DataOrigin.Unknown,
+            DataSdk = HealthDataSdk.AppleHealthKit,
             Timestamp = startTime,
             ActivityType = activityType,
             StartTime = startTime,

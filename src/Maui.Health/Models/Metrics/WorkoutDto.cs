@@ -14,6 +14,11 @@ public class WorkoutDto
     public required string Id { get; init; }
 
     /// <summary>
+    /// The health SDK that provided this record.
+    /// </summary>
+    public required HealthDataSdk DataSdk { get; init; }
+
+    /// <summary>
     /// Source of the data (app package name, device name, etc.)
     /// </summary>
     public required string DataOrigin { get; init; }

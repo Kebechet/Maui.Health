@@ -7,7 +7,7 @@ namespace Maui.Health.Models;
 /// <para>
 /// <b>iOS limitation:</b> Apple does not expose read permission status. On iOS, <see cref="IsSuccess"/> only reflects
 /// write permission grants and SDK errors. If a user denies read access, iOS does not report it as a failure —
-/// the data simply appears empty. Use <see cref="IHealthService.GetPermissionStatuses"/> for a more detailed
+/// the data simply appears empty. Use <see cref="Services.IHealthService.GetPermissionStatuses"/> for a more detailed
 /// per-permission breakdown (which explicitly returns <see cref="Enums.HealthPermissionStatus.NotDetermined"/> for iOS read permissions).
 /// </para>
 /// </summary>

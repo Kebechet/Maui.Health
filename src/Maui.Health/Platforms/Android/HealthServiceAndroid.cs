@@ -466,6 +466,7 @@ public partial class HealthService : IHealthService
                 Value = numericValue,
                 Unit = unit,
                 DataType = healthDataType,
+                DataSdk = HealthDataSdk.GoogleHealthConnect,
                 DataOrigins = dataOrigins
             };
         }
