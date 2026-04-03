@@ -690,7 +690,7 @@ public partial class HealthService : IHealthService
         try
         {
             var dataTypeStrings = dataTypes.Select(dt => dt.ToString()).ToList();
-            HKQueryAnchor? latestAnchor = null;
+            var anchors = new Dictionary<string, string>();
 
             foreach (var healthDataType in dataTypes)
             {
@@ -709,14 +709,13 @@ public partial class HealthService : IHealthService
 
                 if (result.Anchor is not null)
                 {
-                    latestAnchor = result.Anchor;
+                    anchors[healthDataType.ToString()] = SerializeAnchor(result.Anchor);
                 }
             }
 
-            var anchorBase64 = latestAnchor is not null ? SerializeAnchor(latestAnchor) : null;
-            var tokenData = new { Anchor = anchorBase64, DataTypes = dataTypeStrings };
+            var tokenData = new { Anchors = anchors, DataTypes = dataTypeStrings };
 
-            _logger.LogInformation("iOS GetChangesToken: anchor serialized for {Count} data types", dataTypes.Count);
+            _logger.LogInformation("iOS GetChangesToken: anchors serialized for {Count} data types", dataTypes.Count);
             return JsonSerializer.Serialize(tokenData);
         }
         catch (Exception ex)
@@ -736,18 +735,26 @@ public partial class HealthService : IHealthService
         try
         {
             var tokenJson = JsonSerializer.Deserialize<JsonElement>(token);
-            var anchorBase64 = tokenJson.GetProperty("Anchor").GetString();
+            var anchors = new Dictionary<string, string>();
+            if (tokenJson.TryGetProperty("Anchors", out var anchorsElement))
+            {
+                foreach (var property in anchorsElement.EnumerateObject())
+                {
+                    var value = property.Value.GetString();
+                    if (value is not null)
+                    {
+                        anchors[property.Name] = value;
+                    }
+                }
+            }
+
             var dataTypeStrings = tokenJson.GetProperty("DataTypes").EnumerateArray()
                 .Select(dt => dt.GetString())
                 .Where(dt => dt is not null)
                 .ToList();
 
-            var anchor = anchorBase64 is not null
-                ? DeserializeAnchor(anchorBase64)
-                : HKQueryAnchor.Create(0);
-
             var allChanges = new List<HealthChange>();
-            HKQueryAnchor? latestAnchor = anchor;
+            var nextAnchors = new Dictionary<string, string>(anchors);
 
             foreach (var dtString in dataTypeStrings)
             {
@@ -766,6 +773,10 @@ public partial class HealthService : IHealthService
                 {
                     continue;
                 }
+
+                var anchor = anchors.TryGetValue(dtString!, out var anchorBase64)
+                    ? DeserializeAnchor(anchorBase64)
+                    : HKQueryAnchor.Create(0);
 
                 var result = await RunAnchoredQuery(quantityType, anchor, cancellationToken);
 
@@ -789,19 +800,19 @@ public partial class HealthService : IHealthService
                         allChanges.Add(new HealthChange
                         {
                             Type = HealthChangeType.Deletion,
-                            RecordId = deletedObj.Uuid.ToString()
+                            RecordId = deletedObj.Uuid.ToString(),
+                            DataType = healthDataType
                         });
                     }
                 }
 
                 if (result.Anchor is not null)
                 {
-                    latestAnchor = result.Anchor;
+                    nextAnchors[dtString!] = SerializeAnchor(result.Anchor);
                 }
             }
 
-            var nextAnchorBase64 = latestAnchor is not null ? SerializeAnchor(latestAnchor) : anchorBase64;
-            var nextTokenData = new { Anchor = nextAnchorBase64, DataTypes = dataTypeStrings };
+            var nextTokenData = new { Anchors = nextAnchors, DataTypes = dataTypeStrings };
 
             _logger.LogInformation("iOS GetChanges: {Count} changes found", allChanges.Count);
 
