@@ -19,7 +19,6 @@ public class HealthChange
 
     /// <summary>
     /// The health data type of the changed record.
-    /// Only populated for upsert changes on some platforms.
     /// </summary>
     public HealthDataType? DataType { get; init; }
 }
