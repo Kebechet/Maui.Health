@@ -692,6 +692,8 @@ public partial class HealthService : IHealthService
             var dataTypeStrings = dataTypes.Select(dt => dt.ToString()).ToList();
             var anchors = new Dictionary<string, string>();
 
+            using var store = new HKHealthStore();
+
             foreach (var healthDataType in dataTypes)
             {
                 if (healthDataType == HealthDataType.ExerciseSession)
@@ -705,7 +707,7 @@ public partial class HealthService : IHealthService
                     continue;
                 }
 
-                var result = await RunAnchoredQuery(quantityType, HKQueryAnchor.Create(0), cancellationToken);
+                var result = await RunAnchoredQuery(store, quantityType, HKQueryAnchor.Create(0), cancellationToken);
 
                 if (result.Anchor is not null)
                 {
@@ -756,6 +758,8 @@ public partial class HealthService : IHealthService
             var allChanges = new List<HealthChange>();
             var nextAnchors = new Dictionary<string, string>(anchors);
 
+            using var store = new HKHealthStore();
+
             foreach (var dtString in dataTypeStrings)
             {
                 if (!Enum.TryParse<HealthDataType>(dtString, out var healthDataType))
@@ -778,7 +782,7 @@ public partial class HealthService : IHealthService
                     ? DeserializeAnchor(anchorBase64)
                     : HKQueryAnchor.Create(0);
 
-                var result = await RunAnchoredQuery(quantityType, anchor, cancellationToken);
+                var result = await RunAnchoredQuery(store, quantityType, anchor, cancellationToken);
 
                 if (result.Added is not null)
                 {
@@ -831,6 +835,7 @@ public partial class HealthService : IHealthService
     }
 
     private async Task<(HKSample[]? Added, HKDeletedObject[]? Deleted, HKQueryAnchor? Anchor)> RunAnchoredQuery(
+        HKHealthStore store,
         HKQuantityType quantityType,
         HKQueryAnchor anchor,
         CancellationToken cancellationToken)
@@ -854,7 +859,6 @@ public partial class HealthService : IHealthService
             }
         );
 
-        using var store = new HKHealthStore();
         using var ct = cancellationToken.Register(() =>
         {
             tcs.TrySetCanceled();
