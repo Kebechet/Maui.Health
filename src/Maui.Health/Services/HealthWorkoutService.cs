@@ -211,11 +211,7 @@ public partial class HealthWorkoutService : IHealthWorkoutService
         Preferences.Default.Set(ActiveSessionStorage.DataOrigin, session.DataOrigin);
         Preferences.Default.Set(ActiveSessionStorage.State, session.State.ToString());
 
-        // Serialize pause intervals to JSON
-        var intervals = session.PauseIntervals
-            .Select(i => (i.Start.ToUnixTimeMilliseconds(), i.End?.ToUnixTimeMilliseconds()))
-            .ToList();
-        var json = System.Text.Json.JsonSerializer.Serialize(intervals);
+        var json = session.PauseIntervals.ToJson();
         Preferences.Default.Set(ActiveSessionStorage.PauseIntervals, json);
     }
 
