@@ -286,6 +286,47 @@ internal static class JavaReflectionHelper
     }
 #pragma warning restore CA1416
 
+    internal static async Task<Java.Lang.Object?> ReadHealthRecord(
+        this IHealthConnectClient healthConnectClient,
+        IKClass recordClass,
+        string recordId)
+    {
+        try
+        {
+            var (clientClass, clientObject) = healthConnectClient.GetJniClientObjects();
+            if (clientClass is null || clientObject is null)
+            {
+                return null;
+            }
+
+            var recordClassObj = Java.Lang.Object.GetObject<Java.Lang.Object>(recordClass.Handle, JniHandleOwnership.DoNotTransfer);
+            if (recordClassObj is null)
+            {
+                return null;
+            }
+
+            var result = await InvokeKotlinSuspendMethod(clientClass, clientObject, "readRecord", recordClassObj, new Java.Lang.String(recordId));
+            if (result is null)
+            {
+                return null;
+            }
+
+            var getRecordMethod = result.Class.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getRecord");
+            if (getRecordMethod is null)
+            {
+                return null;
+            }
+
+            getRecordMethod.Accessible = true;
+            return getRecordMethod.Invoke(result) as Java.Lang.Object;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error reading record by ID: {ex.Message}");
+            return null;
+        }
+    }
+
     /// <summary>
     /// Deletes a workout record from Health Connect using reflection to call the Kotlin suspend function.
     /// </summary>
@@ -836,6 +877,42 @@ internal static class JavaReflectionHelper
 
         method.Accessible = true;
         var result = method.Invoke(clientObject, parameter, continuation);
+
+        if (result is Java.Lang.Enum javaEnum)
+        {
+            var currentState = Enum.Parse<CoroutineState>(javaEnum.ToString());
+            if (currentState == CoroutineState.COROUTINE_SUSPENDED)
+            {
+                result = await taskCompletionSource.Task;
+            }
+        }
+
+        return result;
+    }
+
+    private static async Task<Java.Lang.Object?> InvokeKotlinSuspendMethod(
+        Java.Lang.Class clientClass,
+        Java.Lang.Object clientObject,
+        string methodName,
+        Java.Lang.Object parameter1,
+        Java.Lang.Object parameter2)
+    {
+        var method = clientClass.GetDeclaredMethods()?.FirstOrDefault(m =>
+            m?.Name == methodName && m.GetParameterTypes()?.Length == 3)
+            ?? clientClass.GetMethods()?.FirstOrDefault(m =>
+                m?.Name == methodName && m.GetParameterTypes()?.Length == 3);
+
+        if (method is null)
+        {
+            Debug.WriteLine($"Could not find {methodName} method on client");
+            return null;
+        }
+
+        var taskCompletionSource = new TaskCompletionSource<Java.Lang.Object>();
+        var continuation = new Continuation(taskCompletionSource, default);
+
+        method.Accessible = true;
+        var result = method.Invoke(clientObject, parameter1, parameter2, continuation);
 
         if (result is Java.Lang.Enum javaEnum)
         {
