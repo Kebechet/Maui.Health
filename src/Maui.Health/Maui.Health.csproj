@@ -43,8 +43,8 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>3.1.0-preview.2</Version>
-    <PackageReleaseNotes>Improved overall stability, docs and demo</PackageReleaseNotes>
+    <Version>4.0.0-preview.1</Version>
+    <PackageReleaseNotes>Breaking: removed HealthTimeRange.StartDateTime/EndDateTime properties (use StartTime.LocalDateTime instead). Added DateOnly.ToFullDayHealthTimeRange() extension. Fixed iOS NSSet.Count() call.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
