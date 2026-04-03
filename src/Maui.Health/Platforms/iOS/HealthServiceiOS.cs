@@ -587,13 +587,16 @@ public partial class HealthService : IHealthService
                     var value = quantity.GetDoubleValue(hkUnit);
                     var unit = GetUnitString(healthDataType);
 
+                    var dataOrigins = ExtractSourceNames(statistics);
+
                     tcs.TrySetResult(new AggregatedResult
                     {
                         StartTime = timeRange.StartTime,
                         EndTime = timeRange.EndTime,
                         Value = value,
                         Unit = unit,
-                        DataType = healthDataType
+                        DataType = healthDataType,
+                        DataOrigins = dataOrigins
                     });
                 }
             );
@@ -710,6 +713,7 @@ public partial class HealthService : IHealthService
                         var value = quantity.GetDoubleValue(hkUnit);
                         var bucketStart = statistics.StartDate.ToDateTimeOffset();
                         var bucketEnd = statistics.EndDate.ToDateTimeOffset();
+                        var dataOrigins = ExtractSourceNames(statistics);
 
                         aggregatedResults.Add(new AggregatedResult
                         {
@@ -717,7 +721,8 @@ public partial class HealthService : IHealthService
                             EndTime = bucketEnd,
                             Value = value,
                             Unit = unit,
-                            DataType = healthDataType
+                            DataType = healthDataType,
+                            DataOrigins = dataOrigins
                         });
                     });
 
@@ -980,6 +985,26 @@ public partial class HealthService : IHealthService
             HealthDataType.Height => (HKStatisticsOptions.DiscreteAverage, HKUnit.FromString("cm")),
             _ => (HKStatisticsOptions.DiscreteAverage, HKUnit.Count)
         };
+    }
+
+    private static List<string> ExtractSourceNames(HKStatistics statistics)
+    {
+        var sources = statistics.Sources;
+        if (sources is null || sources.Count() == 0)
+        {
+            return [];
+        }
+
+        var names = new List<string>((int)sources.Count());
+        foreach (var source in sources)
+        {
+            if (source is HKSource hkSource)
+            {
+                names.Add(hkSource.Name);
+            }
+        }
+
+        return names;
     }
 
     private static string? GetUnitString(HealthDataType healthDataType)

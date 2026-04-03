@@ -418,7 +418,7 @@ internal static class JavaReflectionHelper
     /// Aggregates health records using Health Connect's aggregate() API via JNI reflection.
     /// Properly deduplicates data across multiple health apps.
     /// </summary>
-    internal static async Task<Java.Lang.Object?> AggregateHealthRecords(
+    internal static async Task<(Java.Lang.Object? Value, List<string> DataOrigins)> AggregateHealthRecords(
         this IHealthConnectClient healthConnectClient,
         string recordClassName,
         string metricFieldName,
@@ -429,7 +429,7 @@ internal static class JavaReflectionHelper
             var metric = GetAggregateMetric(recordClassName, metricFieldName);
             if (metric is null)
             {
-                return null;
+                return (null, []);
             }
 
             var timeRangeFilter = TimeRangeFilter.Between(
@@ -440,27 +440,30 @@ internal static class JavaReflectionHelper
             var request = CreateAggregateRequest(metric, timeRangeFilter);
             if (request is null)
             {
-                return null;
+                return (null, []);
             }
 
             var (clientClass, clientObject) = healthConnectClient.GetJniClientObjects();
             if (clientClass is null || clientObject is null)
             {
-                return null;
+                return (null, []);
             }
 
-            var result = await InvokeKotlinSuspendMethod(clientClass, clientObject, "aggregate", request);
-            if (result is null)
+            var aggregationResult = await InvokeKotlinSuspendMethod(clientClass, clientObject, "aggregate", request);
+            if (aggregationResult is null)
             {
-                return null;
+                return (null, []);
             }
 
-            return ExtractAggregateValue(result, metric);
+            var value = ExtractAggregateValue(aggregationResult, metric);
+            var dataOrigins = ExtractDataOrigins(aggregationResult);
+
+            return (value, dataOrigins);
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"Error aggregating health records: {ex.Message}");
-            return null;
+            return (null, []);
         }
     }
 
@@ -595,13 +598,16 @@ internal static class JavaReflectionHelper
                     ? DateTimeOffset.FromUnixTimeMilliseconds(endInstant.ToEpochMilli())
                     : timeRange.EndTime;
 
+                var dataOrigins = ExtractDataOrigins(aggregationResult);
+
                 results.Add(new AggregatedResult
                 {
                     StartTime = bucketStart,
                     EndTime = bucketEnd,
                     Value = numericValue,
                     Unit = unit,
-                    DataType = dataType
+                    DataType = dataType,
+                    DataOrigins = dataOrigins
                 });
             }
 
@@ -1019,6 +1025,39 @@ internal static class JavaReflectionHelper
 
         getMethod.Accessible = true;
         return getMethod.Invoke(aggregationResult, metric);
+    }
+
+    /// <summary>
+    /// Extracts data origins (contributing app package names) from an AggregationResult.
+    /// Calls AggregationResult.getDataOrigins() → Set&lt;DataOrigin&gt;, then DataOrigin.getPackageName() on each.
+    /// </summary>
+    private static List<string> ExtractDataOrigins(Java.Lang.Object aggregationResult)
+    {
+        var dataOrigins = new List<string>();
+
+        var originsObj = InvokeAccessibleMethod(aggregationResult, "getDataOrigins");
+        if (originsObj is not Java.Util.ISet originsSet)
+        {
+            return dataOrigins;
+        }
+
+        var iterator = originsSet.Iterator();
+        while (iterator.HasNext)
+        {
+            var origin = iterator.Next();
+            if (origin is null)
+            {
+                continue;
+            }
+
+            var packageName = InvokeAccessibleMethod((Java.Lang.Object)origin, "getPackageName");
+            if (packageName is not null)
+            {
+                dataOrigins.Add(packageName.ToString());
+            }
+        }
+
+        return dataOrigins;
     }
 
     /// <summary>

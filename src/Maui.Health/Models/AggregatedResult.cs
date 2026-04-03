@@ -5,7 +5,7 @@ namespace Maui.Health.Models;
 /// <summary>
 /// Represents an aggregated health metric value over a time range.
 /// Unlike individual records, this is a computed result (sum, average, min, max)
-/// and does not have a platform record ID or data origin.
+/// and does not have a platform record ID.
 /// </summary>
 public class AggregatedResult
 {
@@ -34,4 +34,12 @@ public class AggregatedResult
     /// The health data type this aggregation represents.
     /// </summary>
     public required HealthDataType DataType { get; init; }
+
+    /// <summary>
+    /// Data sources that contributed to this aggregated value.
+    /// On Android: package names from Health Connect DataOrigin.
+    /// On iOS: source names from HealthKit HKSource.
+    /// Multiple sources are possible because aggregation combines records from all health apps.
+    /// </summary>
+    public List<string> DataOrigins { get; init; } = [];
 }

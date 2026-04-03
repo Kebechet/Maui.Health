@@ -428,7 +428,7 @@ public partial class HealthService : IHealthService
                 return null;
             }
 
-            var result = await _healthConnectClient.AggregateHealthRecords(recordClassName, metricFieldName, timeRange);
+            var (result, dataOrigins) = await _healthConnectClient.AggregateHealthRecords(recordClassName, metricFieldName, timeRange);
             if (result is null)
             {
                 _logger.LogInformation("No aggregate data found for {DtoName}", typeof(TDto).Name);
@@ -465,7 +465,8 @@ public partial class HealthService : IHealthService
                 EndTime = timeRange.EndTime,
                 Value = numericValue,
                 Unit = unit,
-                DataType = healthDataType
+                DataType = healthDataType,
+                DataOrigins = dataOrigins
             };
         }
         catch (Exception ex)
