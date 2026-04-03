@@ -16,16 +16,6 @@ public class HealthTimeRange : IHealthTimeRange
     public required DateTimeOffset EndTime { get; init; }
 
     /// <summary>
-    /// Start time as DateTime (local time)
-    /// </summary>
-    public DateTime StartDateTime => StartTime.DateTime;
-
-    /// <summary>
-    /// End time as DateTime (local time)
-    /// </summary>
-    public DateTime EndDateTime => EndTime.DateTime;
-
-    /// <summary>
     /// Creates a HealthTimeRange from DateTime values
     /// </summary>
     /// <param name="startTime">Start time of the range</param>

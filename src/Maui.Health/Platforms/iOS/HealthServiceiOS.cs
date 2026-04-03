@@ -205,8 +205,8 @@ public partial class HealthService : IHealthService
 
         try
         {
-            _logger.LogInformation("iOS GetHealthDataAsync<{DtoName}>: StartTime: {StartTime} (Local: {StartDateTime}), EndTime: {EndTime} (Local: {EndDateTime})",
-                typeof(TDto).Name, timeRange.StartTime, timeRange.StartDateTime, timeRange.EndTime, timeRange.EndDateTime);
+            _logger.LogInformation("iOS GetHealthDataAsync<{DtoName}>: StartTime: {StartTime} (Local: {LocalStart}), EndTime: {EndTime} (Local: {LocalEnd})",
+                typeof(TDto).Name, timeRange.StartTime, timeRange.StartTime.LocalDateTime, timeRange.EndTime, timeRange.EndTime.LocalDateTime);
 
             if (shouldCheckPermissions)
             {
