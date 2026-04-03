@@ -9,8 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 dotnet build src/Maui.Health/Maui.Health.csproj
 
 # Build for specific platform
-dotnet build src/Maui.Health/Maui.Health.csproj -f net9.0-android
-dotnet build src/Maui.Health/Maui.Health.csproj -f net9.0-ios
+dotnet build src/Maui.Health/Maui.Health.csproj -f net10.0-android
+dotnet build src/Maui.Health/Maui.Health.csproj -f net10.0-ios
 
 # Build the demo app
 dotnet build demo/DemoApp/DemoApp/DemoApp.csproj
