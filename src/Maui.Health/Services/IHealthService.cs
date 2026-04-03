@@ -29,7 +29,10 @@ public interface IHealthService
     Task<RequestPermissionResult> RequestPermission(HealthPermissionDto healthPermission, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Request multiple health permissions
+    /// Request multiple health permissions.
+    /// On iOS: the result only reflects write permission grants. Read permission denials are not detectable
+    /// due to Apple's privacy design — see <see cref="RequestPermissionResult"/> for details.
+    /// For a per-permission breakdown, use <see cref="GetPermissionStatuses"/> after this call.
     /// </summary>
     Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
 
