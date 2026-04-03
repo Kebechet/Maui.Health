@@ -749,6 +749,12 @@ public partial class Home
     private string _changesMessage { get; set; } = string.Empty;
     private bool _changesSuccess { get; set; }
 
+    // Permission statuses
+    private IList<HealthPermissionStatusResult> _permissionStatuses { get; set; } = [];
+    private bool _isPermissionStatusLoading { get; set; }
+    private string _permissionStatusMessage { get; set; } = string.Empty;
+    private bool _permissionStatusSuccess { get; set; }
+
     private async Task LoadAggregatedDataAsync()
     {
         try
@@ -936,6 +942,43 @@ public partial class Home
         }
         finally
         {
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadPermissionStatusesAsync()
+    {
+        try
+        {
+            _isPermissionStatusLoading = true;
+            _permissionStatusMessage = "Checking permission statuses...";
+            StateHasChanged();
+
+            var permissions = new List<HealthPermissionDto>
+            {
+                new() { HealthDataType = HealthDataType.Steps, PermissionType = PermissionType.Read },
+                new() { HealthDataType = HealthDataType.Steps, PermissionType = PermissionType.Write },
+                new() { HealthDataType = HealthDataType.Weight, PermissionType = PermissionType.Read },
+                new() { HealthDataType = HealthDataType.Weight, PermissionType = PermissionType.Write },
+                new() { HealthDataType = HealthDataType.ActiveCaloriesBurned, PermissionType = PermissionType.Read },
+                new() { HealthDataType = HealthDataType.ActiveCaloriesBurned, PermissionType = PermissionType.Write },
+                new() { HealthDataType = HealthDataType.HeartRate, PermissionType = PermissionType.Read },
+                new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Read },
+                new() { HealthDataType = HealthDataType.ExerciseSession, PermissionType = PermissionType.Write },
+            };
+
+            _permissionStatuses = await _healthService.GetPermissionStatuses(permissions);
+            _permissionStatusMessage = $"Checked {_permissionStatuses.Count} permissions";
+            _permissionStatusSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            _permissionStatusMessage = $"Error: {ex.Message}";
+            _permissionStatusSuccess = false;
+        }
+        finally
+        {
+            _isPermissionStatusLoading = false;
             StateHasChanged();
         }
     }

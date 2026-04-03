@@ -450,6 +450,49 @@ else if (_activeTab == 2)
         }
     </div>
 
+    <!-- Permission Statuses -->
+    <div class="api-section">
+        <div class="api-section-title">Permission Statuses</div>
+        <p class="section-description">Query current authorization status of health permissions without triggering the permission UI. On iOS, read permissions always return NotDetermined (Apple limitation).</p>
+        <button class="action-btn primary" @onclick="LoadPermissionStatusesAsync" disabled="@_isPermissionStatusLoading">
+            @(_isPermissionStatusLoading ? "Checking..." : "Check Permission Statuses")
+        </button>
+        @if (_permissionStatuses.Any())
+        {
+            <div class="result-card">
+                <table class="table-simple">
+                    <thead>
+                        <tr>
+                            <th>Data Type</th>
+                            <th>Direction</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ps in _permissionStatuses)
+                        {
+                            var statusClass = ps.Status switch
+                            {
+                                Maui.Health.Enums.HealthPermissionStatus.Granted => "upsert",
+                                Maui.Health.Enums.HealthPermissionStatus.Denied => "deletion",
+                                _ => "workout-meta"
+                            };
+                            <tr>
+                                <td>@ps.Permission.HealthDataType</td>
+                                <td>@ps.Permission.PermissionType</td>
+                                <td><span class="change-type @statusClass">@ps.Status</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(_permissionStatusMessage))
+        {
+            <div class="status-msg @(_permissionStatusSuccess ? "info" : "error")">@_permissionStatusMessage</div>
+        }
+    </div>
+
     <!-- Differential Sync -->
     <div class="api-section">
         <div class="api-section-title">Differential Sync</div>
