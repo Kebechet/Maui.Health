@@ -261,27 +261,16 @@ public partial class HealthService : IHealthService
                 }
             }
 
-            // Read all records and find by ID since readRecord() is also a suspend function
-            // that would need additional reflection. Using the existing readRecords approach
-            // with the record ID filter is simpler.
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
             var recordClass = healthDataType.ToKotlinClass();
 
-            // Use a wide time range to find the record - Health Connect readRecords is the only
-            // reliable way without another reflection entry point
-            var timeRange = HealthTimeRange.FromDateTimeOffset(
-                DateTimeOffset.MinValue.AddYears(1),
-                DateTimeOffset.UtcNow.AddDays(1)
-            );
-
-            var response = await _healthConnectClient.ReadHealthRecords(recordClass, timeRange);
-            if (response is null)
+            var record = await _healthConnectClient.ReadHealthRecord(recordClass, id);
+            if (record is null)
             {
                 return null;
             }
 
-            var results = response.Records.ToDtoList<TDto>();
-            return results.FirstOrDefault(x => x.Id == id);
+            return record.ToDto<TDto>();
         }
         catch (Exception ex)
         {

@@ -27,7 +27,7 @@ public partial class HealthService : IHealthService
     /// <inheritdoc/>
     public Task<RequestPermissionResult> RequestPermission(HealthPermissionDto healthPermission, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default)
     {
-        return RequestPermissions([healthPermission]);
+        return RequestPermissions([healthPermission], canRequestFullHistoryPermission, cancellationToken);
     }
 
     /// <inheritdoc/>

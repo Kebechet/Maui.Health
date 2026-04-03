@@ -39,16 +39,26 @@ public static class DateRangeExtensions
 
         try
         {
-            var intervals = System.Text.Json.JsonSerializer.Deserialize<List<(long, long?)>>(json);
+            var intervals = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, long?>>>(json);
             if (intervals is null)
             {
                 return [];
             }
 
-            return intervals.Select(i => new DateRange(
-                DateTimeOffset.FromUnixTimeMilliseconds(i.Item1),
-                i.Item2 is not null ? DateTimeOffset.FromUnixTimeMilliseconds(i.Item2.Value) : null
-            )).ToList();
+            return intervals
+                .Select(i =>
+                {
+                    var start = i.TryGetValue(nameof(DateRange.Start), out var startMs) && startMs is not null
+                        ? DateTimeOffset.FromUnixTimeMilliseconds(startMs.Value)
+                        : DateTimeOffset.UtcNow;
+
+                    var end = i.TryGetValue(nameof(DateRange.End), out var endMs) && endMs is not null
+                        ? DateTimeOffset.FromUnixTimeMilliseconds(endMs.Value)
+                        : (DateTimeOffset?)null;
+
+                    return new DateRange(start, end);
+                })
+                .ToList();
         }
         catch
         {

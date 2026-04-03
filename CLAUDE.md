@@ -51,6 +51,20 @@ Platform-specific conversions use extension methods in `Platforms/{Platform}/Ext
 - `IHealthService` - generic health data API: `GetHealthData<TDto>()`, `WriteHealthData<TDto>()`, permissions
 - `IHealthWorkoutService` (via `IHealthService.Activity`) - workout CRUD + session management
 
+## Test Commands
+
+```bash
+# Run all tests
+dotnet test tests/Maui.Health.Tests/Maui.Health.Tests.csproj
+```
+
+## Test Conventions
+
+- Test projects go in `tests/` directory and are nested under a `Tests` solution folder in the .sln
+- Use xUnit
+- Test method names use three-part underscore format: `MethodUnderTest_Scenario_ExpectedResult`
+- Use `// Arrange`, `// Act`, `// Assert` comments in every test
+
 ## Code Style Preferences
 
 - Prefer `is null` / `is not null` pattern matching over `.HasValue` for nullable value types

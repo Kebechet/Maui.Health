@@ -3,6 +3,7 @@ name: PR Build
 on:
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 env:
   DOTNET_NOLOGO: true
@@ -13,8 +14,30 @@ env:
   BUILD_CONFIGURATION: Release
 
   PROJECT_PATH: src/Maui.Health/Maui.Health.csproj
+  TEST_PROJECT_PATH: tests/Maui.Health.Tests/Maui.Health.Tests.csproj
 
 jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Restore test dependencies
+        run: dotnet restore ${{ env.TEST_PROJECT_PATH }}
+
+      - name: Build tests
+        run: dotnet build ${{ env.TEST_PROJECT_PATH }} --no-restore --configuration ${{ env.BUILD_CONFIGURATION }}
+
+      - name: Run tests
+        run: dotnet test ${{ env.TEST_PROJECT_PATH }} --no-build --configuration ${{ env.BUILD_CONFIGURATION }}
+
   build:
     name: Build
     runs-on: windows-latest
