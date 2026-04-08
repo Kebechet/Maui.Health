@@ -81,7 +81,7 @@ public interface IHealthService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if successful, false otherwise</returns>
     Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
-        where TDto : HealthMetricBase;
+        where TDto : IHealthWritable;
 
     /// <summary>
     /// Delete a health record by its platform-specific ID.

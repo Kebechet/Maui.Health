@@ -293,13 +293,13 @@ public partial class HealthService : IHealthService
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
     public partial Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken)
-        where TDto : HealthMetricBase
+        where TDto : IHealthWritable
     {
         return WriteHealthDataInternal(data, shouldCheckPermissions, cancellationToken);
     }
 
     private async Task<bool> WriteHealthDataInternal<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken)
-        where TDto : HealthMetricBase
+        where TDto : IHealthWritable
     {
         if (!IsSupported)
         {
@@ -312,12 +312,7 @@ public partial class HealthService : IHealthService
 
             if (shouldCheckPermissions)
             {
-                var readPermission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-                var writePermission = new HealthPermissionDto
-                {
-                    HealthDataType = readPermission.HealthDataType,
-                    PermissionType = PermissionType.Write
-                };
+                var writePermission = MetricDtoExtensions.GetRequiredWritePermission<TDto>();
                 var permissionResult = await RequestPermissions([writePermission], cancellationToken: cancellationToken);
                 if (!permissionResult.IsSuccess)
                 {

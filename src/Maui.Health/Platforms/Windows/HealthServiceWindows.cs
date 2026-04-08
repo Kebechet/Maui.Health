@@ -39,7 +39,7 @@ public partial class HealthService : IHealthService
     }
 
     public partial Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken)
-        where TDto : HealthMetricBase
+        where TDto : IHealthWritable
     {
         return Task.FromResult(false);
     }
