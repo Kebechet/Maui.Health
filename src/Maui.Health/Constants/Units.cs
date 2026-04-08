@@ -11,14 +11,44 @@ public static class Units
     public const string Kilogram = "kg";
 
     /// <summary>
+    /// Pound unit label.
+    /// </summary>
+    public const string Pound = "lbs";
+
+    /// <summary>
+    /// Gram unit label.
+    /// </summary>
+    public const string Gram = "g";
+
+    /// <summary>
     /// Centimeter unit label.
     /// </summary>
     public const string Centimeter = "cm";
 
     /// <summary>
+    /// Inch unit label.
+    /// </summary>
+    public const string Inch = "in";
+
+    /// <summary>
+    /// Meter unit label.
+    /// </summary>
+    public const string Meter = "m";
+
+    /// <summary>
+    /// Foot unit label.
+    /// </summary>
+    public const string Foot = "ft";
+
+    /// <summary>
     /// Kilocalorie unit label.
     /// </summary>
     public const string Kilocalorie = "kcal";
+
+    /// <summary>
+    /// Kilojoule unit label.
+    /// </summary>
+    public const string Kilojoule = "kJ";
 
     /// <summary>
     /// Beats per minute unit label.
