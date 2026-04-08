@@ -73,14 +73,21 @@ public interface IHealthService
         where TDto : HealthMetricBase;
 
     /// <summary>
-    /// Write health data to the health store
+    /// Write a single health record to the health store.
+    /// Delegates to <see cref="WriteHealthData{TDto}(IList{TDto}, bool, CancellationToken)"/>.
+    /// </summary>
+    Task<bool> WriteHealthData<TDto>(TDto item, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
+        where TDto : IHealthWritable;
+
+    /// <summary>
+    /// Write multiple health records to the health store in a single platform call
     /// </summary>
     /// <typeparam name="TDto">The type of health metric DTO to write</typeparam>
-    /// <param name="data">The health data to write</param>
+    /// <param name="items">The health data records to write</param>
     /// <param name="shouldCheckPermissions">When false, skips the internal permission check. Use when permissions were already requested upfront via <see cref="RequestPermissions"/>.</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>True if successful, false otherwise</returns>
-    Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
+    /// <returns>True if all records were written successfully, false otherwise</returns>
+    Task<bool> WriteHealthData<TDto>(IList<TDto> items, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : IHealthWritable;
 
     /// <summary>

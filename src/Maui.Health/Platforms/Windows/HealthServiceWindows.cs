@@ -38,7 +38,7 @@ public partial class HealthService : IHealthService
         return Task.FromResult<TDto?>(null);
     }
 
-    public partial Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    public partial Task<bool> WriteHealthData<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : IHealthWritable
     {
         return Task.FromResult(false);

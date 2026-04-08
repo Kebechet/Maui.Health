@@ -45,7 +45,14 @@ public partial class HealthService : IHealthService
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
+    public Task<bool> WriteHealthData<TDto>(TDto item, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
+        where TDto : IHealthWritable
+    {
+        return WriteHealthData([item], shouldCheckPermissions, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public partial Task<bool> WriteHealthData<TDto>(IList<TDto> items, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : IHealthWritable;
 
     /// <inheritdoc/>

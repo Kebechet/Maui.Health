@@ -218,30 +218,39 @@ internal static class JavaReflectionHelper
     /// <param name="healthConnectClient">The Health Connect client instance</param>
     /// <param name="record">The record to insert</param>
     /// <returns>True if the record was inserted successfully, false otherwise</returns>
-    internal static async Task<bool> InsertRecord(this IHealthConnectClient healthConnectClient, Java.Lang.Object record)
+    internal static Task<bool> InsertRecord(this IHealthConnectClient healthConnectClient, Java.Lang.Object record)
+    {
+        return healthConnectClient.InsertRecords([record]);
+    }
+
+    internal static async Task<bool> InsertRecords(this IHealthConnectClient healthConnectClient, IList<Java.Lang.Object> records)
     {
         try
         {
-            // Wrap the Java object as IRecord using the JNI handle to avoid managed cast issues
-            var irecord = Java.Lang.Object.GetObject<AndroidX.Health.Connect.Client.Records.IRecord>(
-                record.Handle, JniHandleOwnership.DoNotTransfer);
+            var irecords = new System.Collections.Generic.List<AndroidX.Health.Connect.Client.Records.IRecord>();
 
-            if (irecord is null)
+            foreach (var record in records)
             {
-                Debug.WriteLine("Could not wrap record as IRecord");
-                return false;
+                var irecord = Java.Lang.Object.GetObject<AndroidX.Health.Connect.Client.Records.IRecord>(
+                    record.Handle, JniHandleOwnership.DoNotTransfer);
+
+                if (irecord is null)
+                {
+                    Debug.WriteLine("Could not wrap record as IRecord");
+                    return false;
+                }
+
+                irecords.Add(irecord);
             }
 
-            var recordsList = new System.Collections.Generic.List<AndroidX.Health.Connect.Client.Records.IRecord> { irecord };
-
             var response = await KotlinResolver.Process<InsertRecordsResponse, System.Collections.Generic.IList<AndroidX.Health.Connect.Client.Records.IRecord>>(
-                healthConnectClient.InsertRecords, recordsList);
+                healthConnectClient.InsertRecords, irecords);
 
             return response is not null;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error inserting record: {ex.Message}");
+            Debug.WriteLine($"Error inserting records: {ex.Message}");
             return false;
         }
     }

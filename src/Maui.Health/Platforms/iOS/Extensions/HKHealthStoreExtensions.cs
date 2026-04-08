@@ -20,14 +20,25 @@ internal static class HKHealthStoreExtensions
     /// <param name="sample">The HKObject to save</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if saved successfully, false otherwise</returns>
-    internal static async Task<bool> Save(
+    internal static Task<bool> Save(
         this HKHealthStore healthStore,
         HKObject sample,
         CancellationToken cancellationToken = default)
     {
+        return healthStore.SaveAll([sample], cancellationToken);
+    }
+
+    /// <summary>
+    /// Saves multiple HKObjects to HealthKit in a single call.
+    /// </summary>
+    internal static async Task<bool> SaveAll(
+        this HKHealthStore healthStore,
+        HKObject[] samples,
+        CancellationToken cancellationToken = default)
+    {
         var tcs = new TaskCompletionSource<bool>();
 
-        healthStore.SaveObject(sample, (success, error) =>
+        healthStore.SaveObjects(samples, (success, error) =>
         {
             if (error is not null)
             {

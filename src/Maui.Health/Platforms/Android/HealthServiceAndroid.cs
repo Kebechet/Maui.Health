@@ -238,13 +238,13 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    public partial Task<bool> WriteHealthData<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : IHealthWritable
     {
-        return WriteHealthDataInternal(data, shouldCheckPermissions, cancellationToken);
+        return WriteHealthDataInternal(items, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<bool> WriteHealthDataInternal<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken) where TDto : IHealthWritable
+    private async Task<bool> WriteHealthDataInternal<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken) where TDto : IHealthWritable
     {
         try
         {
@@ -264,21 +264,27 @@ public partial class HealthService : IHealthService
                 }
             }
 
-            var record = data.ToAndroidRecord();
-            if (record is null)
+            var records = new List<Java.Lang.Object>();
+            foreach (var item in items)
             {
-                _logger.LogWarning("Failed to convert {DtoName} to Android record", typeof(TDto).Name);
-                return false;
+                var record = item.ToAndroidRecord();
+                if (record is null)
+                {
+                    _logger.LogWarning("Failed to convert {DtoName} to Android record", typeof(TDto).Name);
+                    return false;
+                }
+
+                records.Add(record);
             }
 
-            var success = await _healthConnectClient.InsertRecord(record);
+            var success = await _healthConnectClient.InsertRecords(records);
             if (!success)
             {
-                _logger.LogWarning("Failed to insert {DtoName} record via reflection", typeof(TDto).Name);
+                _logger.LogWarning("Failed to insert {Count} {DtoName} records", records.Count, typeof(TDto).Name);
                 return false;
             }
 
-            _logger.LogInformation("Successfully wrote {DtoName} record", typeof(TDto).Name);
+            _logger.LogInformation("Successfully wrote {Count} {DtoName} records", records.Count, typeof(TDto).Name);
             return true;
         }
         catch (Exception ex)

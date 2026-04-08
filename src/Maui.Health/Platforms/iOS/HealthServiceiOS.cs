@@ -292,13 +292,13 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<bool> WriteHealthData<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    public partial Task<bool> WriteHealthData<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : IHealthWritable
     {
-        return WriteHealthDataInternal(data, shouldCheckPermissions, cancellationToken);
+        return WriteHealthDataInternal(items, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<bool> WriteHealthDataInternal<TDto>(TDto data, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    private async Task<bool> WriteHealthDataInternal<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : IHealthWritable
     {
         if (!IsSupported)
@@ -308,7 +308,7 @@ public partial class HealthService : IHealthService
 
         try
         {
-            _logger.LogInformation("iOS WriteHealthDataAsync<{DtoName}>", typeof(TDto).Name);
+            _logger.LogInformation("iOS WriteHealthDataAsync<{DtoName}> ({Count} records)", typeof(TDto).Name, items.Count);
 
             if (shouldCheckPermissions)
             {
@@ -321,34 +321,29 @@ public partial class HealthService : IHealthService
                 }
             }
 
-            // Convert DTO to HKObject (HKQuantitySample or HKWorkout)
-            HKObject? sample = data.ToHKObject();
-            if (sample == null)
+            var samples = new List<HKObject>();
+            foreach (var item in items)
             {
-                _logger.LogWarning("iOS Write: Failed to convert {DtoName} to HKObject", typeof(TDto).Name);
+                var sample = item.ToHKObject();
+                if (sample is null)
+                {
+                    _logger.LogWarning("iOS Write: Failed to convert {DtoName} to HKObject", typeof(TDto).Name);
+                    return false;
+                }
+
+                samples.Add(sample);
+            }
+
+            using var healthStore = new HKHealthStore();
+            var success = await healthStore.SaveAll([.. samples], cancellationToken);
+            if (!success)
+            {
+                _logger.LogWarning("iOS Write: Failed to save {Count} {DtoName} records", samples.Count, typeof(TDto).Name);
                 return false;
             }
 
-            // Save to HealthKit
-            using var healthStore = new HKHealthStore();
-            var tcs = new TaskCompletionSource<bool>();
-
-            healthStore.SaveObject(sample, (success, error) =>
-            {
-                if (error != null)
-                {
-                    _logger.LogError("iOS Write Error: {Error}", error.LocalizedDescription);
-                    tcs.TrySetResult(false);
-                }
-                else
-                {
-                    _logger.LogInformation("iOS Write: Successfully wrote {DtoName}", typeof(TDto).Name);
-                    tcs.TrySetResult(success);
-                }
-            });
-
-            using var ct = cancellationToken.Register(() => tcs.TrySetCanceled());
-            return await tcs.Task;
+            _logger.LogInformation("iOS Write: Successfully wrote {Count} {DtoName} records", samples.Count, typeof(TDto).Name);
+            return true;
         }
         catch (Exception ex)
         {
