@@ -43,8 +43,8 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>4.0.0-preview.1</Version>
-    <PackageReleaseNotes>Breaking: removed HealthTimeRange.StartDateTime/EndDateTime properties (use StartTime.LocalDateTime instead). Added DateOnly.ToFullDayHealthTimeRange() extension. Fixed iOS NSSet.Count() call.</PackageReleaseNotes>
+    <Version>4.0.0-preview.2</Version>
+    <PackageReleaseNotes>Breaking: WriteHealthData now only accepts write DTOs (IHealthWritable) instead of read DTOs (HealthMetricBase). Added dedicated write DTOs (WeightWriteData, HeightWriteData, etc.) with type-safe unit enums (MassUnit, LengthUnit, EnergyUnit). Added .In() extension methods for unit conversion on read DTOs and AggregatedResult. Added unit constants for imperial units (Pound, Gram, Inch, Meter, Foot, Kilojoule).</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
