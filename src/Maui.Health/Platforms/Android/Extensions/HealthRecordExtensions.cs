@@ -4,6 +4,7 @@ using AndroidX.Health.Connect.Client.Units;
 using Maui.Health.Constants;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
+using Maui.Health.Models.Metrics.Write;
 using Maui.Health.Platforms.Android.Helpers;
 using System.Diagnostics;
 using static Maui.Health.Platforms.Android.AndroidConstant;
@@ -509,17 +510,17 @@ internal static class HealthRecordExtensions
         return Defaults.FallbackValue;
     }
 
-    public static Java.Lang.Object? ToAndroidRecord(this HealthMetricBase dto)
+    public static Java.Lang.Object? ToAndroidRecord(this IHealthWritable dto)
     {
         return dto switch
         {
-            StepsDto stepsDto => stepsDto.ToStepsRecord(),
-            WeightDto weightDto => weightDto.ToWeightRecord(),
-            HeightDto heightDto => heightDto.ToHeightRecord(),
-            ActiveCaloriesBurnedDto caloriesDto => caloriesDto.ToActiveCaloriesBurnedRecord(),
-            HeartRateDto heartRateDto => heartRateDto.ToHeartRateRecord(),
-            BodyFatDto bodyFatDto => bodyFatDto.ToBodyFatRecord(),
-            Vo2MaxDto vo2MaxDto => vo2MaxDto.ToVo2MaxRecord(),
+            StepsWriteData stepsWrite => stepsWrite.ToStepsRecord(),
+            WeightWriteData weightWrite => weightWrite.ToWeightRecord(),
+            HeightWriteData heightWrite => heightWrite.ToHeightRecord(),
+            ActiveCaloriesBurnedWriteData caloriesWrite => caloriesWrite.ToActiveCaloriesBurnedRecord(),
+            HeartRateWriteData heartRateWrite => heartRateWrite.ToHeartRateRecord(),
+            BodyFatWriteData bodyFatWrite => bodyFatWrite.ToBodyFatRecord(),
+            Vo2MaxWriteData vo2MaxWrite => vo2MaxWrite.ToVo2MaxRecord(),
             _ => null
         };
     }
@@ -540,10 +541,18 @@ internal static class HealthRecordExtensions
 
     public static WeightRecord ToWeightRecord(this WeightDto dto)
     {
+        var valueInKilograms = dto.Unit switch
+        {
+            Units.Kilogram => dto.Value,
+            Units.Pound => UnitsNet.Mass.FromPounds(dto.Value).Kilograms,
+            Units.Gram => UnitsNet.Mass.FromGrams(dto.Value).Kilograms,
+            _ => throw new ArgumentException($"Unsupported weight unit: '{dto.Unit}'. Use Units.Kilogram, Units.Pound, or Units.Gram.", nameof(dto))
+        };
+
         var mass = JavaReflectionHelper.CreateUnitViaCompanion<Mass>(
             Reflection.MassClassName,
             Reflection.KilogramsMethodName,
-            dto.Value);
+            valueInKilograms);
 
         return new WeightRecord(
             dto.Timestamp.ToJavaInstant()!,
@@ -555,7 +564,14 @@ internal static class HealthRecordExtensions
 
     public static HeightRecord ToHeightRecord(this HeightDto dto)
     {
-        var valueInMeters = UnitsNet.Length.FromCentimeters(dto.Value).Meters;
+        var valueInMeters = dto.Unit switch
+        {
+            Units.Centimeter => UnitsNet.Length.FromCentimeters(dto.Value).Meters,
+            Units.Meter => dto.Value,
+            Units.Inch => UnitsNet.Length.FromInches(dto.Value).Meters,
+            Units.Foot => UnitsNet.Length.FromFeet(dto.Value).Meters,
+            _ => throw new ArgumentException($"Unsupported height unit: '{dto.Unit}'. Use Units.Centimeter, Units.Meter, Units.Inch, or Units.Foot.", nameof(dto))
+        };
 
         var length = JavaReflectionHelper.CreateUnitViaCompanion<Length>(
             Reflection.LengthClassName,
@@ -572,11 +588,18 @@ internal static class HealthRecordExtensions
 
     public static ActiveCaloriesBurnedRecord ToActiveCaloriesBurnedRecord(this ActiveCaloriesBurnedDto dto)
     {
+        var valueInKilocalories = dto.Unit switch
+        {
+            Units.Kilocalorie => dto.Energy,
+            Units.Kilojoule => UnitsNet.Energy.FromKilojoules(dto.Energy).Kilocalories,
+            _ => throw new ArgumentException($"Unsupported energy unit: '{dto.Unit}'. Use Units.Kilocalorie or Units.Kilojoule.", nameof(dto))
+        };
+
         var offset = ZoneOffsetExtensions.GetCurrent();
         var energy = JavaReflectionHelper.CreateUnitViaCompanion<Energy>(
             Reflection.EnergyClassName,
             Reflection.KilocaloriesMethodName,
-            dto.Energy);
+            valueInKilocalories);
 
         return new ActiveCaloriesBurnedRecord(
             dto.StartTime.ToJavaInstant()!,
@@ -616,6 +639,132 @@ internal static class HealthRecordExtensions
     public static Vo2MaxRecord ToVo2MaxRecord(this Vo2MaxDto dto)
     {
         // MeasurementMethod constants: 0 = Other, 1 = Metabolic cart, 2 = Heart rate ratio, 3 = Cooper test, 4 = Multistage fitness test, 5 = Rockport fitness test
+        const int measurementMethodOther = 0;
+
+        return new Vo2MaxRecord(
+            dto.Timestamp.ToJavaInstant()!,
+            ZoneOffsetExtensions.GetCurrent(),
+            Metadata.ManualEntry(),
+            dto.Value,
+            measurementMethodOther
+        );
+    }
+
+    // Write DTO converters
+
+    public static StepsRecord ToStepsRecord(this StepsWriteData dto)
+    {
+        var offset = ZoneOffsetExtensions.GetCurrent();
+
+        return new StepsRecord(
+            dto.StartTime.ToJavaInstant()!,
+            offset,
+            dto.EndTime.ToJavaInstant()!,
+            offset,
+            dto.Count,
+            Metadata.ManualEntry()
+        );
+    }
+
+    public static WeightRecord ToWeightRecord(this WeightWriteData dto)
+    {
+        var valueInKilograms = dto.Unit switch
+        {
+            MassUnit.Kilogram => dto.Value,
+            MassUnit.Pound => UnitsNet.Mass.FromPounds(dto.Value).Kilograms,
+            MassUnit.Gram => UnitsNet.Mass.FromGrams(dto.Value).Kilograms,
+            _ => throw new ArgumentOutOfRangeException(nameof(dto.Unit), dto.Unit, null)
+        };
+
+        var mass = JavaReflectionHelper.CreateUnitViaCompanion<Mass>(
+            Reflection.MassClassName,
+            Reflection.KilogramsMethodName,
+            valueInKilograms);
+
+        return new WeightRecord(
+            dto.Timestamp.ToJavaInstant()!,
+            ZoneOffsetExtensions.GetCurrent(),
+            mass!,
+            Metadata.ManualEntry()
+        );
+    }
+
+    public static HeightRecord ToHeightRecord(this HeightWriteData dto)
+    {
+        var valueInMeters = dto.Unit switch
+        {
+            LengthUnit.Centimeter => UnitsNet.Length.FromCentimeters(dto.Value).Meters,
+            LengthUnit.Meter => dto.Value,
+            LengthUnit.Inch => UnitsNet.Length.FromInches(dto.Value).Meters,
+            LengthUnit.Foot => UnitsNet.Length.FromFeet(dto.Value).Meters,
+            _ => throw new ArgumentOutOfRangeException(nameof(dto.Unit), dto.Unit, null)
+        };
+
+        var length = JavaReflectionHelper.CreateUnitViaCompanion<Length>(
+            Reflection.LengthClassName,
+            Reflection.MetersMethodName,
+            valueInMeters);
+
+        return new HeightRecord(
+            dto.Timestamp.ToJavaInstant()!,
+            ZoneOffsetExtensions.GetCurrent(),
+            length!,
+            Metadata.ManualEntry()
+        );
+    }
+
+    public static ActiveCaloriesBurnedRecord ToActiveCaloriesBurnedRecord(this ActiveCaloriesBurnedWriteData dto)
+    {
+        var valueInKilocalories = dto.Unit switch
+        {
+            EnergyUnit.Kilocalorie => dto.Energy,
+            EnergyUnit.Kilojoule => UnitsNet.Energy.FromKilojoules(dto.Energy).Kilocalories,
+            _ => throw new ArgumentOutOfRangeException(nameof(dto.Unit), dto.Unit, null)
+        };
+
+        var offset = ZoneOffsetExtensions.GetCurrent();
+        var energy = JavaReflectionHelper.CreateUnitViaCompanion<Energy>(
+            Reflection.EnergyClassName,
+            Reflection.KilocaloriesMethodName,
+            valueInKilocalories);
+
+        return new ActiveCaloriesBurnedRecord(
+            dto.StartTime.ToJavaInstant()!,
+            offset,
+            dto.EndTime.ToJavaInstant()!,
+            offset,
+            energy!,
+            Metadata.ManualEntry()
+        );
+    }
+
+    public static HeartRateRecord ToHeartRateRecord(this HeartRateWriteData dto)
+    {
+        var time = dto.Timestamp.ToJavaInstant();
+        var offset = ZoneOffsetExtensions.GetCurrent();
+
+        return new HeartRateRecord(
+            time!,
+            offset,
+            time!,
+            offset,
+            [new(time!, (long)dto.BeatsPerMinute)],
+            Metadata.ManualEntry()
+        );
+    }
+
+    public static BodyFatRecord ToBodyFatRecord(this BodyFatWriteData dto)
+    {
+        return new BodyFatRecord(
+            dto.Timestamp.ToJavaInstant()!,
+            ZoneOffsetExtensions.GetCurrent(),
+            new Percentage(dto.Percentage),
+            Metadata.ManualEntry()
+        );
+    }
+
+    public static Vo2MaxRecord ToVo2MaxRecord(this Vo2MaxWriteData dto)
+    {
         const int measurementMethodOther = 0;
 
         return new Vo2MaxRecord(

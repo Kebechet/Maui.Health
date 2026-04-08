@@ -3,6 +3,7 @@ using Maui.Health.Constants;
 using Maui.Health.Enums;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
+using Maui.Health.Models.Metrics.Write;
 using UnitsNet;
 
 namespace Maui.Health.Platforms.iOS.Extensions;
@@ -170,17 +171,17 @@ internal static class HKQuantitySampleExtensions
         };
     }
 
-    public static HKObject? ToHKObject(this HealthMetricBase dto)
+    public static HKObject? ToHKObject(this IHealthWritable dto)
     {
         return dto switch
         {
-            StepsDto stepsDto => stepsDto.ToHKQuantitySample(),
-            WeightDto weightDto => weightDto.ToHKQuantitySample(),
-            HeightDto heightDto => heightDto.ToHKQuantitySample(),
-            ActiveCaloriesBurnedDto caloriesDto => caloriesDto.ToHKQuantitySample(),
-            HeartRateDto heartRateDto => heartRateDto.ToHKQuantitySample(),
-            BodyFatDto bodyFatDto => bodyFatDto.ToHKQuantitySample(),
-            Vo2MaxDto vo2MaxDto => vo2MaxDto.ToHKQuantitySample(),
+            StepsWriteData stepsWrite => stepsWrite.ToHKQuantitySample(),
+            WeightWriteData weightWrite => weightWrite.ToHKQuantitySample(),
+            HeightWriteData heightWrite => heightWrite.ToHKQuantitySample(),
+            ActiveCaloriesBurnedWriteData caloriesWrite => caloriesWrite.ToHKQuantitySample(),
+            HeartRateWriteData heartRateWrite => heartRateWrite.ToHKQuantitySample(),
+            BodyFatWriteData bodyFatWrite => bodyFatWrite.ToHKQuantitySample(),
+            Vo2MaxWriteData vo2MaxWrite => vo2MaxWrite.ToHKQuantitySample(),
             _ => throw new NotImplementedException($"DTO type {dto.GetType().Name} is not implemented for write operation")
         };
     }
@@ -198,7 +199,13 @@ internal static class HKQuantitySampleExtensions
     public static HKQuantitySample ToHKQuantitySample(this WeightDto dto)
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.BodyMass)!;
-        var valueInGrams = Mass.FromKilograms(dto.Value).Grams;
+        var valueInGrams = dto.Unit switch
+        {
+            Units.Kilogram => Mass.FromKilograms(dto.Value).Grams,
+            Units.Pound => Mass.FromPounds(dto.Value).Grams,
+            Units.Gram => dto.Value,
+            _ => throw new ArgumentException($"Unsupported weight unit: '{dto.Unit}'. Use Units.Kilogram, Units.Pound, or Units.Gram.", nameof(dto))
+        };
         var quantity = HKQuantity.FromQuantity(HKUnit.Gram, valueInGrams);
         var date = dto.Timestamp.ToNSDate();
 
@@ -208,7 +215,14 @@ internal static class HKQuantitySampleExtensions
     public static HKQuantitySample ToHKQuantitySample(this HeightDto dto)
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.Height)!;
-        var valueInMeters = Length.FromCentimeters(dto.Value).Meters;
+        var valueInMeters = dto.Unit switch
+        {
+            Units.Centimeter => Length.FromCentimeters(dto.Value).Meters,
+            Units.Meter => dto.Value,
+            Units.Inch => Length.FromInches(dto.Value).Meters,
+            Units.Foot => Length.FromFeet(dto.Value).Meters,
+            _ => throw new ArgumentException($"Unsupported height unit: '{dto.Unit}'. Use Units.Centimeter, Units.Meter, Units.Inch, or Units.Foot.", nameof(dto))
+        };
         var quantity = HKQuantity.FromQuantity(HKUnit.Meter, valueInMeters);
         var date = dto.Timestamp.ToNSDate();
 
@@ -218,7 +232,13 @@ internal static class HKQuantitySampleExtensions
     public static HKQuantitySample ToHKQuantitySample(this ActiveCaloriesBurnedDto dto)
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.ActiveEnergyBurned)!;
-        var quantity = HKQuantity.FromQuantity(HKUnit.Kilocalorie, dto.Energy);
+        var valueInKilocalories = dto.Unit switch
+        {
+            Units.Kilocalorie => dto.Energy,
+            Units.Kilojoule => UnitsNet.Energy.FromKilojoules(dto.Energy).Kilocalories,
+            _ => throw new ArgumentException($"Unsupported energy unit: '{dto.Unit}'. Use Units.Kilocalorie or Units.Kilojoule.", nameof(dto))
+        };
+        var quantity = HKQuantity.FromQuantity(HKUnit.Kilocalorie, valueInKilocalories);
         var startDate = dto.StartTime.ToNSDate();
         var endDate = dto.EndTime.ToNSDate();
 
@@ -245,6 +265,96 @@ internal static class HKQuantitySampleExtensions
     }
 
     public static HKQuantitySample ToHKQuantitySample(this Vo2MaxDto dto)
+    {
+        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.VO2Max)!;
+        var unit = HKUnit.FromString(Units.HKVo2Max);
+        var quantity = HKQuantity.FromQuantity(unit, dto.Value);
+        var date = dto.Timestamp.ToNSDate();
+
+        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+    }
+
+    // Write DTO converters
+
+    public static HKQuantitySample ToHKQuantitySample(this StepsWriteData dto)
+    {
+        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.StepCount)!;
+        var quantity = HKQuantity.FromQuantity(HKUnit.Count, dto.Count);
+        var startDate = dto.StartTime.ToNSDate();
+        var endDate = dto.EndTime.ToNSDate();
+
+        return HKQuantitySample.FromType(quantityType, quantity, startDate, endDate);
+    }
+
+    public static HKQuantitySample ToHKQuantitySample(this WeightWriteData dto)
+    {
+        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.BodyMass)!;
+        var valueInGrams = dto.Unit switch
+        {
+            MassUnit.Kilogram => Mass.FromKilograms(dto.Value).Grams,
+            MassUnit.Pound => Mass.FromPounds(dto.Value).Grams,
+            MassUnit.Gram => dto.Value,
+            _ => throw new ArgumentOutOfRangeException(nameof(dto.Unit), dto.Unit, null)
+        };
+        var quantity = HKQuantity.FromQuantity(HKUnit.Gram, valueInGrams);
+        var date = dto.Timestamp.ToNSDate();
+
+        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+    }
+
+    public static HKQuantitySample ToHKQuantitySample(this HeightWriteData dto)
+    {
+        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.Height)!;
+        var valueInMeters = dto.Unit switch
+        {
+            LengthUnit.Centimeter => Length.FromCentimeters(dto.Value).Meters,
+            LengthUnit.Meter => dto.Value,
+            LengthUnit.Inch => Length.FromInches(dto.Value).Meters,
+            LengthUnit.Foot => Length.FromFeet(dto.Value).Meters,
+            _ => throw new ArgumentOutOfRangeException(nameof(dto.Unit), dto.Unit, null)
+        };
+        var quantity = HKQuantity.FromQuantity(HKUnit.Meter, valueInMeters);
+        var date = dto.Timestamp.ToNSDate();
+
+        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+    }
+
+    public static HKQuantitySample ToHKQuantitySample(this ActiveCaloriesBurnedWriteData dto)
+    {
+        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.ActiveEnergyBurned)!;
+        var valueInKilocalories = dto.Unit switch
+        {
+            EnergyUnit.Kilocalorie => dto.Energy,
+            EnergyUnit.Kilojoule => UnitsNet.Energy.FromKilojoules(dto.Energy).Kilocalories,
+            _ => throw new ArgumentOutOfRangeException(nameof(dto.Unit), dto.Unit, null)
+        };
+        var quantity = HKQuantity.FromQuantity(HKUnit.Kilocalorie, valueInKilocalories);
+        var startDate = dto.StartTime.ToNSDate();
+        var endDate = dto.EndTime.ToNSDate();
+
+        return HKQuantitySample.FromType(quantityType, quantity, startDate, endDate);
+    }
+
+    public static HKQuantitySample ToHKQuantitySample(this HeartRateWriteData dto)
+    {
+        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.HeartRate)!;
+        var unit = HKUnit.Count.UnitDividedBy(HKUnit.Minute);
+        var quantity = HKQuantity.FromQuantity(unit, dto.BeatsPerMinute);
+        var date = dto.Timestamp.ToNSDate();
+
+        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+    }
+
+    public static HKQuantitySample ToHKQuantitySample(this BodyFatWriteData dto)
+    {
+        var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.BodyFatPercentage)!;
+        var quantity = HKQuantity.FromQuantity(HKUnit.Percent, dto.Percentage / 100.0);
+        var date = dto.Timestamp.ToNSDate();
+
+        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+    }
+
+    public static HKQuantitySample ToHKQuantitySample(this Vo2MaxWriteData dto)
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.VO2Max)!;
         var unit = HKUnit.FromString(Units.HKVo2Max);
