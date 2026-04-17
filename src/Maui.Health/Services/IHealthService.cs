@@ -157,4 +157,31 @@ public interface IHealthService
     /// On iOS: No-op (HealthKit is built into the OS).
     /// </summary>
     void OpenStorePageOfHealthProvider();
+
+    /// <summary>
+    /// Returns the earliest UTC <see cref="DateTime"/> from which this device currently allows
+    /// historical health-data reads. Callers can use it as the start of their sync window
+    /// without having to know per-platform rules.
+    /// <para>
+    /// On <b>Android</b> (Health Connect): if <c>android.permission.health.READ_HEALTH_DATA_HISTORY</c>
+    /// has been granted returns <see cref="DateTime.MinValue"/> (unlimited). Otherwise returns
+    /// <c>firstGrantDate - 30 days</c>, where <c>firstGrantDate</c> is the timestamp captured
+    /// the first time the user granted any Health Connect permission through this library.
+    /// This matches the platform's "30 days prior to when any permission was first granted"
+    /// rule. If no anchor is persisted yet (existing install that predates this tracking,
+    /// or permissions never granted through the library) we return <c>now - 30 days</c> as a
+    /// safe fallback guaranteed to be inside the readable window.
+    /// </para>
+    /// <para>
+    /// On <b>iOS</b> (HealthKit): always returns <see cref="DateTime.MinValue"/>. HealthKit has no
+    /// documented lookback cap and authorization grants retroactive read access.
+    /// </para>
+    /// <para>
+    /// On <b>unsupported platforms</b>: returns <see cref="DateTime.MinValue"/>. Read operations
+    /// return empty collections on those platforms anyway.
+    /// </para>
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The earliest UTC <see cref="DateTime"/> from which reads are currently possible.</returns>
+    Task<DateTime> GetEarliestAccessibleDateTime(CancellationToken cancellationToken = default);
 }

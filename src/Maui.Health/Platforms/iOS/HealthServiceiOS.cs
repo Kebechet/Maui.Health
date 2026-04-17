@@ -1097,4 +1097,11 @@ public partial class HealthService : IHealthService
 
         return results.ToList();
     }
+
+    public partial Task<DateTime> GetEarliestAccessibleDateTime(CancellationToken cancellationToken)
+    {
+        // HealthKit has no documented lookback cap and authorization grants retroactive read access
+        // for the entire on-device history. Return DateTime.MinValue to signal "unlimited".
+        return Task.FromResult(DateTime.MinValue);
+    }
 }

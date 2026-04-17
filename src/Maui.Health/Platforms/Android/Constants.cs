@@ -26,6 +26,29 @@ public static class AndroidConstant
     public const string FullHistoryReadPermission = "android.permission.health.READ_HEALTH_DATA_HISTORY";
 
     /// <summary>
+    /// Prefix for all Health Connect permission strings.
+    /// Used to detect whether any health permission is currently granted.
+    /// </summary>
+    public const string HealthPermissionPrefix = "android.permission.health.";
+
+    /// <summary>
+    /// Preferences key for persisting the UTC Unix-millisecond timestamp of when the user
+    /// first granted any Health Connect permission. Health Connect allows reads up to
+    /// <see cref="HealthConnectDefaultHistoryDays"/> days prior to this timestamp without
+    /// <see cref="FullHistoryReadPermission"/>, and the platform exposes no API to read this
+    /// value back — we must persist it ourselves.
+    /// </summary>
+    public const string FirstPermissionGrantAtKey = "maui_health_first_permission_grant_at_unix_ms";
+
+    /// <summary>
+    /// Default historical read window Health Connect allows without
+    /// <see cref="FullHistoryReadPermission"/>. Measured in days prior to "when any permission
+    /// was first granted".
+    /// https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#read-data-older-than-30-days
+    /// </summary>
+    public const int HealthConnectDefaultHistoryDays = 30;
+
+    /// <summary>
     /// Play Store URI template for Health Connect installation.
     /// </summary>
     public const string PlayStoreUriTemplate = "market://details?id={0}&url=healthconnect%3A%2F%2Fonboarding";

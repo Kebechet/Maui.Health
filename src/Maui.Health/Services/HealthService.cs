@@ -75,4 +75,7 @@ public partial class HealthService : IHealthService
 
     /// <inheritdoc/>
     public partial void OpenStorePageOfHealthProvider();
+
+    /// <inheritdoc/>
+    public partial Task<DateTime> GetEarliestAccessibleDateTime(CancellationToken cancellationToken = default);
 }

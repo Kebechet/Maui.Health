@@ -73,4 +73,9 @@ public partial class HealthService : IHealthService
     }
 
     public partial void OpenStorePageOfHealthProvider() { }
+
+    public partial Task<DateTime> GetEarliestAccessibleDateTime(CancellationToken cancellationToken)
+    {
+        return Task.FromResult(DateTime.MinValue);
+    }
 }

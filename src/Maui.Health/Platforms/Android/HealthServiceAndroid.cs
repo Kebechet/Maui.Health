@@ -68,6 +68,14 @@ public partial class HealthService : IHealthService
                 };
             }
 
+            // Capture pre-call state to detect whether this request is a FRESH grant
+            // (no health permission held beforehand). The single-anchor first-grant timestamp
+            // is only set when we observe that transition, matching Health Connect's
+            // "30 days prior to when any permission was first granted" rule:
+            // https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#read-data-older-than-30-days
+            var hadAnyHealthPermissionBefore = grantedPermissions
+                .Any(p => p?.ToString()?.StartsWith(AndroidConstant.HealthPermissionPrefix, StringComparison.Ordinal) == true);
+
             var missingPermissions = permissionsToGrant
                 .Where(permission => !grantedPermissions.ToList().Contains(permission))
                 .ToList();
@@ -102,6 +110,20 @@ public partial class HealthService : IHealthService
                 : missingPermissions
                     .Where(permission => !newlyGrantedPermissions.ToList().Contains(permission))
                     .ToList();
+
+            // If we transitioned from "no health permission" to "at least one granted",
+            // record the first-grant anchor. The platform doesn't expose this value and
+            // it drives the 30-day historical read window for all subsequent reads.
+            // Runs BEFORE the partial-grant early-return below — the platform's anchor is
+            // set by any successful grant, even if our caller didn't get everything asked.
+            // Spec: https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#read-data-older-than-30-days
+            if (!hadAnyHealthPermissionBefore
+                && newlyGrantedPermissions?
+                    .ToList()
+                    .Any(p => p?.ToString()?.StartsWith(AndroidConstant.HealthPermissionPrefix, StringComparison.Ordinal) == true) == true)
+            {
+                Preferences.Default.Set(AndroidConstant.FirstPermissionGrantAtKey, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            }
 
             if (stillMissingPermissions.Any())
             {
@@ -604,5 +626,56 @@ public partial class HealthService : IHealthService
     public partial void OpenStorePageOfHealthProvider()
     {
         _activityContext.OpenHealthConnectInPlayStore();
+    }
+
+    public async partial Task<DateTime> GetEarliestAccessibleDateTime(CancellationToken cancellationToken)
+    {
+        // Safe conservative fallback when we have no stored anchor: now - 30 days. Health Connect
+        // guarantees at least that much is accessible ("30 days prior to when any permission was
+        // first granted" — a fresh grant anchors at most at "now"), so this is always within the
+        // readable window.
+        // Spec: https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#read-data-older-than-30-days
+        var safeFallback = DateTime.UtcNow.AddDays(-HealthConnectDefaultHistoryDays);
+
+        try
+        {
+            if (!_sdkStatus.IsSuccess)
+            {
+                return safeFallback;
+            }
+
+            var grantedPermissions = await KotlinResolver.ProcessList<Java.Lang.String>(_healthConnectClient.PermissionController.GetGrantedPermissions);
+            var hasHistoryPermission = grantedPermissions?
+                .ToList()
+                .Any(p => p?.ToString() == FullHistoryReadPermission) ?? false;
+
+            if (hasHistoryPermission)
+            {
+                // READ_HEALTH_DATA_HISTORY lifts the 30-day cap entirely.
+                // https://developer.android.com/reference/kotlin/androidx/health/connect/client/permission/HealthPermission#PERMISSION_READ_HEALTH_DATA_HISTORY()
+                return DateTime.MinValue;
+            }
+
+            // Without the history permission: earliest accessible = firstGrantDate - 30 days.
+            // The platform exposes no API to retrieve firstGrantDate (it lives in the system
+            // permission service and is not readable by third-party apps), so we use the value
+            // persisted by RequestPermissions when the first-grant transition was observed.
+            // Spec: https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#read-data-older-than-30-days
+            var firstGrantMs = Preferences.Default.Get<long>(AndroidConstant.FirstPermissionGrantAtKey, 0L);
+            if (firstGrantMs == 0L)
+            {
+                // No anchor persisted — pre-tracking install, or permissions were never granted
+                // through this library version. Safe fallback keeps us inside the 30-day window.
+                return safeFallback;
+            }
+
+            var firstGrantUtc = DateTimeOffset.FromUnixTimeMilliseconds(firstGrantMs).UtcDateTime;
+            return firstGrantUtc.AddDays(-HealthConnectDefaultHistoryDays);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error determining earliest accessible DateTime; using safe fallback of UtcNow - {Days} days", HealthConnectDefaultHistoryDays);
+            return safeFallback;
+        }
     }
 }

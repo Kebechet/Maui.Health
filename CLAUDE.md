@@ -84,3 +84,10 @@ dotnet test tests/Maui.Health.Tests/Maui.Health.Tests.csproj
   /// </summary>
   SdkUnavailable = 1,
   ```
+
+- **Evidence-backed decisions**: For constants, claims, and non-obvious business/architectural decisions backed by external documentation (e.g., Android/iOS system rules, API documentation), always include a comment with a reference link to the source. This ensures decisions are verifiable and grounded in evidence.
+  ```csharp
+  // The single-anchor first-grant timestamp matches Health Connect's
+  // "30 days prior to when any permission was first granted" rule:
+  // https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#read-data-older-than-30-days
+  ```
