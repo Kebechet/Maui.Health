@@ -1,4 +1,5 @@
 using Maui.Health.Enums;
+using Maui.Health.Enums.Errors;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 
@@ -38,10 +39,10 @@ public partial class HealthService : IHealthService
         return Task.FromResult<TDto?>(null);
     }
 
-    public partial Task<bool> WriteHealthData<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    public partial Task<WriteHealthDataResult> WriteHealthData<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : IHealthWritable
     {
-        return Task.FromResult(false);
+        return Task.FromResult(new WriteHealthDataResult { Error = WriteHealthDataError.NotSupported });
     }
 
     public partial Task<bool> DeleteHealthData<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)

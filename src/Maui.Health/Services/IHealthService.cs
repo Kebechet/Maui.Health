@@ -76,18 +76,31 @@ public interface IHealthService
     /// Write a single health record to the health store.
     /// Delegates to <see cref="WriteHealthData{TDto}(IList{TDto}, bool, CancellationToken)"/>.
     /// </summary>
-    Task<bool> WriteHealthData<TDto>(TDto item, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
+    Task<WriteHealthDataResult> WriteHealthData<TDto>(TDto item, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : IHealthWritable;
 
     /// <summary>
-    /// Write multiple health records to the health store in a single platform call
+    /// Write multiple health records to the health store in a single platform call and
+    /// return their platform-assigned IDs. Use the IDs to link an app-authored record to
+    /// its native counterpart immediately, without reconciling on a subsequent read cycle.
     /// </summary>
+    /// <remarks>
+    /// <para>Ordering contract: on success,
+    /// <see cref="WriteHealthDataResult.RecordIds"/> is 1:1 with <paramref name="items"/> — that
+    /// is, <c>RecordIds[i]</c> is the native ID assigned to <c>items[i]</c>.</para>
+    /// <para>On failure, <see cref="WriteHealthDataResult.RecordIds"/> is empty and the typed
+    /// <see cref="Models.Result{TError}.Error"/> identifies the failure mode (SDK unavailable,
+    /// permission denied, DTO conversion failure, platform-write failure, or an unexpected
+    /// exception available on <see cref="Models.Result{TError}.ErrorException"/>). Callers that
+    /// only care about success/failure can check <see cref="Models.Result{TError}.IsSuccess"/>.</para>
+    /// <para>Windows and macOS Catalyst stubs always return
+    /// <see cref="Enums.Errors.WriteHealthDataError.NotSupported"/>.</para>
+    /// </remarks>
     /// <typeparam name="TDto">The type of health metric DTO to write</typeparam>
     /// <param name="items">The health data records to write</param>
     /// <param name="shouldCheckPermissions">When false, skips the internal permission check. Use when permissions were already requested upfront via <see cref="RequestPermissions"/>.</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>True if all records were written successfully, false otherwise</returns>
-    Task<bool> WriteHealthData<TDto>(IList<TDto> items, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
+    Task<WriteHealthDataResult> WriteHealthData<TDto>(IList<TDto> items, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : IHealthWritable;
 
     /// <summary>

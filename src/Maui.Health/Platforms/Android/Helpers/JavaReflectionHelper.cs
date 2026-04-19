@@ -225,6 +225,17 @@ internal static class JavaReflectionHelper
 
     internal static async Task<bool> InsertRecords(this IHealthConnectClient healthConnectClient, IList<Java.Lang.Object> records)
     {
+        var recordIds = await healthConnectClient.InsertRecordsWithIds(records);
+        return recordIds is not null;
+    }
+
+    /// <summary>
+    /// Inserts records into Health Connect and returns the platform-assigned record IDs
+    /// from <c>InsertRecordsResponse.recordIdsList</c>. Returns <c>null</c> on failure so
+    /// callers can distinguish "wrote zero records" from "write did not complete".
+    /// </summary>
+    internal static async Task<IReadOnlyList<string>?> InsertRecordsWithIds(this IHealthConnectClient healthConnectClient, IList<Java.Lang.Object> records)
+    {
         try
         {
             var irecords = new System.Collections.Generic.List<AndroidX.Health.Connect.Client.Records.IRecord>();
@@ -237,7 +248,7 @@ internal static class JavaReflectionHelper
                 if (irecord is null)
                 {
                     Debug.WriteLine("Could not wrap record as IRecord");
-                    return false;
+                    return null;
                 }
 
                 irecords.Add(irecord);
@@ -246,12 +257,19 @@ internal static class JavaReflectionHelper
             var response = await KotlinResolver.Process<InsertRecordsResponse, System.Collections.Generic.IList<AndroidX.Health.Connect.Client.Records.IRecord>>(
                 healthConnectClient.InsertRecords, irecords);
 
-            return response is not null;
+            if (response is null)
+            {
+                return null;
+            }
+
+            // RecordIdsList is IList<string> already — Health Connect exposes them as Kotlin
+            // strings, the Xamarin binding surfaces them as .NET strings.
+            return response.RecordIdsList.ToList();
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"Error inserting records: {ex.Message}");
-            return false;
+            return null;
         }
     }
 

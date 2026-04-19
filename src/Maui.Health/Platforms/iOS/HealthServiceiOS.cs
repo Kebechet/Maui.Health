@@ -292,18 +292,18 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<bool> WriteHealthData<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    public partial Task<WriteHealthDataResult> WriteHealthData<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : IHealthWritable
     {
         return WriteHealthDataInternal(items, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<bool> WriteHealthDataInternal<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    private async Task<WriteHealthDataResult> WriteHealthDataInternal<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : IHealthWritable
     {
         if (!IsSupported)
         {
-            return false;
+            return new WriteHealthDataResult { Error = WriteHealthDataError.NotSupported };
         }
 
         try
@@ -312,12 +312,16 @@ public partial class HealthService : IHealthService
 
             if (shouldCheckPermissions)
             {
-                var writePermission = MetricDtoExtensions.GetRequiredWritePermission<TDto>();
-                var permissionResult = await RequestPermissions([writePermission], cancellationToken: cancellationToken);
+                var requiredPermission = MetricDtoExtensions.GetRequiredWritePermission<TDto>();
+                var permissionResult = await RequestPermissions([requiredPermission], cancellationToken: cancellationToken);
                 if (!permissionResult.IsSuccess)
                 {
                     _logger.LogWarning("iOS Write: Permission denied for {DtoName}", typeof(TDto).Name);
-                    return false;
+                    return new WriteHealthDataResult
+                    {
+                        Error = WriteHealthDataError.PermissionDenied,
+                        ErrorException = permissionResult.ErrorException,
+                    };
                 }
             }
 
@@ -328,7 +332,7 @@ public partial class HealthService : IHealthService
                 if (sample is null)
                 {
                     _logger.LogWarning("iOS Write: Failed to convert {DtoName} to HKObject", typeof(TDto).Name);
-                    return false;
+                    return new WriteHealthDataResult { Error = WriteHealthDataError.DtoConversionFailed };
                 }
 
                 samples.Add(sample);
@@ -339,16 +343,25 @@ public partial class HealthService : IHealthService
             if (!success)
             {
                 _logger.LogWarning("iOS Write: Failed to save {Count} {DtoName} records", samples.Count, typeof(TDto).Name);
-                return false;
+                return new WriteHealthDataResult { Error = WriteHealthDataError.PlatformWriteFailed };
             }
 
+            // HKObjects are assigned UUIDs at construction (before SaveAll), so capturing
+            // them post-save carries no extra native round-trip. The ordering of `samples`
+            // mirrors the input `items` list, so RecordIds[i] corresponds to items[i].
+            var recordIds = samples.Select(x => x.Uuid.ToString()).ToList();
+
             _logger.LogInformation("iOS Write: Successfully wrote {Count} {DtoName} records", samples.Count, typeof(TDto).Name);
-            return true;
+            return new WriteHealthDataResult { RecordIds = recordIds };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "iOS Write Exception for {DtoName}", typeof(TDto).Name);
-            return false;
+            return new WriteHealthDataResult
+            {
+                Error = WriteHealthDataError.UnexpectedException,
+                ErrorException = ex,
+            };
         }
     }
 

@@ -260,29 +260,33 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<bool> WriteHealthData<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    public partial Task<WriteHealthDataResult> WriteHealthData<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : IHealthWritable
     {
         return WriteHealthDataInternal(items, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<bool> WriteHealthDataInternal<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken) where TDto : IHealthWritable
+    private async Task<WriteHealthDataResult> WriteHealthDataInternal<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken) where TDto : IHealthWritable
     {
         try
         {
             var sdkCheckResult = _sdkStatus;
             if (!sdkCheckResult.IsSuccess)
             {
-                return false;
+                return new WriteHealthDataResult { Error = WriteHealthDataError.SdkUnavailable };
             }
 
             if (shouldCheckPermissions)
             {
-                var writePermission = MetricDtoExtensions.GetRequiredWritePermission<TDto>();
-                var requestPermissionResult = await RequestPermissions([writePermission], false, cancellationToken);
+                var requiredPermission = MetricDtoExtensions.GetRequiredWritePermission<TDto>();
+                var requestPermissionResult = await RequestPermissions([requiredPermission], false, cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
-                    return false;
+                    return new WriteHealthDataResult
+                    {
+                        Error = WriteHealthDataError.PermissionDenied,
+                        ErrorException = requestPermissionResult.ErrorException,
+                    };
                 }
             }
 
@@ -293,26 +297,30 @@ public partial class HealthService : IHealthService
                 if (record is null)
                 {
                     _logger.LogWarning("Failed to convert {DtoName} to Android record", typeof(TDto).Name);
-                    return false;
+                    return new WriteHealthDataResult { Error = WriteHealthDataError.DtoConversionFailed };
                 }
 
                 records.Add(record);
             }
 
-            var success = await _healthConnectClient.InsertRecords(records);
-            if (!success)
+            var recordIds = await _healthConnectClient.InsertRecordsWithIds(records);
+            if (recordIds is null)
             {
                 _logger.LogWarning("Failed to insert {Count} {DtoName} records", records.Count, typeof(TDto).Name);
-                return false;
+                return new WriteHealthDataResult { Error = WriteHealthDataError.PlatformWriteFailed };
             }
 
             _logger.LogInformation("Successfully wrote {Count} {DtoName} records", records.Count, typeof(TDto).Name);
-            return true;
+            return new WriteHealthDataResult { RecordIds = recordIds };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error writing health data for {DtoName}", typeof(TDto).Name);
-            return false;
+            return new WriteHealthDataResult
+            {
+                Error = WriteHealthDataError.UnexpectedException,
+                ErrorException = ex,
+            };
         }
     }
 

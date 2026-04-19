@@ -91,3 +91,21 @@ dotnet test tests/Maui.Health.Tests/Maui.Health.Tests.csproj
   // "30 days prior to when any permission was first granted" rule:
   // https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#read-data-older-than-30-days
   ```
+
+- **Public API result types subclass `Result<TError>`**: Every public async operation that can fail returns a result type derived from `Models/Result.cs` — never a bare `bool`, `Task<T?>` where `null` means failure, or a tuple. This keeps failure surfaces uniform and lets callers choose between a terse `.IsSuccess` / `.IsError` check and a typed `switch` on the error enum.
+  - Define a small enum in `Enums/Errors/` that enumerates the failure modes of that one operation — one case per distinct branch that returns an error, plus `UnexpectedException` for the `catch`. Do **not** reuse an unrelated operation's enum.
+  - Subclass `Result<TError>` (or add `Models/XxxResult.cs`) with any extra success payload (e.g. `RecordIds`, `DeniedPermissions`) as `init`-only properties. Success-only payloads default to empty collections, not null.
+  - At the producer side, construct with object initializers — not positional ctors — so the reader sees the semantics inline:
+    ```csharp
+    return new WriteHealthDataResult { RecordIds = recordIds };                    // success
+    return new WriteHealthDataResult { Error = WriteHealthDataError.SdkUnavailable };
+    return new WriteHealthDataResult
+    {
+        Error = WriteHealthDataError.UnexpectedException,
+        ErrorException = ex,
+    };
+    ```
+  - At every failure branch, emit a specific `Error` value. Never return `new XxxResult()` as a generic failure — the enum exists so callers can distinguish "permission denied" from "SDK down" without parsing logs.
+  - In `catch` blocks, always pass the caught exception on `ErrorException` alongside `Error = ...UnexpectedException`. Don't swallow it into the log only.
+  - When a sub-operation (e.g. `RequestPermissions`) returns its own `Result<TError>`, forward its `ErrorException` upward so the chain doesn't lose the original throw site.
+  - Consumers should prefer `.IsError` over `!.IsSuccess` for early returns — reads better and matches the existing idiom in this codebase.
