@@ -43,8 +43,11 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>4.0.0-preview.3</Version>
-    <PackageReleaseNotes>Added IHealthService.GetEarliestAccessibleDateTime(CancellationToken) — reports the earliest UTC DateTime from which the device currently allows health-data reads, so consumers can size sync windows without per-platform branching. On Android: returns DateTime.MinValue when READ_HEALTH_DATA_HISTORY is granted; otherwise returns (firstPermissionGrantAt - 30 days) matching Health Connect's "30 days prior to when any permission was first granted" rule. The first-grant timestamp is persisted to MAUI Preferences on the none-to-some transition inside RequestPermissions (the platform exposes no API to retrieve it). Falls back to (now - 30 days) when no anchor is persisted (e.g. after Clear Storage, or existing installs upgrading from earlier library versions). On iOS: returns DateTime.MinValue (HealthKit has no documented cap).</PackageReleaseNotes>
+    <Version>4.0.0-preview.4</Version>
+    <PackageReleaseNotes>
+• BREAKING (#44): WriteHealthData returns WriteHealthDataResult (was Task&lt;bool&gt;); exposes native record IDs.
+• NEW (#45): UpdateHealthData&lt;TDto&gt;(recordId, item) — Android in-place, iOS delete-insert.
+    </PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
