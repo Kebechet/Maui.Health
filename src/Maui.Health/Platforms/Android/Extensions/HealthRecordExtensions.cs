@@ -510,20 +510,32 @@ internal static class HealthRecordExtensions
         return Defaults.FallbackValue;
     }
 
-    public static Java.Lang.Object? ToAndroidRecord(this IHealthWritable dto)
+    public static Java.Lang.Object? ToAndroidRecord(this IHealthWritable dto, string? recordId = null)
     {
         return dto switch
         {
-            StepsWriteData stepsWrite => stepsWrite.ToStepsRecord(),
-            WeightWriteData weightWrite => weightWrite.ToWeightRecord(),
-            HeightWriteData heightWrite => heightWrite.ToHeightRecord(),
-            ActiveCaloriesBurnedWriteData caloriesWrite => caloriesWrite.ToActiveCaloriesBurnedRecord(),
-            HeartRateWriteData heartRateWrite => heartRateWrite.ToHeartRateRecord(),
-            BodyFatWriteData bodyFatWrite => bodyFatWrite.ToBodyFatRecord(),
-            Vo2MaxWriteData vo2MaxWrite => vo2MaxWrite.ToVo2MaxRecord(),
+            StepsWriteData stepsWrite => stepsWrite.ToStepsRecord(recordId),
+            WeightWriteData weightWrite => weightWrite.ToWeightRecord(recordId),
+            HeightWriteData heightWrite => heightWrite.ToHeightRecord(recordId),
+            ActiveCaloriesBurnedWriteData caloriesWrite => caloriesWrite.ToActiveCaloriesBurnedRecord(recordId),
+            HeartRateWriteData heartRateWrite => heartRateWrite.ToHeartRateRecord(recordId),
+            BodyFatWriteData bodyFatWrite => bodyFatWrite.ToBodyFatRecord(recordId),
+            Vo2MaxWriteData vo2MaxWrite => vo2MaxWrite.ToVo2MaxRecord(recordId),
             _ => null
         };
     }
+
+    /// <summary>
+    /// Builds the <see cref="Metadata"/> to attach to a freshly-converted Health Connect record.
+    /// When <paramref name="recordId"/> is <c>null</c> (the default, used by <c>WriteHealthData</c>)
+    /// the record is a new insert and the platform assigns an ID. When a value is supplied
+    /// (used by <c>UpdateHealthData</c>) the record is an in-place update targeting that ID
+    /// via Health Connect's <c>Metadata.manualEntryWithId</c> factory.
+    /// </summary>
+    private static Metadata BuildManualEntryMetadata(string? recordId)
+        => recordId is null
+            ? Metadata.ManualEntry()
+            : Metadata.ManualEntryWithId(recordId);
 
     public static StepsRecord ToStepsRecord(this StepsDto dto)
     {
@@ -652,7 +664,7 @@ internal static class HealthRecordExtensions
 
     // Write DTO converters
 
-    public static StepsRecord ToStepsRecord(this StepsWriteData dto)
+    public static StepsRecord ToStepsRecord(this StepsWriteData dto, string? recordId = null)
     {
         var offset = ZoneOffsetExtensions.GetCurrent();
 
@@ -662,11 +674,11 @@ internal static class HealthRecordExtensions
             dto.EndTime.ToJavaInstant()!,
             offset,
             dto.Count,
-            Metadata.ManualEntry()
+            BuildManualEntryMetadata(recordId)
         );
     }
 
-    public static WeightRecord ToWeightRecord(this WeightWriteData dto)
+    public static WeightRecord ToWeightRecord(this WeightWriteData dto, string? recordId = null)
     {
         var valueInKilograms = dto.Unit switch
         {
@@ -685,11 +697,11 @@ internal static class HealthRecordExtensions
             dto.Timestamp.ToJavaInstant()!,
             ZoneOffsetExtensions.GetCurrent(),
             mass!,
-            Metadata.ManualEntry()
+            BuildManualEntryMetadata(recordId)
         );
     }
 
-    public static HeightRecord ToHeightRecord(this HeightWriteData dto)
+    public static HeightRecord ToHeightRecord(this HeightWriteData dto, string? recordId = null)
     {
         var valueInMeters = dto.Unit switch
         {
@@ -709,11 +721,11 @@ internal static class HealthRecordExtensions
             dto.Timestamp.ToJavaInstant()!,
             ZoneOffsetExtensions.GetCurrent(),
             length!,
-            Metadata.ManualEntry()
+            BuildManualEntryMetadata(recordId)
         );
     }
 
-    public static ActiveCaloriesBurnedRecord ToActiveCaloriesBurnedRecord(this ActiveCaloriesBurnedWriteData dto)
+    public static ActiveCaloriesBurnedRecord ToActiveCaloriesBurnedRecord(this ActiveCaloriesBurnedWriteData dto, string? recordId = null)
     {
         var valueInKilocalories = dto.Unit switch
         {
@@ -734,11 +746,11 @@ internal static class HealthRecordExtensions
             dto.EndTime.ToJavaInstant()!,
             offset,
             energy!,
-            Metadata.ManualEntry()
+            BuildManualEntryMetadata(recordId)
         );
     }
 
-    public static HeartRateRecord ToHeartRateRecord(this HeartRateWriteData dto)
+    public static HeartRateRecord ToHeartRateRecord(this HeartRateWriteData dto, string? recordId = null)
     {
         var time = dto.Timestamp.ToJavaInstant();
         var offset = ZoneOffsetExtensions.GetCurrent();
@@ -749,28 +761,28 @@ internal static class HealthRecordExtensions
             time!,
             offset,
             [new(time!, (long)dto.BeatsPerMinute)],
-            Metadata.ManualEntry()
+            BuildManualEntryMetadata(recordId)
         );
     }
 
-    public static BodyFatRecord ToBodyFatRecord(this BodyFatWriteData dto)
+    public static BodyFatRecord ToBodyFatRecord(this BodyFatWriteData dto, string? recordId = null)
     {
         return new BodyFatRecord(
             dto.Timestamp.ToJavaInstant()!,
             ZoneOffsetExtensions.GetCurrent(),
             new Percentage(dto.Percentage),
-            Metadata.ManualEntry()
+            BuildManualEntryMetadata(recordId)
         );
     }
 
-    public static Vo2MaxRecord ToVo2MaxRecord(this Vo2MaxWriteData dto)
+    public static Vo2MaxRecord ToVo2MaxRecord(this Vo2MaxWriteData dto, string? recordId = null)
     {
         const int measurementMethodOther = 0;
 
         return new Vo2MaxRecord(
             dto.Timestamp.ToJavaInstant()!,
             ZoneOffsetExtensions.GetCurrent(),
-            Metadata.ManualEntry(),
+            BuildManualEntryMetadata(recordId),
             dto.Value,
             measurementMethodOther
         );

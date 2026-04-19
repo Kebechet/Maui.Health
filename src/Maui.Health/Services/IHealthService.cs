@@ -104,6 +104,40 @@ public interface IHealthService
         where TDto : IHealthWritable;
 
     /// <summary>
+    /// Update an existing health record identified by <paramref name="recordId"/>, replacing
+    /// its fields with those of <paramref name="item"/>. Use this to propagate in-app edits
+    /// back to the native store without losing the link established by the original write.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Platform semantics differ — read carefully:</b></para>
+    /// <list type="bullet">
+    /// <item><description><b>Android</b> (Health Connect): a true in-place update via
+    /// <c>updateRecords</c>. The record ID is preserved; on success
+    /// <see cref="UpdateHealthDataResult.RecordId"/> equals <paramref name="recordId"/>.</description></item>
+    /// <item><description><b>iOS</b> (HealthKit): HealthKit records are immutable, so update
+    /// is emulated as delete-by-UUID followed by insert. The record gets a <b>new</b> UUID —
+    /// <see cref="UpdateHealthDataResult.RecordId"/> holds the new ID and the caller must
+    /// re-link their local record to it.</description></item>
+    /// </list>
+    /// <para><b>Failure recoverability:</b> every failure mode except
+    /// <see cref="Enums.Errors.UpdateHealthDataError.PlatformDeleteSucceededButInsertFailed"/>
+    /// leaves the original record untouched. That one iOS-only mode represents data loss
+    /// (delete succeeded, replacement insert failed) and callers should surface it explicitly.</para>
+    /// <para>Windows and macOS Catalyst stubs always return
+    /// <see cref="Enums.Errors.UpdateHealthDataError.NotSupported"/>.</para>
+    /// </remarks>
+    /// <typeparam name="TDto">The type of health metric DTO to write in place of the existing record</typeparam>
+    /// <param name="recordId">Native ID of the record to update (from a previous
+    /// <see cref="WriteHealthData{TDto}(IList{TDto}, bool, CancellationToken)"/> call
+    /// or a fetched record's <c>Id</c>).</param>
+    /// <param name="item">The replacement record data</param>
+    /// <param name="shouldCheckPermissions">When false, skips the internal permission check. Use when permissions were already requested upfront via <see cref="RequestPermissions"/>.</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    [Experimental("MH007")]
+    Task<UpdateHealthDataResult> UpdateHealthData<TDto>(string recordId, TDto item, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
+        where TDto : IHealthWritable;
+
+    /// <summary>
     /// Delete a health record by its platform-specific ID.
     /// You can only delete records that were created by your application.
     /// </summary>

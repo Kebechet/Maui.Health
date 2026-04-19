@@ -56,6 +56,10 @@ public partial class HealthService : IHealthService
         where TDto : IHealthWritable;
 
     /// <inheritdoc/>
+    public partial Task<UpdateHealthDataResult> UpdateHealthData<TDto>(string recordId, TDto item, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
+        where TDto : IHealthWritable;
+
+    /// <inheritdoc/>
     public partial Task<bool> DeleteHealthData<TDto>(string id, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 

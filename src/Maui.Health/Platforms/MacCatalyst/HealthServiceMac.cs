@@ -45,6 +45,12 @@ public partial class HealthService : IHealthService
         return Task.FromResult(new WriteHealthDataResult { Error = WriteHealthDataError.NotSupported });
     }
 
+    public partial Task<UpdateHealthDataResult> UpdateHealthData<TDto>(string recordId, TDto item, bool shouldCheckPermissions, CancellationToken cancellationToken)
+        where TDto : IHealthWritable
+    {
+        return Task.FromResult(new UpdateHealthDataResult { Error = UpdateHealthDataError.NotSupported });
+    }
+
     public partial Task<bool> DeleteHealthData<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {

@@ -230,6 +230,49 @@ internal static class JavaReflectionHelper
     }
 
     /// <summary>
+    /// In-place update of existing Health Connect records via the native <c>updateRecords</c>
+    /// coroutine. Each record must carry its target ID via <c>Metadata.manualEntryWithId</c>
+    /// (built for us by <see cref="Extensions.HealthRecordExtensions.ToAndroidRecord"/> when a
+    /// <c>recordId</c> is supplied). Returns <c>true</c> when the call completes normally —
+    /// Health Connect's <c>updateRecords</c> returns <c>Unit</c> at the Kotlin level, so there
+    /// is no ID list to hand back; the IDs are preserved on success.
+    /// </summary>
+    internal static async Task<bool> UpdateRecords(this IHealthConnectClient healthConnectClient, IList<Java.Lang.Object> records)
+    {
+        try
+        {
+            var irecords = new System.Collections.Generic.List<AndroidX.Health.Connect.Client.Records.IRecord>();
+
+            foreach (var record in records)
+            {
+                var irecord = Java.Lang.Object.GetObject<AndroidX.Health.Connect.Client.Records.IRecord>(
+                    record.Handle, JniHandleOwnership.DoNotTransfer);
+
+                if (irecord is null)
+                {
+                    Debug.WriteLine("Could not wrap record as IRecord");
+                    return false;
+                }
+
+                irecords.Add(irecord);
+            }
+
+            // updateRecords returns kotlin.Unit on success; we treat a non-null resolved result
+            // as "the coroutine completed without throwing." Exceptions propagate via the
+            // Continuation and land in the catch below.
+            var result = await KotlinResolver.Process<Java.Lang.Object, System.Collections.Generic.IList<AndroidX.Health.Connect.Client.Records.IRecord>>(
+                healthConnectClient.UpdateRecords, irecords);
+
+            return result is not null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error updating records: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Inserts records into Health Connect and returns the platform-assigned record IDs
     /// from <c>InsertRecordsResponse.recordIdsList</c>. Returns <c>null</c> on failure so
     /// callers can distinguish "wrote zero records" from "write did not complete".

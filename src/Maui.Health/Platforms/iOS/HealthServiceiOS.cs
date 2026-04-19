@@ -367,6 +367,103 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
+    public partial Task<UpdateHealthDataResult> UpdateHealthData<TDto>(string recordId, TDto item, bool shouldCheckPermissions, CancellationToken cancellationToken)
+        where TDto : IHealthWritable
+    {
+        return UpdateHealthDataInternal(recordId, item, shouldCheckPermissions, cancellationToken);
+    }
+
+    private async Task<UpdateHealthDataResult> UpdateHealthDataInternal<TDto>(string recordId, TDto item, bool shouldCheckPermissions, CancellationToken cancellationToken)
+        where TDto : IHealthWritable
+    {
+        if (!IsSupported)
+        {
+            return new UpdateHealthDataResult { Error = UpdateHealthDataError.NotSupported };
+        }
+
+        try
+        {
+            _logger.LogInformation("iOS UpdateHealthData<{DtoName}> ({RecordId})", typeof(TDto).Name, recordId);
+
+            if (shouldCheckPermissions)
+            {
+                var requiredPermission = MetricDtoExtensions.GetRequiredWritePermission<TDto>();
+                var permissionResult = await RequestPermissions([requiredPermission], cancellationToken: cancellationToken);
+                if (!permissionResult.IsSuccess)
+                {
+                    _logger.LogWarning("iOS Update: Permission denied for {DtoName}", typeof(TDto).Name);
+                    return new UpdateHealthDataResult
+                    {
+                        Error = UpdateHealthDataError.PermissionDenied,
+                        ErrorException = permissionResult.ErrorException,
+                    };
+                }
+            }
+
+            if (!Guid.TryParse(recordId, out _))
+            {
+                return new UpdateHealthDataResult { Error = UpdateHealthDataError.InvalidRecordId };
+            }
+
+            // Convert the replacement DTO up front so a conversion failure aborts BEFORE we
+            // delete the old record; otherwise the caller would hit
+            // PlatformDeleteSucceededButInsertFailed and lose data for a preventable reason.
+            var newSample = item.ToHKObject();
+            if (newSample is null)
+            {
+                _logger.LogWarning("iOS Update: Failed to convert {DtoName} to HKObject", typeof(TDto).Name);
+                return new UpdateHealthDataResult { Error = UpdateHealthDataError.DtoConversionFailed };
+            }
+
+            var healthDataType = MetricDtoExtensions.GetWriteHealthDataType<TDto>();
+            var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier())!;
+
+            using var healthStore = new HKHealthStore();
+
+            var existing = await healthStore.FindSampleById(quantityType, recordId, cancellationToken);
+            if (existing is null)
+            {
+                _logger.LogWarning("iOS Update: Record {RecordId} not found for {DtoName}", recordId, typeof(TDto).Name);
+                return new UpdateHealthDataResult { Error = UpdateHealthDataError.RecordNotFound };
+            }
+
+            // HealthKit records are immutable. "Update" = delete the old object, then save the
+            // new one. Any failure AFTER this delete call is a data-loss event — the dedicated
+            // PlatformDeleteSucceededButInsertFailed error surfaces that clearly so callers can
+            // treat it differently from the recoverable failure modes.
+            var wasDeleted = await healthStore.Delete(existing, cancellationToken);
+            if (!wasDeleted)
+            {
+                _logger.LogWarning("iOS Update: Delete step failed for {DtoName} record {RecordId}", typeof(TDto).Name, recordId);
+                return new UpdateHealthDataResult { Error = UpdateHealthDataError.PlatformDeleteFailed };
+            }
+
+            var wasInserted = await healthStore.SaveAll([newSample], cancellationToken);
+            if (!wasInserted)
+            {
+                _logger.LogError("iOS Update: Insert step failed AFTER successful delete for {DtoName} record {RecordId} — data loss", typeof(TDto).Name, recordId);
+                return new UpdateHealthDataResult { Error = UpdateHealthDataError.PlatformDeleteSucceededButInsertFailed };
+            }
+
+            // iOS assigns a NEW UUID to the re-inserted sample; the caller must re-link their
+            // local record to this new ID — the old ID is no longer valid.
+            var newRecordId = newSample.Uuid.ToString();
+            _logger.LogInformation("iOS Update: Successfully updated {DtoName} (old={OldId}, new={NewId})", typeof(TDto).Name, recordId, newRecordId);
+            return new UpdateHealthDataResult { RecordId = newRecordId };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "iOS Update error for {DtoName} record {RecordId}", typeof(TDto).Name, recordId);
+            return new UpdateHealthDataResult
+            {
+                Error = UpdateHealthDataError.UnexpectedException,
+                ErrorException = ex,
+            };
+        }
+    }
+
+    //https://github.com/Kebechet/Maui.Health/pull/8/files
+    //Split to `public partial` and `private async` method because of trimmer/linker issue
     public partial Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
@@ -474,37 +571,11 @@ public partial class HealthService : IHealthService
                 }
             }
 
-            if (!Guid.TryParse(id, out var guid))
-            {
-                return false;
-            }
-
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
             var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier())!;
 
-            var uuid = new NSUuid(guid.ToString());
-            var predicate = HKQuery.GetPredicateForObject(uuid);
-
-            // First find the sample, then delete it
-            var findTcs = new TaskCompletionSource<HKQuantitySample?>();
-
-            var findQuery = new HKSampleQuery(
-                quantityType,
-                predicate,
-                1,
-                null,
-                (_, results, error) =>
-                {
-                    findTcs.TrySetResult(results?.FirstOrDefault() as HKQuantitySample);
-                }
-            );
-
             using var store = new HKHealthStore();
-            using var ct = cancellationToken.Register(() => findTcs.TrySetCanceled());
-
-            store.ExecuteQuery(findQuery);
-            var sample = await findTcs.Task;
-
+            var sample = await store.FindSampleById(quantityType, id, cancellationToken);
             if (sample is null)
             {
                 _logger.LogWarning("iOS Delete: Record {Id} not found for {DtoName}", id, typeof(TDto).Name);

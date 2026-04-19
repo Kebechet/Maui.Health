@@ -137,6 +137,55 @@ internal static class HKHealthStoreExtensions
     }
 
     /// <summary>
+    /// Finds a single sample by its UUID, scoped to the supplied sample type (e.g. a
+    /// specific <see cref="HKQuantityType"/>). Returns <c>null</c> when the ID is malformed
+    /// or no record matches. Used by the delete and update paths, both of which need an
+    /// <see cref="HKObject"/> instance (not a raw predicate) to hand to
+    /// <see cref="HKHealthStore.DeleteObject(HKObject, Action{bool, NSError?})"/>.
+    /// </summary>
+    internal static async Task<HKSample?> FindSampleById(
+        this HKHealthStore healthStore,
+        HKSampleType sampleType,
+        string id,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Guid.TryParse(id, out var guid))
+        {
+            return null;
+        }
+
+        var uuid = new NSUuid(guid.ToString());
+        var predicate = HKQuery.GetPredicateForObject(uuid);
+
+        var tcs = new TaskCompletionSource<HKSample?>();
+
+        var query = new HKSampleQuery(
+            sampleType,
+            predicate,
+            limit: 1,
+            sortDescriptors: null,
+            (_, results, error) =>
+            {
+                if (error is not null)
+                {
+                    tcs.TrySetResult(null);
+                    return;
+                }
+
+                tcs.TrySetResult(results?.FirstOrDefault());
+            });
+
+        using var ct = cancellationToken.Register(() =>
+        {
+            tcs.TrySetCanceled();
+            healthStore.StopQuery(query);
+        });
+
+        healthStore.ExecuteQuery(query);
+        return await tcs.Task;
+    }
+
+    /// <summary>
     /// Finds a workout by its UUID.
     /// </summary>
     /// <param name="healthStore">The HKHealthStore instance</param>

@@ -326,6 +326,70 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
+    public partial Task<UpdateHealthDataResult> UpdateHealthData<TDto>(string recordId, TDto item, bool shouldCheckPermissions, CancellationToken cancellationToken)
+        where TDto : IHealthWritable
+    {
+        return UpdateHealthDataInternal(recordId, item, shouldCheckPermissions, cancellationToken);
+    }
+
+    private async Task<UpdateHealthDataResult> UpdateHealthDataInternal<TDto>(string recordId, TDto item, bool shouldCheckPermissions, CancellationToken cancellationToken) where TDto : IHealthWritable
+    {
+        try
+        {
+            var sdkCheckResult = _sdkStatus;
+            if (!sdkCheckResult.IsSuccess)
+            {
+                return new UpdateHealthDataResult { Error = UpdateHealthDataError.SdkUnavailable };
+            }
+
+            if (shouldCheckPermissions)
+            {
+                var requiredPermission = MetricDtoExtensions.GetRequiredWritePermission<TDto>();
+                var requestPermissionResult = await RequestPermissions([requiredPermission], false, cancellationToken);
+                if (requestPermissionResult.IsError)
+                {
+                    return new UpdateHealthDataResult
+                    {
+                        Error = UpdateHealthDataError.PermissionDenied,
+                        ErrorException = requestPermissionResult.ErrorException,
+                    };
+                }
+            }
+
+            // Pass recordId so the converter stamps Metadata.ManualEntryWithId(recordId) onto
+            // the record; Health Connect's updateRecords requires records to carry their target
+            // ID in their metadata.
+            var record = item.ToAndroidRecord(recordId);
+            if (record is null)
+            {
+                _logger.LogWarning("Failed to convert {DtoName} to Android record", typeof(TDto).Name);
+                return new UpdateHealthDataResult { Error = UpdateHealthDataError.DtoConversionFailed };
+            }
+
+            var wasUpdated = await _healthConnectClient.UpdateRecords([record]);
+            if (!wasUpdated)
+            {
+                _logger.LogWarning("Failed to update {DtoName} record {RecordId}", typeof(TDto).Name, recordId);
+                return new UpdateHealthDataResult { Error = UpdateHealthDataError.PlatformUpdateFailed };
+            }
+
+            _logger.LogInformation("Successfully updated {DtoName} record {RecordId}", typeof(TDto).Name, recordId);
+            // Android preserves the record ID on in-place update.
+            return new UpdateHealthDataResult { RecordId = recordId };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating health data for {DtoName} record {RecordId}", typeof(TDto).Name, recordId);
+            return new UpdateHealthDataResult
+            {
+                Error = UpdateHealthDataError.UnexpectedException,
+                ErrorException = ex,
+            };
+        }
+    }
+
+    //https://github.com/Kebechet/Maui.Health/pull/8/files
+    //Split to `public partial` and `private async` method because of trimmer/linker issue
     public partial Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
