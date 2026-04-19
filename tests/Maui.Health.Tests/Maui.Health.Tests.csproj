@@ -34,7 +34,23 @@
 		<Compile Include="..\..\src\Maui.Health\Models\Metrics\Vo2MaxDto.cs" Link="Shared\Vo2MaxDto.cs" />
 		<Compile Include="..\..\src\Maui.Health\Models\Metrics\IHealthTimeRange.cs" Link="Shared\IHealthTimeRange.cs" />
 		<Compile Include="..\..\src\Maui.Health\Models\Metrics\HealthTimeRange.cs" Link="Shared\HealthTimeRange.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\IHealthWritable.cs" Link="Shared\IHealthWritable.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\HealthWriteData.cs" Link="Shared\HealthWriteData.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\Write\ActiveCaloriesBurnedWriteData.cs" Link="Shared\Write\ActiveCaloriesBurnedWriteData.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\Write\BloodPressureWriteData.cs" Link="Shared\Write\BloodPressureWriteData.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\Write\BodyFatWriteData.cs" Link="Shared\Write\BodyFatWriteData.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\Write\HeartRateWriteData.cs" Link="Shared\Write\HeartRateWriteData.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\Write\HeightWriteData.cs" Link="Shared\Write\HeightWriteData.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\Write\StepsWriteData.cs" Link="Shared\Write\StepsWriteData.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\Write\Vo2MaxWriteData.cs" Link="Shared\Write\Vo2MaxWriteData.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\Metrics\Write\WeightWriteData.cs" Link="Shared\Write\WeightWriteData.cs" />
 		<Compile Include="..\..\src\Maui.Health\Models\HealthPermissionDto.cs" Link="Shared\HealthPermissionDto.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\WriteHealthDataResult.cs" Link="Shared\WriteHealthDataResult.cs" />
+		<Compile Include="..\..\src\Maui.Health\Enums\HealthDataSdk.cs" Link="Shared\HealthDataSdk.cs" />
+		<Compile Include="..\..\src\Maui.Health\Enums\MassUnit.cs" Link="Shared\MassUnit.cs" />
+		<Compile Include="..\..\src\Maui.Health\Enums\LengthUnit.cs" Link="Shared\LengthUnit.cs" />
+		<Compile Include="..\..\src\Maui.Health\Enums\EnergyUnit.cs" Link="Shared\EnergyUnit.cs" />
+		<Compile Include="..\..\src\Maui.Health\Enums\Errors\WriteHealthDataError.cs" Link="Shared\WriteHealthDataError.cs" />
 		<Compile Include="..\..\src\Maui.Health\Enums\ActivityType.cs" Link="Shared\ActivityType.cs" />
 		<Compile Include="..\..\src\Maui.Health\Enums\HealthDataType.cs" Link="Shared\HealthDataType.cs" />
 		<Compile Include="..\..\src\Maui.Health\Enums\PermissionType.cs" Link="Shared\PermissionType.cs" />

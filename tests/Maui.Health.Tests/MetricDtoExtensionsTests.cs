@@ -1,3 +1,4 @@
+using Maui.Health.Enums;
 using Maui.Health.Extensions;
 using Maui.Health.Models.Metrics;
 using Xunit;
@@ -13,9 +14,9 @@ public class MetricDtoExtensionsTests
         var now = DateTimeOffset.UtcNow;
         var calories = new List<ActiveCaloriesBurnedDto>
         {
-            new() { Id = "1", DataOrigin = "test", Timestamp = now, Energy = 100.5, Unit = "kcal", StartTime = now, EndTime = now.AddMinutes(30) },
-            new() { Id = "2", DataOrigin = "test", Timestamp = now, Energy = 200.3, Unit = "kcal", StartTime = now, EndTime = now.AddMinutes(30) },
-            new() { Id = "3", DataOrigin = "test", Timestamp = now, Energy = 50.2, Unit = "kcal", StartTime = now, EndTime = now.AddMinutes(30) },
+            new() { Id = "1", DataSdk = HealthDataSdk.GoogleHealthConnect, DataOrigin = "test", Timestamp = now, Energy = 100.5, Unit = "kcal", StartTime = now, EndTime = now.AddMinutes(30) },
+            new() { Id = "2", DataSdk = HealthDataSdk.GoogleHealthConnect, DataOrigin = "test", Timestamp = now, Energy = 200.3, Unit = "kcal", StartTime = now, EndTime = now.AddMinutes(30) },
+            new() { Id = "3", DataSdk = HealthDataSdk.GoogleHealthConnect, DataOrigin = "test", Timestamp = now, Energy = 50.2, Unit = "kcal", StartTime = now, EndTime = now.AddMinutes(30) },
         };
 
         // Act
@@ -45,7 +46,7 @@ public class MetricDtoExtensionsTests
         var now = DateTimeOffset.UtcNow;
         var calories = new List<ActiveCaloriesBurnedDto>
         {
-            new() { Id = "1", DataOrigin = "test", Timestamp = now, Energy = 42.7, Unit = "kcal", StartTime = now, EndTime = now.AddMinutes(30) },
+            new() { Id = "1", DataSdk = HealthDataSdk.GoogleHealthConnect, DataOrigin = "test", Timestamp = now, Energy = 42.7, Unit = "kcal", StartTime = now, EndTime = now.AddMinutes(30) },
         };
 
         // Act

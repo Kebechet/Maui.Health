@@ -30,7 +30,7 @@ public class WorkoutSessionExtensionsTests
         var endTime = DateTimeOffset.UtcNow;
 
         // Act
-        var dto = session.ToWorkoutDto(endTime, energyBurned: 500, distance: 5000);
+        var dto = session.ToWorkoutDto(HealthDataSdk.GoogleHealthConnect, endTime, energyBurned: 500, distance: 5000);
 
         // Assert
         Assert.Equal("session-1", dto.Id);
@@ -60,7 +60,7 @@ public class WorkoutSessionExtensionsTests
         );
 
         // Act
-        var dto = session.ToWorkoutDto(now);
+        var dto = session.ToWorkoutDto(HealthDataSdk.GoogleHealthConnect, now);
 
         // Assert
         var metadata = dto.Metadata!;
@@ -78,7 +78,7 @@ public class WorkoutSessionExtensionsTests
         var session = CreateSession();
 
         // Act
-        var dto = session.ToWorkoutDto(DateTimeOffset.UtcNow);
+        var dto = session.ToWorkoutDto(HealthDataSdk.GoogleHealthConnect, DateTimeOffset.UtcNow);
 
         // Assert
         Assert.NotNull(dto.Metadata);
@@ -93,6 +93,7 @@ public class WorkoutSessionExtensionsTests
         var existingWorkout = new WorkoutDto
         {
             Id = "old-id",
+            DataSdk = HealthDataSdk.GoogleHealthConnect,
             DataOrigin = "com.other",
             Timestamp = DateTimeOffset.UtcNow,
             ActivityType = ActivityType.Running,
@@ -122,6 +123,7 @@ public class WorkoutSessionExtensionsTests
         var dto = new WorkoutDto
         {
             Id = "w-1",
+            DataSdk = HealthDataSdk.GoogleHealthConnect,
             DataOrigin = "com.test",
             Timestamp = DateTimeOffset.UtcNow.AddHours(-1),
             ActivityType = ActivityType.Swimming,
@@ -146,6 +148,7 @@ public class WorkoutSessionExtensionsTests
         var dto = new WorkoutDto
         {
             Id = "w-2",
+            DataSdk = HealthDataSdk.GoogleHealthConnect,
             DataOrigin = "com.test",
             Timestamp = DateTimeOffset.UtcNow.AddMinutes(-30),
             ActivityType = ActivityType.Running,
@@ -172,6 +175,7 @@ public class WorkoutSessionExtensionsTests
         var dto = new WorkoutDto
         {
             Id = "w-3",
+            DataSdk = HealthDataSdk.GoogleHealthConnect,
             DataOrigin = "com.test",
             Timestamp = DateTimeOffset.UtcNow,
             ActivityType = ActivityType.Running,
