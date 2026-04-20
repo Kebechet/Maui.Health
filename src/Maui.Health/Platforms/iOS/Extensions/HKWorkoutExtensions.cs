@@ -51,7 +51,19 @@ internal static class HKWorkoutExtensions
             duration,
             totalEnergyBurned,
             totalDistance,
-            (NSDictionary?)null
+            CreateSyncMetadata()
         );
     }
+
+    /// <summary>
+    /// Metadata for a brand-new workout — a fresh sync identifier at version 1.
+    /// Mirrors the quantity-sample write path so future update flows can rely on every
+    /// SDK-authored workout carrying an <c>HKMetadataKeySyncIdentifier</c>.
+    /// </summary>
+    private static NSMutableDictionary<NSString, NSObject> CreateSyncMetadata()
+        => new()
+        {
+            [HKMetadataKey.SyncIdentifier] = new NSString(Guid.NewGuid().ToString()),
+            [HKMetadataKey.SyncVersion] = NSNumber.FromInt32(1),
+        };
 }

@@ -43,28 +43,34 @@ public enum UpdateHealthDataError
     DtoConversionFailed = 6,
 
     /// <summary>
-    /// iOS only: the old record was located but the native delete call failed. The
-    /// original record is still in the store and has not been modified.
-    /// </summary>
-    PlatformDeleteFailed = 7,
-
-    /// <summary>
     /// Android: the native <c>updateRecords</c> call failed. The original record
     /// is unchanged.
     /// </summary>
-    PlatformUpdateFailed = 8,
-
-    /// <summary>
-    /// iOS only: the old record was successfully deleted but the replacement insert
-    /// failed. <b>The original data is lost</b> and no new record was written. Callers
-    /// should surface this clearly — this is the one failure mode where the pre-update
-    /// state cannot be recovered.
-    /// </summary>
-    PlatformDeleteSucceededButInsertFailed = 9,
+    PlatformUpdateFailed = 7,
 
     /// <summary>
     /// An unexpected exception was thrown during the update. The exception is
     /// available on <see cref="Maui.Health.Models.Result{TError}.ErrorException"/>.
     /// </summary>
-    UnexpectedException = 10,
+    UnexpectedException = 8,
+
+    /// <summary>
+    /// iOS only: the existing record carries no <c>HKMetadataKeySyncIdentifier</c>, so HealthKit
+    /// cannot atomically replace it. This happens for samples written by older SDK versions
+    /// (before sync-identifier stamping was introduced) or by other apps that don't use this SDK.
+    /// Callers that own the record can fall back to
+    /// <see cref="Services.IHealthService.DeleteHealthData{TDto}(string, bool, System.Threading.CancellationToken)"/>
+    /// followed by <see cref="Services.IHealthService.WriteHealthData{TDto}(TDto, bool, System.Threading.CancellationToken)"/>.
+    /// </summary>
+    LegacyRecordNotUpdatable = 9,
+
+    /// <summary>
+    /// iOS only: the target sample was authored by a different app, so HealthKit will not let this
+    /// SDK replace it via the sync-identifier flow (in HealthKit, write/modify operations are
+    /// scoped to the calling app's bundle). Both platforms restrict cross-origin modification —
+    /// on Android the same attempt surfaces as <see cref="PlatformUpdateFailed"/> instead, because
+    /// Health Connect rejects the <c>updateRecords</c> call rather than exposing a dedicated
+    /// ownership check up front.
+    /// </summary>
+    CrossSourceNotSupported = 10,
 }

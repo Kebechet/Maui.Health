@@ -1,3 +1,4 @@
+using Foundation;
 using HealthKit;
 using Maui.Health.Constants;
 using Maui.Health.Enums;
@@ -43,6 +44,29 @@ internal static class HKQuantitySampleExtensions
             SoftwareVersion = sampleDevice.SoftwareVersion
         };
     }
+
+    /// <summary>
+    /// Metadata for a brand-new sample — a fresh sync identifier plus version 1.
+    /// </summary>
+    /// <remarks>
+    /// Stamping every new sample with a sync identifier is what enables atomic in-place update later:
+    /// a subsequent <c>SaveObjects</c> call that reuses the same <c>HKMetadataKeySyncIdentifier</c> with
+    /// a higher <c>HKMetadataKeySyncVersion</c> tells HealthKit to replace the previous sample without
+    /// a delete-then-insert window.
+    /// </remarks>
+    private static NSMutableDictionary<NSString, NSObject> CreateSyncMetadata()
+        => CreateSyncMetadata(Guid.NewGuid().ToString(), syncVersion: 1);
+
+    /// <summary>
+    /// Metadata that binds a sample to an existing sync identifier at the supplied version.
+    /// The update path uses this to emit a replacement sample that HealthKit atomically swaps in.
+    /// </summary>
+    private static NSMutableDictionary<NSString, NSObject> CreateSyncMetadata(string syncId, int syncVersion)
+        => new()
+        {
+            [HKMetadataKey.SyncIdentifier] = new NSString(syncId),
+            [HKMetadataKey.SyncVersion] = NSNumber.FromInt32(syncVersion),
+        };
 
     public static StepsDto ToStepsDto(this HKQuantitySample sample)
     {
@@ -171,6 +195,11 @@ internal static class HKQuantitySampleExtensions
         };
     }
 
+    /// <summary>
+    /// Converts an <see cref="IHealthWritable"/> DTO to an <see cref="HKObject"/> for a fresh write.
+    /// Every produced sample carries a new sync identifier at version 1, so a later
+    /// <c>UpdateHealthData</c> call can replace it atomically.
+    /// </summary>
     public static HKObject? ToHKObject(this IHealthWritable dto)
     {
         return dto switch
@@ -186,6 +215,28 @@ internal static class HKQuantitySampleExtensions
         };
     }
 
+    /// <summary>
+    /// Converts an <see cref="IHealthWritable"/> DTO to an <see cref="HKObject"/> stamped with the
+    /// supplied sync identifier and version, rather than a fresh pair. Used by the update path to emit
+    /// a replacement sample that HealthKit atomically swaps in for the existing record of the same
+    /// sync identifier.
+    /// </summary>
+    public static HKObject? ToHKObjectWithSyncMetadata(this IHealthWritable dto, string syncId, int syncVersion)
+    {
+        var metadata = CreateSyncMetadata(syncId, syncVersion);
+        return dto switch
+        {
+            StepsWriteData stepsWrite => stepsWrite.ToHKQuantitySample(metadata),
+            WeightWriteData weightWrite => weightWrite.ToHKQuantitySample(metadata),
+            HeightWriteData heightWrite => heightWrite.ToHKQuantitySample(metadata),
+            ActiveCaloriesBurnedWriteData caloriesWrite => caloriesWrite.ToHKQuantitySample(metadata),
+            HeartRateWriteData heartRateWrite => heartRateWrite.ToHKQuantitySample(metadata),
+            BodyFatWriteData bodyFatWrite => bodyFatWrite.ToHKQuantitySample(metadata),
+            Vo2MaxWriteData vo2MaxWrite => vo2MaxWrite.ToHKQuantitySample(metadata),
+            _ => throw new NotImplementedException($"DTO type {dto.GetType().Name} is not implemented for write operation")
+        };
+    }
+
     public static HKQuantitySample ToHKQuantitySample(this StepsDto dto)
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.StepCount)!;
@@ -193,7 +244,7 @@ internal static class HKQuantitySampleExtensions
         var startDate = dto.StartTime.ToNSDate();
         var endDate = dto.EndTime.ToNSDate();
 
-        return HKQuantitySample.FromType(quantityType, quantity, startDate, endDate);
+        return HKQuantitySample.FromType(quantityType, quantity, startDate, endDate, CreateSyncMetadata());
     }
 
     public static HKQuantitySample ToHKQuantitySample(this WeightDto dto)
@@ -209,7 +260,7 @@ internal static class HKQuantitySampleExtensions
         var quantity = HKQuantity.FromQuantity(HKUnit.Gram, valueInGrams);
         var date = dto.Timestamp.ToNSDate();
 
-        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+        return HKQuantitySample.FromType(quantityType, quantity, date, date, CreateSyncMetadata());
     }
 
     public static HKQuantitySample ToHKQuantitySample(this HeightDto dto)
@@ -226,7 +277,7 @@ internal static class HKQuantitySampleExtensions
         var quantity = HKQuantity.FromQuantity(HKUnit.Meter, valueInMeters);
         var date = dto.Timestamp.ToNSDate();
 
-        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+        return HKQuantitySample.FromType(quantityType, quantity, date, date, CreateSyncMetadata());
     }
 
     public static HKQuantitySample ToHKQuantitySample(this ActiveCaloriesBurnedDto dto)
@@ -242,7 +293,7 @@ internal static class HKQuantitySampleExtensions
         var startDate = dto.StartTime.ToNSDate();
         var endDate = dto.EndTime.ToNSDate();
 
-        return HKQuantitySample.FromType(quantityType, quantity, startDate, endDate);
+        return HKQuantitySample.FromType(quantityType, quantity, startDate, endDate, CreateSyncMetadata());
     }
 
     public static HKQuantitySample ToHKQuantitySample(this HeartRateDto dto)
@@ -252,7 +303,7 @@ internal static class HKQuantitySampleExtensions
         var quantity = HKQuantity.FromQuantity(unit, dto.BeatsPerMinute);
         var date = dto.Timestamp.ToNSDate();
 
-        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+        return HKQuantitySample.FromType(quantityType, quantity, date, date, CreateSyncMetadata());
     }
 
     public static HKQuantitySample ToHKQuantitySample(this BodyFatDto dto)
@@ -261,7 +312,7 @@ internal static class HKQuantitySampleExtensions
         var quantity = HKQuantity.FromQuantity(HKUnit.Percent, dto.Percentage / 100.0); // HealthKit expects 0-1 range
         var date = dto.Timestamp.ToNSDate();
 
-        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+        return HKQuantitySample.FromType(quantityType, quantity, date, date, CreateSyncMetadata());
     }
 
     public static HKQuantitySample ToHKQuantitySample(this Vo2MaxDto dto)
@@ -271,22 +322,30 @@ internal static class HKQuantitySampleExtensions
         var quantity = HKQuantity.FromQuantity(unit, dto.Value);
         var date = dto.Timestamp.ToNSDate();
 
-        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+        return HKQuantitySample.FromType(quantityType, quantity, date, date, CreateSyncMetadata());
     }
 
-    // Write DTO converters
+    // Write DTO converters. Each has two overloads: the parameterless one delegates to the metadata
+    // overload with a fresh sync identifier (fresh-write path); the metadata overload is reused by
+    // the update path to stamp an existing sync identifier + bumped version.
 
     public static HKQuantitySample ToHKQuantitySample(this StepsWriteData dto)
+        => dto.ToHKQuantitySample(CreateSyncMetadata());
+
+    public static HKQuantitySample ToHKQuantitySample(this StepsWriteData dto, NSDictionary metadata)
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.StepCount)!;
         var quantity = HKQuantity.FromQuantity(HKUnit.Count, dto.Count);
         var startDate = dto.StartTime.ToNSDate();
         var endDate = dto.EndTime.ToNSDate();
 
-        return HKQuantitySample.FromType(quantityType, quantity, startDate, endDate);
+        return HKQuantitySample.FromType(quantityType, quantity, startDate, endDate, metadata);
     }
 
     public static HKQuantitySample ToHKQuantitySample(this WeightWriteData dto)
+        => dto.ToHKQuantitySample(CreateSyncMetadata());
+
+    public static HKQuantitySample ToHKQuantitySample(this WeightWriteData dto, NSDictionary metadata)
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.BodyMass)!;
         var valueInGrams = dto.Unit switch
@@ -299,10 +358,13 @@ internal static class HKQuantitySampleExtensions
         var quantity = HKQuantity.FromQuantity(HKUnit.Gram, valueInGrams);
         var date = dto.Timestamp.ToNSDate();
 
-        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+        return HKQuantitySample.FromType(quantityType, quantity, date, date, metadata);
     }
 
     public static HKQuantitySample ToHKQuantitySample(this HeightWriteData dto)
+        => dto.ToHKQuantitySample(CreateSyncMetadata());
+
+    public static HKQuantitySample ToHKQuantitySample(this HeightWriteData dto, NSDictionary metadata)
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.Height)!;
         var valueInMeters = dto.Unit switch
@@ -316,10 +378,13 @@ internal static class HKQuantitySampleExtensions
         var quantity = HKQuantity.FromQuantity(HKUnit.Meter, valueInMeters);
         var date = dto.Timestamp.ToNSDate();
 
-        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+        return HKQuantitySample.FromType(quantityType, quantity, date, date, metadata);
     }
 
     public static HKQuantitySample ToHKQuantitySample(this ActiveCaloriesBurnedWriteData dto)
+        => dto.ToHKQuantitySample(CreateSyncMetadata());
+
+    public static HKQuantitySample ToHKQuantitySample(this ActiveCaloriesBurnedWriteData dto, NSDictionary metadata)
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.ActiveEnergyBurned)!;
         var valueInKilocalories = dto.Unit switch
@@ -332,35 +397,44 @@ internal static class HKQuantitySampleExtensions
         var startDate = dto.StartTime.ToNSDate();
         var endDate = dto.EndTime.ToNSDate();
 
-        return HKQuantitySample.FromType(quantityType, quantity, startDate, endDate);
+        return HKQuantitySample.FromType(quantityType, quantity, startDate, endDate, metadata);
     }
 
     public static HKQuantitySample ToHKQuantitySample(this HeartRateWriteData dto)
+        => dto.ToHKQuantitySample(CreateSyncMetadata());
+
+    public static HKQuantitySample ToHKQuantitySample(this HeartRateWriteData dto, NSDictionary metadata)
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.HeartRate)!;
         var unit = HKUnit.Count.UnitDividedBy(HKUnit.Minute);
         var quantity = HKQuantity.FromQuantity(unit, dto.BeatsPerMinute);
         var date = dto.Timestamp.ToNSDate();
 
-        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+        return HKQuantitySample.FromType(quantityType, quantity, date, date, metadata);
     }
 
     public static HKQuantitySample ToHKQuantitySample(this BodyFatWriteData dto)
+        => dto.ToHKQuantitySample(CreateSyncMetadata());
+
+    public static HKQuantitySample ToHKQuantitySample(this BodyFatWriteData dto, NSDictionary metadata)
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.BodyFatPercentage)!;
         var quantity = HKQuantity.FromQuantity(HKUnit.Percent, dto.Percentage / 100.0);
         var date = dto.Timestamp.ToNSDate();
 
-        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+        return HKQuantitySample.FromType(quantityType, quantity, date, date, metadata);
     }
 
     public static HKQuantitySample ToHKQuantitySample(this Vo2MaxWriteData dto)
+        => dto.ToHKQuantitySample(CreateSyncMetadata());
+
+    public static HKQuantitySample ToHKQuantitySample(this Vo2MaxWriteData dto, NSDictionary metadata)
     {
         var quantityType = HKQuantityType.Create(HKQuantityTypeIdentifier.VO2Max)!;
         var unit = HKUnit.FromString(Units.HKVo2Max);
         var quantity = HKQuantity.FromQuantity(unit, dto.Value);
         var date = dto.Timestamp.ToNSDate();
 
-        return HKQuantitySample.FromType(quantityType, quantity, date, date);
+        return HKQuantitySample.FromType(quantityType, quantity, date, date, metadata);
     }
 }

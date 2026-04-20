@@ -405,16 +405,6 @@ public partial class HealthService : IHealthService
                 return new UpdateHealthDataResult { Error = UpdateHealthDataError.InvalidRecordId };
             }
 
-            // Convert the replacement DTO up front so a conversion failure aborts BEFORE we
-            // delete the old record; otherwise the caller would hit
-            // PlatformDeleteSucceededButInsertFailed and lose data for a preventable reason.
-            var newSample = item.ToHKObject();
-            if (newSample is null)
-            {
-                _logger.LogWarning("iOS Update: Failed to convert {DtoName} to HKObject", typeof(TDto).Name);
-                return new UpdateHealthDataResult { Error = UpdateHealthDataError.DtoConversionFailed };
-            }
-
             var healthDataType = MetricDtoExtensions.GetWriteHealthDataType<TDto>();
             var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier())!;
 
@@ -427,28 +417,52 @@ public partial class HealthService : IHealthService
                 return new UpdateHealthDataResult { Error = UpdateHealthDataError.RecordNotFound };
             }
 
-            // HealthKit records are immutable. "Update" = delete the old object, then save the
-            // new one. Any failure AFTER this delete call is a data-loss event — the dedicated
-            // PlatformDeleteSucceededButInsertFailed error surfaces that clearly so callers can
-            // treat it differently from the recoverable failure modes.
-            var wasDeleted = await healthStore.Delete(existing, cancellationToken);
-            if (!wasDeleted)
+            // Sync-identifier replacement is source-scoped: HealthKit only replaces a sample when the
+            // new save comes from the same source bundle that originally wrote it. A missing
+            // SourceRevision is treated as cross-source for safety — we can't prove ownership.
+            var ownBundle = NSBundle.MainBundle?.BundleIdentifier;
+            var existingBundle = existing.SourceRevision?.Source?.BundleIdentifier;
+            if (ownBundle is null || existingBundle != ownBundle)
             {
-                _logger.LogWarning("iOS Update: Delete step failed for {DtoName} record {RecordId}", typeof(TDto).Name, recordId);
-                return new UpdateHealthDataResult { Error = UpdateHealthDataError.PlatformDeleteFailed };
+                _logger.LogWarning(
+                    "iOS Update: Record {RecordId} authored by '{ExistingBundle}' but this app is '{OwnBundle}' — cross-source update not supported",
+                    recordId, existingBundle, ownBundle);
+                return new UpdateHealthDataResult { Error = UpdateHealthDataError.CrossSourceNotSupported };
             }
 
-            var wasInserted = await healthStore.SaveAll([newSample], cancellationToken);
-            if (!wasInserted)
+            // The sync identifier + version pair is what HealthKit keys atomic replacement off of.
+            // Records written by older SDK versions (before stamping was introduced) or by third-party
+            // apps that don't stamp will be missing one or both — they can't be updated in place and
+            // callers should fall back to DeleteHealthData + WriteHealthData.
+            var syncId = existing.Metadata?.SyncIdentifier;
+            var syncVersion = existing.Metadata?.SyncVersion;
+            if (syncId is null || syncVersion is null)
             {
-                _logger.LogError("iOS Update: Insert step failed AFTER successful delete for {DtoName} record {RecordId} — data loss", typeof(TDto).Name, recordId);
-                return new UpdateHealthDataResult { Error = UpdateHealthDataError.PlatformDeleteSucceededButInsertFailed };
+                _logger.LogWarning("iOS Update: Record {RecordId} has no sync identifier/version — legacy record, not updatable in place", recordId);
+                return new UpdateHealthDataResult { Error = UpdateHealthDataError.LegacyRecordNotUpdatable };
             }
 
-            // iOS assigns a NEW UUID to the re-inserted sample; the caller must re-link their
-            // local record to this new ID — the old ID is no longer valid.
+            var newSample = item.ToHKObjectWithSyncMetadata(syncId, syncVersion.Value + 1);
+            if (newSample is null)
+            {
+                _logger.LogWarning("iOS Update: Failed to convert {DtoName} to HKObject", typeof(TDto).Name);
+                return new UpdateHealthDataResult { Error = UpdateHealthDataError.DtoConversionFailed };
+            }
+
+            // One atomic SaveAll: HealthKit recognises the reused sync identifier with the bumped
+            // version and replaces the existing sample in place. No delete step, so no data-loss window.
+            var saved = await healthStore.SaveAll([newSample], cancellationToken);
+            if (!saved)
+            {
+                _logger.LogError("iOS Update: SaveAll failed for {DtoName} record {RecordId}", typeof(TDto).Name, recordId);
+                return new UpdateHealthDataResult { Error = UpdateHealthDataError.UnexpectedException };
+            }
+
+            // HealthKit generates a fresh UUID for the replacement sample. The caller must re-link
+            // their local record to this new ID — the old ID is no longer valid.
             var newRecordId = newSample.Uuid.ToString();
-            _logger.LogInformation("iOS Update: Successfully updated {DtoName} (old={OldId}, new={NewId})", typeof(TDto).Name, recordId, newRecordId);
+            _logger.LogInformation("iOS Update: Successfully updated {DtoName} (old={OldId}, new={NewId}, syncVersion={SyncVersion})",
+                typeof(TDto).Name, recordId, newRecordId, syncVersion.Value + 1);
             return new UpdateHealthDataResult { RecordId = newRecordId };
         }
         catch (Exception ex)

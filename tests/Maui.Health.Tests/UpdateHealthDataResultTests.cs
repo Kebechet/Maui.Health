@@ -51,20 +51,41 @@ public class UpdateHealthDataResultTests
     }
 
     [Fact]
-    public void WithDataLossError_IsErrorAndSurfacesSpecificValue()
+    public void WithLegacyRecordNotUpdatable_IsErrorAndSurfacesSpecificValue()
     {
         // Arrange
-        // The iOS-specific PlatformDeleteSucceededButInsertFailed case is the one failure mode
-        // where the pre-update record is gone. Callers switch on it to show a distinct warning.
+        // LegacyRecordNotUpdatable is the iOS-specific case where the existing sample carries
+        // no HKMetadataKeySyncIdentifier, so HealthKit cannot atomically replace it. Callers
+        // that own the record can fall back to DeleteHealthData + WriteHealthData.
         // Act
         var result = new UpdateHealthDataResult
         {
-            Error = UpdateHealthDataError.PlatformDeleteSucceededButInsertFailed,
+            Error = UpdateHealthDataError.LegacyRecordNotUpdatable,
         };
 
         // Assert
         Assert.True(result.IsError);
-        Assert.Equal(UpdateHealthDataError.PlatformDeleteSucceededButInsertFailed, result.Error);
+        Assert.Equal(UpdateHealthDataError.LegacyRecordNotUpdatable, result.Error);
+        Assert.Null(result.RecordId);
+    }
+
+    [Fact]
+    public void WithCrossSourceNotSupported_IsErrorAndSurfacesSpecificValue()
+    {
+        // Arrange
+        // CrossSourceNotSupported is the iOS-specific case where the existing sample was
+        // authored by a different app. Sync-identifier replacement is source-scoped, so
+        // there is no supported way to update cross-source records.
+        // Act
+        var result = new UpdateHealthDataResult
+        {
+            Error = UpdateHealthDataError.CrossSourceNotSupported,
+        };
+
+        // Assert
+        Assert.True(result.IsError);
+        Assert.Equal(UpdateHealthDataError.CrossSourceNotSupported, result.Error);
+        Assert.Null(result.RecordId);
     }
 
     [Fact]

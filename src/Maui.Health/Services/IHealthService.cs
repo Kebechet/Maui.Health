@@ -114,15 +114,26 @@ public interface IHealthService
     /// <item><description><b>Android</b> (Health Connect): a true in-place update via
     /// <c>updateRecords</c>. The record ID is preserved; on success
     /// <see cref="UpdateHealthDataResult.RecordId"/> equals <paramref name="recordId"/>.</description></item>
-    /// <item><description><b>iOS</b> (HealthKit): HealthKit records are immutable, so update
-    /// is emulated as delete-by-UUID followed by insert. The record gets a <b>new</b> UUID —
-    /// <see cref="UpdateHealthDataResult.RecordId"/> holds the new ID and the caller must
-    /// re-link their local record to it.</description></item>
+    /// <item><description><b>iOS</b> (HealthKit): atomic replacement via
+    /// <c>HKMetadataKeySyncIdentifier</c> + <c>HKMetadataKeySyncVersion</c>. A new sample is written
+    /// carrying the existing record's sync identifier with a bumped version; HealthKit swaps it in
+    /// for the old one in a single save with no delete-then-insert window. HealthKit assigns the
+    /// replacement sample a <b>new</b> UUID — <see cref="UpdateHealthDataResult.RecordId"/> holds
+    /// the new ID and the caller must re-link their local record to it.</description></item>
     /// </list>
-    /// <para><b>Failure recoverability:</b> every failure mode except
-    /// <see cref="Enums.Errors.UpdateHealthDataError.PlatformDeleteSucceededButInsertFailed"/>
-    /// leaves the original record untouched. That one iOS-only mode represents data loss
-    /// (delete succeeded, replacement insert failed) and callers should surface it explicitly.</para>
+    /// <para><b>iOS-only constraints</b> (both surface as typed
+    /// <see cref="Enums.Errors.UpdateHealthDataError"/> values, leaving the original record untouched):</para>
+    /// <list type="bullet">
+    /// <item><description><see cref="Enums.Errors.UpdateHealthDataError.LegacyRecordNotUpdatable"/> —
+    /// the existing sample was written without a sync identifier (by an older SDK version or by a
+    /// third-party app that doesn't stamp). Callers that own the record can fall back to
+    /// <see cref="DeleteHealthData{TDto}(string, bool, System.Threading.CancellationToken)"/> +
+    /// <see cref="WriteHealthData{TDto}(TDto, bool, System.Threading.CancellationToken)"/>.</description></item>
+    /// <item><description><see cref="Enums.Errors.UpdateHealthDataError.CrossSourceNotSupported"/> —
+    /// the existing sample was authored by a different app. HealthKit scopes sync-identifier replacement
+    /// per source bundle, so there is no supported way to update cross-source records.</description></item>
+    /// </list>
+    /// <para>All failure modes leave the original record untouched.</para>
     /// <para>Windows and macOS Catalyst stubs always return
     /// <see cref="Enums.Errors.UpdateHealthDataError.NotSupported"/>.</para>
     /// </remarks>
