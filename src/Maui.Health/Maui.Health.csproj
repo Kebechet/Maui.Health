@@ -43,10 +43,10 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>4.0.0-preview.4</Version>
+    <Version>4.0.0-preview.5</Version>
     <PackageReleaseNotes>
-• BREAKING (#44): WriteHealthData returns WriteHealthDataResult (was Task&lt;bool&gt;); exposes native record IDs.
-• NEW (#45): UpdateHealthData&lt;TDto&gt;(recordId, item) — Android in-place, iOS delete-insert.
+• CHANGED (#47): iOS UpdateHealthData is now atomic (no more delete-then-insert data-loss window).
+• CHANGED (#48): Unified DataOrigin value.
     </PackageReleaseNotes>
   </PropertyGroup>
 
