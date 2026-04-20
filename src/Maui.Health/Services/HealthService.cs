@@ -1,4 +1,5 @@
-﻿using Maui.Health.Enums;
+using Maui.Health.Enums;
+using Maui.Health.Extensions;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using Microsoft.Extensions.Logging;
@@ -70,6 +71,13 @@ public partial class HealthService : IHealthService
     /// <inheritdoc/>
     public partial Task<List<AggregatedResult>> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
+
+    /// <inheritdoc/>
+    public Task<List<AggregatedResult>> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, HealthAggregationInterval interval, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase
+    {
+        return GetAggregatedHealthDataByInterval<TDto>(timeRange, interval.ToTimeSpan(), cancellationToken);
+    }
 
     /// <inheritdoc/>
     public partial Task<string?> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken = default);
