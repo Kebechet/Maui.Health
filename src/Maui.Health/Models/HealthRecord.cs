@@ -1,4 +1,4 @@
-﻿namespace Maui.Health.Models;
+namespace Maui.Health.Models;
 
 /// <summary>
 /// Base class for health records with an identifier and data source.
@@ -9,8 +9,11 @@ public class HealthRecord
     /// Unique identifier of the health record in the platform data store.
     /// </summary>
     public required string Id { get; set; }
+
     /// <summary>
-    /// The app or device that created this record (e.g., package name).
+    /// Stable identifier of the app that produced this record.
+    /// iOS: <c>HKSource.BundleIdentifier</c>. Android: Health Connect <c>DataOrigin.PackageName</c>.
+    /// <c>null</c> when the platform exposes no source metadata.
     /// </summary>
-    public required string DataOrigin { get; set; }
+    public string? DataOrigin { get; set; }
 }

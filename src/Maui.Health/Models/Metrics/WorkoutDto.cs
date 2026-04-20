@@ -19,9 +19,12 @@ public class WorkoutDto
     public required HealthDataSdk DataSdk { get; init; }
 
     /// <summary>
-    /// Source of the data (app package name, device name, etc.)
+    /// Stable identifier of the app that produced this workout.
+    /// iOS: <c>HKSource.BundleIdentifier</c>. Android: Health Connect <c>DataOrigin.PackageName</c>.
+    /// Safe to compare against the running app's own bundle/package identifier to determine ownership.
+    /// <c>null</c> when the platform exposes no source metadata.
     /// </summary>
-    public required string DataOrigin { get; init; }
+    public string? DataOrigin { get; init; }
 
     /// <summary>
     /// Timestamp when the workout was recorded (typically same as StartTime)

@@ -661,7 +661,7 @@ public partial class HealthService : IHealthService
                     var value = quantity.GetDoubleValue(hkUnit);
                     var unit = GetUnitString(healthDataType);
 
-                    var dataOrigins = ExtractSourceNames(statistics);
+                    var dataOrigins = ExtractDataOrigins(statistics);
 
                     tcs.TrySetResult(new AggregatedResult
                     {
@@ -788,7 +788,7 @@ public partial class HealthService : IHealthService
                         var value = quantity.GetDoubleValue(hkUnit);
                         var bucketStart = statistics.StartDate.ToDateTimeOffset();
                         var bucketEnd = statistics.EndDate.ToDateTimeOffset();
-                        var dataOrigins = ExtractSourceNames(statistics);
+                        var dataOrigins = ExtractDataOrigins(statistics);
 
                         aggregatedResults.Add(new AggregatedResult
                         {
@@ -1063,7 +1063,11 @@ public partial class HealthService : IHealthService
         };
     }
 
-    private static List<string> ExtractSourceNames(HKStatistics statistics)
+    /// <summary>
+    /// Extract the stable bundle identifiers of the <see cref="HKSource"/>s that contributed to
+    /// an aggregate. Sources without a bundle identifier (pathological) are skipped.
+    /// </summary>
+    private static List<string> ExtractDataOrigins(HKStatistics statistics)
     {
         var sources = statistics.Sources;
         if (sources is null || sources.Count() == 0)
@@ -1071,16 +1075,16 @@ public partial class HealthService : IHealthService
             return [];
         }
 
-        var names = new List<string>((int)sources.Count());
+        var origins = new List<string>((int)sources.Count());
         foreach (var source in sources)
         {
-            if (source is HKSource hkSource)
+            if (source is HKSource hkSource && hkSource.BundleIdentifier is { } bundleId)
             {
-                names.Add(hkSource.Name);
+                origins.Add(bundleId);
             }
         }
 
-        return names;
+        return origins;
     }
 
     private static string? GetUnitString(HealthDataType healthDataType)
@@ -1135,7 +1139,7 @@ public partial class HealthService : IHealthService
                     dto = new StepsDto
                     {
                         Id = Guid.NewGuid().ToString(),
-                        DataOrigin = DataOrigin.HealthKitOrigin,
+                        DataOrigin = null,
                         DataSdk = HealthDataSdk.AppleHealthKit,
                         Timestamp = timeRange.StartTime,
                         Count = (long)sum.GetDoubleValue(HKUnit.Count),
@@ -1148,7 +1152,7 @@ public partial class HealthService : IHealthService
                     dto = new ActiveCaloriesBurnedDto
                     {
                         Id = Guid.NewGuid().ToString(),
-                        DataOrigin = DataOrigin.HealthKitOrigin,
+                        DataOrigin = null,
                         DataSdk = HealthDataSdk.AppleHealthKit,
                         Timestamp = timeRange.StartTime,
                         Energy = sum.GetDoubleValue(HKUnit.Kilocalorie),

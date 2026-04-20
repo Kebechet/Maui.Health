@@ -608,8 +608,7 @@ public partial class Home
 
             await _healthService.Activity.Start(
                 ActivityType.Running,
-                "Test of start and stop session",
-                "DemoApp"
+                "Test of start and stop session"
             );
 
             // Update session status

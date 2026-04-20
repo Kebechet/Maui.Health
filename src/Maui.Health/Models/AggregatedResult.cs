@@ -43,10 +43,10 @@ public class AggregatedResult
     public required HealthDataSdk DataSdk { get; init; }
 
     /// <summary>
-    /// Data sources that contributed to this aggregated value.
-    /// On Android: package names from Health Connect DataOrigin.
-    /// On iOS: source names from HealthKit HKSource.
-    /// Multiple sources are possible because aggregation combines records from all health apps.
+    /// Stable identifiers of the apps that contributed to this aggregated value.
+    /// iOS: <c>HKSource.BundleIdentifier</c> values.
+    /// Android: Health Connect <c>DataOrigin.PackageName</c> values.
+    /// Multiple entries are possible because aggregation combines records from all health apps.
     /// </summary>
     public List<string> DataOrigins { get; init; } = [];
 }

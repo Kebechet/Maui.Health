@@ -171,7 +171,7 @@ public partial class HealthWorkoutService
         }
     }
 
-    public partial Task Start(ActivityType activityType, string? title, string? dataOrigin)
+    public partial Task Start(ActivityType activityType, string? title)
     {
         try
         {
@@ -186,7 +186,7 @@ public partial class HealthWorkoutService
                 Guid.NewGuid().ToString(),
                 activityType,
                 title ?? activityType.ToString(),
-                dataOrigin ?? DataOrigin.HealthKitOrigin,
+                NSBundle.MainBundle?.BundleIdentifier,
                 DateTimeOffset.UtcNow,
                 WorkoutSessionState.Running
             );

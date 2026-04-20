@@ -33,24 +33,26 @@ public class DuplicateWorkoutGroup
     public List<WorkoutDto> Workouts { get; set; } = [];
 
     /// <summary>
-    /// The app source identifier used to identify which workout came from your app
+    /// Caller-supplied stable bundle/package identifier. Workouts whose
+    /// <see cref="WorkoutDto.DataOrigin"/> matches this value are treated as "the caller's"
+    /// (<see cref="AppWorkout"/>); everything else is <see cref="ExternalWorkout"/>.
     /// </summary>
-    public string AppSource { get; set; } = string.Empty;
+    public string DataOrigin { get; set; } = string.Empty;
 
     /// <summary>
-    /// The workout from your app (matching AppSource)
+    /// The workout from your app (matching <see cref="DataOrigin"/>)
     /// </summary>
-    public WorkoutDto? AppWorkout => Workouts.FirstOrDefault(w => w.DataOrigin == AppSource);
+    public WorkoutDto? AppWorkout => Workouts.FirstOrDefault(w => w.DataOrigin == DataOrigin);
 
     /// <summary>
     /// The workout from external source (watch, other app)
     /// </summary>
-    public WorkoutDto? ExternalWorkout => Workouts.FirstOrDefault(w => w.DataOrigin != AppSource);
+    public WorkoutDto? ExternalWorkout => Workouts.FirstOrDefault(w => w.DataOrigin != DataOrigin);
 
     /// <summary>
     /// All external workouts (if more than one)
     /// </summary>
-    public List<WorkoutDto> ExternalWorkouts => Workouts.Where(w => w.DataOrigin != AppSource).ToList();
+    public List<WorkoutDto> ExternalWorkouts => Workouts.Where(w => w.DataOrigin != DataOrigin).ToList();
 
     /// <summary>
     /// Time difference between start times in minutes

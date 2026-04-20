@@ -157,7 +157,7 @@ public partial class HealthWorkoutService
         }
     }
 
-    public partial Task Start(ActivityType activityType, string? title, string? dataOrigin)
+    public partial Task Start(ActivityType activityType, string? title)
     {
         try
         {
@@ -165,7 +165,7 @@ public partial class HealthWorkoutService
 
             var startTime = DateTimeOffset.UtcNow;
             var id = Guid.NewGuid().ToString();
-            var origin = dataOrigin ?? _activityContext.PackageName ?? DataOrigin.Unknown;
+            var origin = _activityContext.PackageName;
             var workoutTitle = title ?? activityType.ToString();
 
             _activeWorkoutSession = new WorkoutSession(

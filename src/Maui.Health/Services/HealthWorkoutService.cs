@@ -34,13 +34,8 @@ public partial class HealthWorkoutService : IHealthWorkoutService
     /// <inheritdoc/>
     public partial Task<bool> IsRunning();
 
-    /// <summary>
-    /// Starts a new workout session with the specified activity type
-    /// </summary>
-    /// <param name="activityType">The type of activity being performed</param>
-    /// <param name="title">Optional title for the workout</param>
-    /// <param name="dataOrigin">Optional data origin identifier (defaults to app package name)</param>
-    public partial Task Start(ActivityType activityType, string? title = null, string? dataOrigin = null);
+    /// <inheritdoc/>
+    public partial Task Start(ActivityType activityType, string? title = null);
 
     /// <inheritdoc/>
     public partial Task Pause();
@@ -58,18 +53,10 @@ public partial class HealthWorkoutService : IHealthWorkoutService
     /// <returns>The completed WorkoutDto, or null if no active session</returns>
     public partial Task<WorkoutDto?> End();
 
-    /// <summary>
-    /// Finds duplicate workout groups from a list of workouts.
-    /// Duplicates are identified by: same activity type, different sources, and overlapping times.
-    /// </summary>
-    /// <param name="workouts">List of workouts to check for duplicates</param>
-    /// <param name="appSource">Your app's data origin identifier (e.g., "DemoApp")</param>
-    /// <param name="timeThresholdMinutes">Maximum time difference in minutes to consider as duplicate (default: 5)</param>
-    /// <param name="activityType">Optional activity type filter - only find duplicates of this type</param>
-    /// <returns>List of duplicate groups, each containing matching workouts</returns>
+    /// <inheritdoc/>
     public List<DuplicateWorkoutGroup> FindDuplicates(
         List<WorkoutDto> workouts,
-        string appSource,
+        string dataOrigin,
         int timeThresholdMinutes = Defaults.DuplicateThresholdMinutes,
         ActivityType? activityType = null)
     {
@@ -103,7 +90,7 @@ public partial class HealthWorkoutService : IHealthWorkoutService
             // Create a group with the original workout and all matches
             var group = new DuplicateWorkoutGroup
             {
-                AppSource = appSource,
+                DataOrigin = dataOrigin,
                 Workouts = [workout, .. matches]
             };
 
@@ -131,8 +118,13 @@ public partial class HealthWorkoutService : IHealthWorkoutService
             return false;
         }
 
-        // Must be from different sources
-        if(workout1.DataOrigin == workout2.DataOrigin)
+        // Must be from different sources. Null origins are treated as "unknown",
+        // two unknowns are not a known match.
+        if (workout1.DataOrigin is null || workout2.DataOrigin is null)
+        {
+            return false;
+        }
+        if (workout1.DataOrigin == workout2.DataOrigin)
         {
             return false;
         }
@@ -171,7 +163,8 @@ public partial class HealthWorkoutService : IHealthWorkoutService
         var activityTypeStr = Preferences.Default.Get(ActiveSessionStorage.ActivityType, string.Empty);
         var title = Preferences.Default.Get(ActiveSessionStorage.Title, string.Empty);
         var startTimeMs = Preferences.Default.Get(ActiveSessionStorage.StartTime, Defaults.DefaultTimestampValue);
-        var dataOrigin = Preferences.Default.Get(ActiveSessionStorage.DataOrigin, string.Empty);
+        var dataOriginStored = Preferences.Default.Get(ActiveSessionStorage.DataOrigin, string.Empty);
+        var dataOrigin = string.IsNullOrEmpty(dataOriginStored) ? null : dataOriginStored;
         var stateStr = Preferences.Default.Get(ActiveSessionStorage.State, string.Empty);
         var pauseIntervalsJson = Preferences.Default.Get(ActiveSessionStorage.PauseIntervals, string.Empty);
 
@@ -208,7 +201,7 @@ public partial class HealthWorkoutService : IHealthWorkoutService
         Preferences.Default.Set(ActiveSessionStorage.ActivityType, session.ActivityType.ToString());
         Preferences.Default.Set(ActiveSessionStorage.Title, session.Title ?? "");
         Preferences.Default.Set(ActiveSessionStorage.StartTime, session.StartTime.ToUnixTimeMilliseconds());
-        Preferences.Default.Set(ActiveSessionStorage.DataOrigin, session.DataOrigin);
+        Preferences.Default.Set(ActiveSessionStorage.DataOrigin, session.DataOrigin ?? string.Empty);
         Preferences.Default.Set(ActiveSessionStorage.State, session.State.ToString());
 
         var json = session.PauseIntervals.ToJson();

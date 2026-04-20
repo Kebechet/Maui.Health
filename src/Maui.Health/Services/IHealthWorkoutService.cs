@@ -45,12 +45,14 @@ public interface IHealthWorkoutService
     Task<bool> IsRunning();
 
     /// <summary>
-    /// Starts a new workout session with the specified activity type
+    /// Starts a new workout session with the specified activity type.
+    /// The session's <see cref="WorkoutSession.DataOrigin"/> is always the running app's stable
+    /// bundle identifier (iOS) or package name (Android) — it cannot be supplied by the caller,
+    /// because the platform stamps the eventual record with its own source regardless.
     /// </summary>
     /// <param name="activityType">The type of activity being performed</param>
     /// <param name="title">Optional title for the workout</param>
-    /// <param name="dataOrigin">Optional data origin identifier (defaults to app package name)</param>
-    Task Start(ActivityType activityType, string? title = null, string? dataOrigin = null);
+    Task Start(ActivityType activityType, string? title = null);
 
     /// <summary>
     /// Pauses the currently active workout session
@@ -80,13 +82,16 @@ public interface IHealthWorkoutService
     /// Duplicates are identified by: same activity type, different sources, and overlapping times.
     /// </summary>
     /// <param name="workouts">List of workouts to check for duplicates</param>
-    /// <param name="appSource">Your app's data origin identifier (e.g., "DemoApp")</param>
+    /// <param name="dataOrigin">Your app's stable bundle/package identifier. Each returned
+    /// <see cref="DuplicateWorkoutGroup"/> uses this value to decide which workout in the group
+    /// is <see cref="DuplicateWorkoutGroup.AppWorkout"/> vs.
+    /// <see cref="DuplicateWorkoutGroup.ExternalWorkout"/>.</param>
     /// <param name="timeThresholdMinutes">Maximum time difference in minutes to consider as duplicate (default: 5)</param>
     /// <param name="activityType">Optional activity type filter - only find duplicates of this type</param>
     /// <returns>List of duplicate groups, each containing matching workouts</returns>
     List<DuplicateWorkoutGroup> FindDuplicates(
         List<WorkoutDto> workouts,
-        string appSource,
+        string dataOrigin,
         int timeThresholdMinutes = 5,
         ActivityType? activityType = null);
 }

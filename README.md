@@ -115,7 +115,10 @@ public async Task AnalyzeStepsData()
     {
         // Common properties from BaseHealthMetricDto
         Console.WriteLine($"ID: {stepRecord.Id}");
-        Console.WriteLine($"Source: {stepRecord.DataOrigin}");
+        // DataOrigin is the stable bundle identifier (iOS) or package name (Android), or null
+        // when the platform exposes no source metadata. Safe to compare against your own
+        // bundle/package identifier to check ownership.
+        Console.WriteLine($"Source: {stepRecord.DataOrigin ?? "<unknown>"}");
         Console.WriteLine($"Recorded: {stepRecord.Timestamp}");
         
         // Steps-specific data
@@ -336,7 +339,7 @@ public async Task<List<WorkoutDto>> GetTodaysWorkouts()
     {
         Console.WriteLine($"{workout.ActivityType}: {workout.StartTime:HH:mm} - {workout.EndTime:HH:mm}");
         Console.WriteLine($"Duration: {workout.DurationSeconds / 60} minutes");
-        Console.WriteLine($"Source: {workout.DataOrigin}");
+        Console.WriteLine($"Source: {workout.DataOrigin ?? "<unknown>"}");
 
         if (workout.EnergyBurned.HasValue)
             Console.WriteLine($"Calories: {workout.EnergyBurned:F0} kcal");
@@ -356,7 +359,7 @@ public async Task WriteCompletedWorkout()
     var workout = new WorkoutDto
     {
         Id = Guid.NewGuid().ToString(),
-        DataOrigin = "MyApp", -> Your APP data source.
+        DataOrigin = "com.companyname.MyApp", // Stable bundle identifier (iOS) / package name (Android). Ignored on write — platform stamps its own source.
         ActivityType = ActivityType.Running,
         Title = "Morning Run",
         StartTime = DateTimeOffset.Now.AddMinutes(-30),
@@ -383,8 +386,7 @@ public class WorkoutTracker
     {
         await _healthService.Activity.Start(
             ActivityType.Running,
-            title: "Morning Run",
-            dataOrigin: "MyApp"
+            title: "Morning Run"
         );
     }
 
@@ -429,8 +431,8 @@ public async Task DetectDuplicateWorkouts()
     // Find duplicates with 5-minute threshold
     var duplicates = _healthService.Activity.FindDuplicates(
         workouts,
-        appSource: "MyApp",      // Your app's DataOrigin
-        timeThresholdMinutes: 5  // Max time difference to consider as duplicate
+        dataOrigin: "com.companyname.MyApp",  // Your app's bundle identifier (iOS) / package name (Android)
+        timeThresholdMinutes: 5               // Max time difference to consider as duplicate
     );
 
     foreach (var group in duplicates)

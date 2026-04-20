@@ -18,7 +18,6 @@ using HealthDeviceType = Android.Health.Connect.DataTypes.HealthDeviceType;
 using System.Collections;
 using Device = AndroidX.Health.Connect.Client.Records.Metadata.Device;
 using Maui.Health.Enums;
-using DataOrigin = Maui.Health.Constants.DataOrigin;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
@@ -70,7 +69,7 @@ internal static class HealthRecordExtensions
             return null;
         }
 
-        var deviceType = DataOrigin.Unknown;
+        string? deviceType = null;
         if (Enum.IsDefined(typeof(HealthDeviceType), metadataDevice.Type))
         {
             var healthDeviceType = (HealthDeviceType)metadataDevice.Type;

@@ -1099,7 +1099,7 @@ internal static class JavaReflectionHelper
     }
 
     /// <summary>
-    /// Extracts data origins (contributing app package names) from an AggregationResult.
+    /// Extracts contributing apps' package names from an AggregationResult.
     /// Calls AggregationResult.getDataOrigins() → Set&lt;DataOrigin&gt;, then DataOrigin.getPackageName() on each.
     /// </summary>
     private static List<string> ExtractDataOrigins(Java.Lang.Object aggregationResult)

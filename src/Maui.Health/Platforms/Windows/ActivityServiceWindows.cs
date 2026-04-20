@@ -66,7 +66,7 @@ public partial class HealthWorkoutService
         }
     }
 
-    public partial Task Start(ActivityType activityType, string? title, string? dataOrigin)
+    public partial Task Start(ActivityType activityType, string? title)
     {
         try
         {

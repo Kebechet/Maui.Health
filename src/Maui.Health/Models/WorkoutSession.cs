@@ -23,9 +23,11 @@ public class WorkoutSession
     public string? Title { get; }
 
     /// <summary>
-    /// Data origin identifier
+    /// Stable identifier of the app that owns this session (bundle identifier on iOS, package name
+    /// on Android). <c>null</c> when the platform exposes no identifier — rare, typically an
+    /// iOS simulator / unconfigured environment.
     /// </summary>
-    public string DataOrigin { get; }
+    public string? DataOrigin { get; }
 
     /// <summary>
     /// When the session started
@@ -66,13 +68,17 @@ public class WorkoutSession
     }
 
     /// <summary>
-    /// Creates a new workout session.
+    /// Creates a new workout session. Called by SDK platform code with a resolved
+    /// <paramref name="dataOrigin"/> (the running app's bundle identifier / package name)
+    /// and by the Preferences-restore path. Consumers receive <see cref="WorkoutSession"/>
+    /// instances via <see cref="Services.IHealthWorkoutService.GetActive"/>; they do not
+    /// construct one directly.
     /// </summary>
-    public WorkoutSession(
+    internal WorkoutSession(
         string id,
         ActivityType activityType,
         string? title,
-        string dataOrigin,
+        string? dataOrigin,
         DateTimeOffset startTime,
         WorkoutSessionState state = WorkoutSessionState.Running,
         List<DateRange>? pauseIntervals = null)

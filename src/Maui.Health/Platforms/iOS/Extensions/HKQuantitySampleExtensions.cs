@@ -53,7 +53,7 @@ internal static class HKQuantitySampleExtensions
         return new StepsDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            DataOrigin = sample.SourceRevision?.Source?.BundleIdentifier,
             DataSdk = HealthDataSdk.AppleHealthKit,
             Device = CreateDeviceDetail(sample.Device),
             Timestamp = startTime, // Use start time as the representative timestamp
@@ -72,7 +72,7 @@ internal static class HKQuantitySampleExtensions
         return new WeightDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            DataOrigin = sample.SourceRevision?.Source?.BundleIdentifier,
             DataSdk = HealthDataSdk.AppleHealthKit,
             Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
@@ -90,7 +90,7 @@ internal static class HKQuantitySampleExtensions
         return new HeightDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            DataOrigin = sample.SourceRevision?.Source?.BundleIdentifier,
             DataSdk = HealthDataSdk.AppleHealthKit,
             Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
@@ -108,7 +108,7 @@ internal static class HKQuantitySampleExtensions
         return new ActiveCaloriesBurnedDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            DataOrigin = sample.SourceRevision?.Source?.BundleIdentifier,
             DataSdk = HealthDataSdk.AppleHealthKit,
             Device = CreateDeviceDetail(sample.Device),
             Timestamp = startTime, // Use start time as the representative timestamp
@@ -127,7 +127,7 @@ internal static class HKQuantitySampleExtensions
         return new HeartRateDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            DataOrigin = sample.SourceRevision?.Source?.BundleIdentifier,
             DataSdk = HealthDataSdk.AppleHealthKit,
             Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
@@ -145,7 +145,7 @@ internal static class HKQuantitySampleExtensions
         return new BodyFatDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            DataOrigin = sample.SourceRevision?.Source?.BundleIdentifier,
             DataSdk = HealthDataSdk.AppleHealthKit,
             Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
@@ -162,7 +162,7 @@ internal static class HKQuantitySampleExtensions
         return new Vo2MaxDto
         {
             Id = sample.Uuid.ToString(),
-            DataOrigin = sample.SourceRevision?.Source?.Name ?? DataOrigin.HealthKitOrigin,
+            DataOrigin = sample.SourceRevision?.Source?.BundleIdentifier,
             DataSdk = HealthDataSdk.AppleHealthKit,
             Device = CreateDeviceDetail(sample.Device),
             Timestamp = timestamp,
