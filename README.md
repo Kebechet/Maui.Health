@@ -471,6 +471,23 @@ public async Task DetectDuplicateWorkouts()
 - Add sample health data for testing
 - Ensure proper permissions are granted
 
+## Comparison with Flutter `health` plugin (gap analysis)
+
+After reviewing [`pub.dev/packages/health`](https://pub.dev/packages/health) and [`carp-dk/carp-health-flutter`](https://github.com/carp-dk/carp-health-flutter), these are the most relevant improvements for `Maui.Health`:
+
+1. **Permission lifecycle parity**
+   - Add explicit APIs for checking revoked permissions and guiding users to system settings for manual revocation, plus checking/requesting Android background-read authorization (`READ_HEALTH_DATA_IN_BACKGROUND`), similar to Flutter's permission helpers.
+2. **Workout route support**
+   - Add iOS/Android workout route APIs (start/append/finish/discard route points) to support GPS route persistence with workouts.
+3. **Bulk delete by type + time range**
+   - Add a first-class API to delete data by metric type + time window (currently delete is single-record by id).
+4. **Broader metric coverage**
+   - Prioritize missing DTOs already available cross-platform (for example: blood glucose, hydration, respiratory rate, oxygen saturation, basal metabolic rate, resting heart rate, heart rate variability (HRV)).
+5. **Query filters for manual vs automatic entries**
+   - Expose recording-method filters on read APIs so callers can include/exclude manually entered data without post-filtering.
+
+These items are intentionally ordered by practical impact and implementation risk (permission/workflow improvements first, then additional DTO breadth).
+
 ## Credits
 - @aritchie - `https://github.com/shinyorg/Health`
 - @0xc3u - `https://github.com/0xc3u/Plugin.Maui.Health`
