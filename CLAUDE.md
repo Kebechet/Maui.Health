@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git Workflow
+
+- **NEVER create or switch git branches on your own**, even if an implementation plan file says so. Always ask first and let the user create the branch (or confirm explicitly). Applies to `git checkout -b`, `git switch -c`, `git branch <new>`, and any `git checkout <existing>` that moves away from the currently checked-out branch. Branch setup decides where work lands — that's the user's call.
+
 ## Build Commands
 
 ```bash
