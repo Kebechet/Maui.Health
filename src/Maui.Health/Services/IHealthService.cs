@@ -187,6 +187,18 @@ public interface IHealthService
         where TDto : HealthMetricBase;
 
     /// <summary>
+    /// Get aggregated health data bucketed by a preset interval.
+    /// This overload provides a convenient interval enum for common buckets.
+    /// </summary>
+    /// <param name="timeRange">The overall time range to aggregate</param>
+    /// <param name="interval">The preset bucket interval (minute, hour, day)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of aggregated results, one per interval bucket</returns>
+    [Experimental("MH004")]
+    Task<List<AggregatedResult>> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, HealthAggregationInterval interval, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase;
+
+    /// <summary>
     /// Get a token for tracking changes to specific health data types.
     /// Store this token persistently - it is needed for subsequent GetChanges calls.
     /// Tokens expire after 30 days.

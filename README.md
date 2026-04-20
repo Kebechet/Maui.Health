@@ -215,6 +215,14 @@ public async Task ShowWeeklySteps()
 }
 ```
 
+For common intervals, you can use the preset enum:
+
+```csharp
+var hourly = await _healthService.GetAggregatedHealthDataByInterval<StepsDto>(
+    weekRange,
+    HealthAggregationInterval.Hour);
+```
+ 
 > **Note:** This API is marked `[Experimental("MH004")]`. Suppress the warning with `#pragma warning disable MH004`.
 
 ### 8. Differential Sync (Change Tracking)

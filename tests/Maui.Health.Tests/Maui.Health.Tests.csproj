@@ -16,6 +16,7 @@
 	<!-- Reference shared source files directly since the main project targets MAUI platform TFMs -->
 	<ItemGroup>
 		<Compile Include="..\..\src\Maui.Health\Extensions\DateRangeExtensions.cs" Link="Shared\DateRangeExtensions.cs" />
+		<Compile Include="..\..\src\Maui.Health\Extensions\HealthAggregationIntervalExtensions.cs" Link="Shared\HealthAggregationIntervalExtensions.cs" />
 		<Compile Include="..\..\src\Maui.Health\Extensions\MetricDtoExtensions.cs" Link="Shared\MetricDtoExtensions.cs" />
 		<Compile Include="..\..\src\Maui.Health\Extensions\WorkoutSessionExtensions.cs" Link="Shared\WorkoutSessionExtensions.cs" />
 		<Compile Include="..\..\src\Maui.Health\Models\DateRange.cs" Link="Shared\DateRange.cs" />
@@ -48,6 +49,7 @@
 		<Compile Include="..\..\src\Maui.Health\Models\WriteHealthDataResult.cs" Link="Shared\WriteHealthDataResult.cs" />
 		<Compile Include="..\..\src\Maui.Health\Models\UpdateHealthDataResult.cs" Link="Shared\UpdateHealthDataResult.cs" />
 		<Compile Include="..\..\src\Maui.Health\Enums\HealthDataSdk.cs" Link="Shared\HealthDataSdk.cs" />
+		<Compile Include="..\..\src\Maui.Health\Enums\HealthAggregationInterval.cs" Link="Shared\HealthAggregationInterval.cs" />
 		<Compile Include="..\..\src\Maui.Health\Enums\MassUnit.cs" Link="Shared\MassUnit.cs" />
 		<Compile Include="..\..\src\Maui.Health\Enums\LengthUnit.cs" Link="Shared\LengthUnit.cs" />
 		<Compile Include="..\..\src\Maui.Health\Enums\EnergyUnit.cs" Link="Shared\EnergyUnit.cs" />
