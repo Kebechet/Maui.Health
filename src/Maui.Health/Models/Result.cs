@@ -4,22 +4,35 @@
 /// Generic result type that indicates success or carries a typed error and/or exception.
 /// </summary>
 /// <typeparam name="TError">The enum type representing possible errors.</typeparam>
-public class Result<TError>
+public class Result<TError> : Result
     where TError : struct
 {
     /// <summary>
     /// Whether the operation succeeded (no error and no exception).
     /// </summary>
-    public virtual bool IsSuccess => Error is null && ErrorException is null;
-    /// <summary>
-    /// Whether the operation failed.
-    /// </summary>
-    public bool IsError => !IsSuccess;
+    public override bool IsSuccess => Error is null && ErrorException is null;
 
     /// <summary>
     /// The typed error value, if any.
     /// </summary>
     public TError? Error { get; init; } = null;
+}
+
+/// <summary>
+/// Generic result type that indicates success or carries an exception.
+/// Use <see cref="Result{TError}"/> if you also want to represent typed errors.
+/// </summary>
+public class Result
+{
+    /// <summary>
+    /// Whether the operation succeeded (no error and no exception).
+    /// </summary>
+    public virtual bool IsSuccess => ErrorException is null;
+    /// <summary>
+    /// Whether the operation failed.
+    /// </summary>
+    public bool IsError => !IsSuccess;
+
     /// <summary>
     /// The exception that occurred, if any.
     /// </summary>
