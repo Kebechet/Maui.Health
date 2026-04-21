@@ -435,9 +435,10 @@ public partial class Home
             // Load data with individual try-catch to continue on permission errors
             try
             {
-                var stepsData = await _healthService.GetHealthData<StepsDto>(todayRange);
-                _stepsRecords = stepsData;
-                _steps = stepsData.Sum(s => s.Count);
+                var stepsResult = await _healthService.GetHealthData<StepsDto>(todayRange);
+                if (stepsResult.IsError) throw stepsResult.ErrorException!;
+                _stepsRecords = stepsResult.Records.ToList();
+                _steps = _stepsRecords.Sum(s => s.Count);
             }
             catch (Exception ex)
             {
@@ -447,9 +448,10 @@ public partial class Home
 
             try
             {
-                var weightData = await _healthService.GetHealthData<WeightDto>(todayRange);
-                _weightRecords = weightData;
-                _weight = weightData.OrderByDescending(w => w.Timestamp).FirstOrDefault()?.Value ?? 0;
+                var weightResult = await _healthService.GetHealthData<WeightDto>(todayRange);
+                if (weightResult.IsError) throw weightResult.ErrorException!;
+                _weightRecords = weightResult.Records.ToList();
+                _weight = _weightRecords.OrderByDescending(w => w.Timestamp).FirstOrDefault()?.Value ?? 0;
             }
             catch (Exception ex)
             {
@@ -459,9 +461,10 @@ public partial class Home
 
             try
             {
-                var caloriesData = await _healthService.GetHealthData<ActiveCaloriesBurnedDto>(todayRange);
-                _caloriesRecords = caloriesData;
-                _calories = caloriesData.Sum(c => c.Energy);
+                var caloriesResult = await _healthService.GetHealthData<ActiveCaloriesBurnedDto>(todayRange);
+                if (caloriesResult.IsError) throw caloriesResult.ErrorException!;
+                _caloriesRecords = caloriesResult.Records.ToList();
+                _calories = _caloriesRecords.Sum(c => c.Energy);
             }
             catch (Exception ex)
             {
@@ -471,12 +474,13 @@ public partial class Home
 
             try
             {
-                var heartRateData = await _healthService.GetHealthData<HeartRateDto>(exerciseRange);
-                _heartRateRecords = heartRateData;
-                if (heartRateData.Count > 0)
+                var heartRateResult = await _healthService.GetHealthData<HeartRateDto>(exerciseRange);
+                if (heartRateResult.IsError) throw heartRateResult.ErrorException!;
+                _heartRateRecords = heartRateResult.Records.ToList();
+                if (_heartRateRecords.Count > 0)
                 {
-                    _averageHeartRate = heartRateData.Average(hr => hr.BeatsPerMinute);
-                    _heartRateCount = heartRateData.Count;
+                    _averageHeartRate = _heartRateRecords.Average(hr => hr.BeatsPerMinute);
+                    _heartRateCount = _heartRateRecords.Count;
                 }
                 else
                 {
@@ -493,10 +497,11 @@ public partial class Home
 
             try
             {
-                var vo2MaxData = await _healthService.GetHealthData<Vo2MaxDto>(todayRange);
-                _vo2MaxRecords = vo2MaxData;
-                var firstVo2Max = vo2MaxData.OrderByDescending(v => v.Timestamp).FirstOrDefault();
-                System.Diagnostics.Debug.WriteLine($"VO2 Max records: {vo2MaxData.Count}, First value: {firstVo2Max?.Value ?? -1}");
+                var vo2MaxResult = await _healthService.GetHealthData<Vo2MaxDto>(todayRange);
+                if (vo2MaxResult.IsError) throw vo2MaxResult.ErrorException!;
+                _vo2MaxRecords = vo2MaxResult.Records.ToList();
+                var firstVo2Max = _vo2MaxRecords.OrderByDescending(v => v.Timestamp).FirstOrDefault();
+                System.Diagnostics.Debug.WriteLine($"VO2 Max records: {_vo2MaxRecords.Count}, First value: {firstVo2Max?.Value ?? -1}");
                 _vo2Max = firstVo2Max?.Value ?? 0;
             }
             catch (Exception ex)
@@ -507,9 +512,10 @@ public partial class Home
 
             try
             {
-                var bodyFatData = await _healthService.GetHealthData<BodyFatDto>(todayRange);
-                _bodyFatRecords = bodyFatData;
-                _bodyFat = bodyFatData.OrderByDescending(b => b.Timestamp).FirstOrDefault()?.Percentage ?? 0;
+                var bodyFatResult = await _healthService.GetHealthData<BodyFatDto>(todayRange);
+                if (bodyFatResult.IsError) throw bodyFatResult.ErrorException!;
+                _bodyFatRecords = bodyFatResult.Records.ToList();
+                _bodyFat = _bodyFatRecords.OrderByDescending(b => b.Timestamp).FirstOrDefault()?.Percentage ?? 0;
             }
             catch (Exception ex)
             {
@@ -520,7 +526,9 @@ public partial class Home
             // Fetch today's workouts using ActivityService
             try
             {
-                _workouts = await _healthService.Activity.Read(todayRange);
+                var workoutResult = await _healthService.Activity.Read(todayRange);
+                if (workoutResult.IsError) throw workoutResult.ErrorException!;
+                _workouts = workoutResult.Workouts.ToList();
 
                 // Detect duplicate workouts using ActivityService
                 _duplicateGroups = _healthService.Activity.FindDuplicates(_workouts, AppSource, _duplicateThresholdMinutes);
@@ -904,8 +912,13 @@ public partial class Home
 
             var todayRange = HealthTimeRange.FromDateTime(DateTime.Today, DateTime.Now);
 
-            _aggregateSteps = await _healthService.GetAggregatedHealthData<StepsDto>(todayRange);
-            _aggregateCalories = await _healthService.GetAggregatedHealthData<ActiveCaloriesBurnedDto>(todayRange);
+            var stepsAggregate = await _healthService.GetAggregatedHealthData<StepsDto>(todayRange);
+            if (stepsAggregate.IsError) throw stepsAggregate.ErrorException!;
+            _aggregateSteps = stepsAggregate.Aggregate;
+
+            var caloriesAggregate = await _healthService.GetAggregatedHealthData<ActiveCaloriesBurnedDto>(todayRange);
+            if (caloriesAggregate.IsError) throw caloriesAggregate.ErrorException!;
+            _aggregateCalories = caloriesAggregate.Aggregate;
 
             _aggregateMessage = $"Aggregation complete. Steps: {(_aggregateSteps is not null ? "OK" : "no data")}, Calories: {(_aggregateCalories is not null ? "OK" : "no data")}";
             _aggregateSuccess = true;
@@ -931,8 +944,14 @@ public partial class Home
             StateHasChanged();
 
             var weekRange = HealthTimeRange.FromDateTime(DateTime.Today.AddDays(-6), DateTime.Now);
-            _intervalResults = await _healthService.GetAggregatedHealthDataByInterval<StepsDto>(weekRange, TimeSpan.FromDays(1));
+            var readResult = await _healthService.GetAggregatedHealthDataByInterval<StepsDto>(weekRange, TimeSpan.FromDays(1));
+            if (readResult.IsError)
+            {
+                throw readResult.ErrorException
+                    ?? new InvalidOperationException("Interval aggregation failed without a specific exception.");
+            }
 
+            _intervalResults = readResult.Buckets.ToList();
             _intervalMessage = $"Found {_intervalResults.Count} daily buckets";
             _intervalSuccess = true;
         }
@@ -991,9 +1010,10 @@ public partial class Home
                 StartTime = DateTimeOffset.Now.AddDays(-30),
                 EndTime = DateTimeOffset.Now
             };
-            var records = await _healthService.GetHealthData<StepsDto>(range);
+            var readResult = await _healthService.GetHealthData<StepsDto>(range);
+            if (readResult.IsError) throw readResult.ErrorException!;
 
-            _latestRecords = records
+            _latestRecords = readResult.Records
                 .OrderByDescending(r => r.Timestamp)
                 .Take(3)
                 .ToList();
@@ -1038,10 +1058,11 @@ public partial class Home
             _verifyResults[id] = "Verifying...";
             StateHasChanged();
 
-            var record = await _healthService.GetHealthRecord<StepsDto>(id);
+            var recordResult = await _healthService.GetHealthRecord<StepsDto>(id);
+            if (recordResult.IsError) throw recordResult.ErrorException!;
 
-            _verifyResults[id] = record is not null
-                ? $"Found: {record.Count} steps, {record.DataOrigin}"
+            _verifyResults[id] = recordResult.Record is not null
+                ? $"Found: {recordResult.Record.Count} steps, {recordResult.Record.DataOrigin}"
                 : "Not found via GetHealthRecord";
         }
         catch (Exception ex)
@@ -1076,9 +1097,10 @@ public partial class Home
 
             var today = DateTime.Today;
             var todayRange = HealthTimeRange.FromDateTime(today, today.AddDays(1));
-            var stepsData = await _healthService.GetHealthData<StepsDto>(todayRange, shouldCheckPermissions: false);
-            _stepsRecords = stepsData;
-            _steps = stepsData.Sum(s => s.Count);
+            var stepsResult = await _healthService.GetHealthData<StepsDto>(todayRange, shouldCheckPermissions: false);
+            if (stepsResult.IsError) throw stepsResult.ErrorException!;
+            _stepsRecords = stepsResult.Records.ToList();
+            _steps = _stepsRecords.Sum(s => s.Count);
 
             _changesMessage = "Wrote 10 steps";
             _changesSuccess = true;
@@ -1108,7 +1130,9 @@ public partial class Home
                 HealthDataType.Weight
             };
 
-            _changesToken = await _healthService.GetChangesToken(dataTypes);
+            var tokenResult = await _healthService.GetChangesToken(dataTypes);
+            if (tokenResult.IsError) throw tokenResult.ErrorException!;
+            _changesToken = tokenResult.Token;
 
             _changesMessage = _changesToken is not null ? "Token acquired" : "Failed to get token";
             _changesSuccess = _changesToken is not null;
@@ -1173,7 +1197,9 @@ public partial class Home
             _changesMessage = "Fetching changes...";
             StateHasChanged();
 
-            _changesResult = await _healthService.GetChanges(_changesToken);
+            var changesReadResult = await _healthService.GetChanges(_changesToken);
+            if (changesReadResult.IsError) throw changesReadResult.ErrorException!;
+            _changesResult = changesReadResult.Changes;
 
             if (_changesResult is not null)
             {

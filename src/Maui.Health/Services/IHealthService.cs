@@ -48,14 +48,21 @@ public interface IHealthService
     Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Get health data for a specific metric type within a time range
+    /// Get health data for a specific metric type within a time range.
     /// </summary>
+    /// <remarks>
+    /// Returns a <see cref="HealthDataReadResult{TDto}"/> so callers can distinguish
+    /// "platform returned no records" (<see cref="Result.IsSuccess"/> with empty
+    /// <see cref="HealthDataReadResult{TDto}.Records"/>) from "platform call failed"
+    /// (<see cref="Result.IsError"/> with the exception on
+    /// <see cref="Result.ErrorException"/>). This matters for sync orchestration where
+    /// treating a failed read as "no data" would wrongly advance a watermark.
+    /// </remarks>
     /// <typeparam name="TDto">The type of health metric DTO to retrieve</typeparam>
     /// <param name="timeRange">The time range for data retrieval</param>
     /// <param name="shouldCheckPermissions">When false, skips the internal permission check. Use when permissions were already requested upfront via <see cref="RequestPermissions"/>.</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>List of health metric DTOs</returns>
-    Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
+    Task<HealthDataReadResult<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <summary>
@@ -63,13 +70,18 @@ public interface IHealthService
     /// On Android: uses Health Connect record metadata ID.
     /// On iOS: uses HealthKit UUID.
     /// </summary>
+    /// <remarks>
+    /// Returns a <see cref="HealthRecordReadResult{TDto}"/>. Success with
+    /// <see cref="HealthRecordReadResult{TDto}.Record"/> null means the platform confirmed
+    /// no such record exists; failure means the lookup itself failed (permission, SDK,
+    /// platform query error).
+    /// </remarks>
     /// <typeparam name="TDto">The type of health metric DTO to retrieve</typeparam>
     /// <param name="id">The platform-specific record ID</param>
     /// <param name="shouldCheckPermissions">When false, skips the internal permission check. Use when permissions were already requested upfront via <see cref="RequestPermissions"/>.</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The health record, or null if not found</returns>
     [Experimental("MH001")]
-    Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
+    Task<HealthRecordReadResult<TDto>> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <summary>
@@ -163,49 +175,75 @@ public interface IHealthService
 
     /// <summary>
     /// Get aggregated health data for a time range.
-    /// Uses platform-native aggregation (Android aggregate(), iOS HKStatisticsQuery)
-    /// which properly deduplicates data across multiple health apps.
+    /// Uses platform-native aggregation (Android <c>aggregate()</c>, iOS
+    /// <c>HKStatisticsQuery</c>) which properly deduplicates data across multiple health
+    /// apps.
     /// </summary>
+    /// <remarks>
+    /// Returns an <see cref="AggregatedReadResult"/>. Success with
+    /// <see cref="AggregatedReadResult.Aggregate"/> null means the platform has no data to
+    /// aggregate for the window (legitimate empty) or the type is not supported as an
+    /// aggregate. Failure means the call itself failed — check
+    /// <see cref="Result.ErrorException"/>.
+    /// </remarks>
     /// <param name="timeRange">The time range to aggregate over</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The aggregated result, or null if no data or unsupported type</returns>
     [Experimental("MH003")]
-    Task<AggregatedResult?> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+    Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <summary>
     /// Get aggregated health data bucketed by a time interval.
-    /// Uses platform-native aggregation (Android aggregateGroupByDuration(), iOS HKStatisticsCollectionQuery)
-    /// which properly deduplicates data across multiple health apps.
+    /// Uses platform-native aggregation (Android <c>aggregateGroupByDuration()</c>, iOS
+    /// <c>HKStatisticsCollectionQuery</c>) which properly deduplicates data across multiple
+    /// health apps.
     /// </summary>
+    /// <remarks>
+    /// <para>Returns an <see cref="AggregatedIntervalReadResult"/> so callers can distinguish
+    /// "platform returned no data" (<see cref="Result.IsSuccess"/> with empty
+    /// <see cref="AggregatedIntervalReadResult.Buckets"/>) from "platform call failed"
+    /// (<see cref="Result.IsError"/> with the exception on
+    /// <see cref="Result.ErrorException"/>). This matters for sync use cases where silently
+    /// treating a failed read as "no data" would wrongly advance a watermark.</para>
+    /// <para>Known platform-side failure modes that surface as <see cref="Result.IsError"/>
+    /// rather than silently returning empty: Health Connect's 5000-bucket-per-call limit
+    /// (<c>IllegalArgumentException</c>), permission denial, SDK unavailable on Android,
+    /// and HealthKit authorization / query errors on iOS.</para>
+    /// </remarks>
     /// <param name="timeRange">The overall time range to aggregate</param>
-    /// <param name="interval">The bucket interval (e.g., TimeSpan.FromDays(1) for daily)</param>
+    /// <param name="interval">The bucket interval (e.g., <c>TimeSpan.FromDays(1)</c> for daily)</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>List of aggregated results, one per interval bucket</returns>
     [Experimental("MH004")]
-    Task<List<AggregatedResult>> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken = default)
+    Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <summary>
     /// Get a token for tracking changes to specific health data types.
-    /// Store this token persistently - it is needed for subsequent GetChanges calls.
-    /// Tokens expire after 30 days.
+    /// Store this token persistently — it is needed for subsequent
+    /// <see cref="GetChanges(string, CancellationToken)"/> calls. Tokens expire after 30 days.
     /// </summary>
+    /// <remarks>
+    /// Returns a <see cref="ChangesTokenResult"/>. On success <see cref="ChangesTokenResult.Token"/>
+    /// is non-null; on failure <see cref="Result.ErrorException"/> carries the reason.
+    /// </remarks>
     /// <param name="dataTypes">The health data types to track changes for</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>An opaque token string, or null if the operation failed</returns>
     [Experimental("MH005")]
-    Task<string?> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken = default);
+    Task<ChangesTokenResult> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get changes (upserts and deletions) since the provided token.
-    /// If HasMore is true, call again with NextToken to get remaining changes.
+    /// If <c>HasMore</c> is true, call again with <c>NextToken</c> to get remaining changes.
     /// </summary>
-    /// <param name="token">The token from GetChangesToken or a previous GetChanges call</param>
+    /// <remarks>
+    /// Returns a <see cref="ChangesReadResult"/>. Success with
+    /// <see cref="ChangesReadResult.Changes"/> null means the token was invalid or expired;
+    /// the caller should re-issue a token. Failure means the platform call itself failed.
+    /// </remarks>
+    /// <param name="token">The token from <see cref="GetChangesToken"/> or a previous <see cref="GetChanges"/> call</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>The changes result, or null if the token is invalid/expired</returns>
     [Experimental("MH006")]
-    Task<HealthChangesResult?> GetChanges(string token, CancellationToken cancellationToken = default);
+    Task<ChangesReadResult> GetChanges(string token, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Opens the platform store to update the health provider app.

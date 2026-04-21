@@ -10,11 +10,17 @@ namespace Maui.Health.Services;
 public interface IHealthWorkoutService
 {
     /// <summary>
-    /// Reads workout records from the health data store within the specified time range
+    /// Reads workout records from the health data store within the specified time range.
     /// </summary>
+    /// <remarks>
+    /// Returns a <see cref="WorkoutReadResult"/> so callers can distinguish "platform
+    /// returned no workouts" (<see cref="Result.IsSuccess"/> with empty
+    /// <see cref="WorkoutReadResult.Workouts"/>) from "platform call failed"
+    /// (<see cref="Result.IsError"/> with the exception on
+    /// <see cref="Result.ErrorException"/>).
+    /// </remarks>
     /// <param name="activityTime">The time range for data retrieval</param>
-    /// <returns>List of workout DTOs</returns>
-    Task<List<WorkoutDto>> Read(HealthTimeRange activityTime);
+    Task<WorkoutReadResult> Read(HealthTimeRange activityTime);
 
     /// <summary>
     /// Writes a workout record to the health data store

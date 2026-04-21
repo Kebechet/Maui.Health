@@ -10,7 +10,7 @@ namespace Maui.Health.Services;
 public partial class HealthWorkoutService : IHealthWorkoutService
 {
     /// <inheritdoc/>
-    public partial Task<List<WorkoutDto>> Read(HealthTimeRange activityTime);
+    public partial Task<WorkoutReadResult> Read(HealthTimeRange activityTime);
 
     /// <inheritdoc/>
     public partial Task Write(WorkoutDto workout);

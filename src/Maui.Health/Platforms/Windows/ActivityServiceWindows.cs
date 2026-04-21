@@ -6,15 +6,18 @@ namespace Maui.Health.Services;
 
 public partial class HealthWorkoutService
 {
-    public partial Task<List<WorkoutDto>> Read(HealthTimeRange activityTime)
+    public partial Task<WorkoutReadResult> Read(HealthTimeRange activityTime)
     {
         try
         {
-            return Task.FromResult<List<WorkoutDto>>([]);
+            return Task.FromResult(new WorkoutReadResult
+            {
+                ErrorException = new PlatformNotSupportedException("Workout data is not supported on Windows."),
+            });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            return Task.FromResult<List<WorkoutDto>>([]);
+            return Task.FromResult(new WorkoutReadResult { ErrorException = ex });
         }
     }
 

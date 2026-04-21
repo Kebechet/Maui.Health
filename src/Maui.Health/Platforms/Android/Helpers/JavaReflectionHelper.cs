@@ -329,30 +329,26 @@ internal static class JavaReflectionHelper
         IKClass recordClass,
         HealthTimeRange timeRange)
     {
-        try
-        {
-            var timeRangeFilter = TimeRangeFilter.Between(
-                Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
-                Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
-            );
+        // No try/catch: exceptions propagate to the outer service layer
+        // (HealthService.GetHealthData) where they are wrapped in
+        // HealthDataReadResult.ErrorException. An inner swallow here would hide real errors
+        // behind a null return and recreate the "silent empty result" bug.
+        var timeRangeFilter = TimeRangeFilter.Between(
+            Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
+            Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
+        );
 
-            var request = new ReadRecordsRequest(
-                recordClass,
-                timeRangeFilter,
-                [],
-                true,
-                MaxRecordsPerRequest,
-                null
-            );
+        var request = new ReadRecordsRequest(
+            recordClass,
+            timeRangeFilter,
+            [],
+            true,
+            MaxRecordsPerRequest,
+            null
+        );
 
-            return await KotlinResolver.Process<ReadRecordsResponse, ReadRecordsRequest>(
-                healthConnectClient.ReadRecords, request);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error reading records: {ex.Message}");
-            return null;
-        }
+        return await KotlinResolver.Process<ReadRecordsResponse, ReadRecordsRequest>(
+            healthConnectClient.ReadRecords, request);
     }
 #pragma warning restore CA1416
 
@@ -361,41 +357,37 @@ internal static class JavaReflectionHelper
         IKClass recordClass,
         string recordId)
     {
-        try
+        // No try/catch: exceptions propagate to the outer service layer
+        // (HealthService.GetHealthRecord) which wraps them in
+        // HealthRecordReadResult.ErrorException. Null returns below mean "reflection setup
+        // could not bind" — preserved so the caller can treat those as "no such record."
+        var (clientClass, clientObject) = healthConnectClient.GetJniClientObjects();
+        if (clientClass is null || clientObject is null)
         {
-            var (clientClass, clientObject) = healthConnectClient.GetJniClientObjects();
-            if (clientClass is null || clientObject is null)
-            {
-                return null;
-            }
-
-            var recordClassObj = Java.Lang.Object.GetObject<Java.Lang.Object>(recordClass.Handle, JniHandleOwnership.DoNotTransfer);
-            if (recordClassObj is null)
-            {
-                return null;
-            }
-
-            var result = await InvokeKotlinSuspendMethod(clientClass, clientObject, "readRecord", recordClassObj, new Java.Lang.String(recordId));
-            if (result is null)
-            {
-                return null;
-            }
-
-            var getRecordMethod = result.Class.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getRecord")
-                ?? result.Class.GetMethods()?.FirstOrDefault(m => m?.Name == "getRecord");
-            if (getRecordMethod is null)
-            {
-                return null;
-            }
-
-            getRecordMethod.Accessible = true;
-            return getRecordMethod.Invoke(result) as Java.Lang.Object;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error reading record by ID: {ex.Message}");
             return null;
         }
+
+        var recordClassObj = Java.Lang.Object.GetObject<Java.Lang.Object>(recordClass.Handle, JniHandleOwnership.DoNotTransfer);
+        if (recordClassObj is null)
+        {
+            return null;
+        }
+
+        var result = await InvokeKotlinSuspendMethod(clientClass, clientObject, "readRecord", recordClassObj, new Java.Lang.String(recordId));
+        if (result is null)
+        {
+            return null;
+        }
+
+        var getRecordMethod = result.Class.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getRecord")
+            ?? result.Class.GetMethods()?.FirstOrDefault(m => m?.Name == "getRecord");
+        if (getRecordMethod is null)
+        {
+            return null;
+        }
+
+        getRecordMethod.Accessible = true;
+        return getRecordMethod.Invoke(result) as Java.Lang.Object;
     }
 
     /// <summary>
@@ -494,47 +486,43 @@ internal static class JavaReflectionHelper
         string metricFieldName,
         HealthTimeRange timeRange)
     {
-        try
+        // No try/catch: exceptions propagate to the outer service layer
+        // (HealthService.GetAggregatedHealthData) which wraps them in
+        // AggregatedReadResult.ErrorException. Null returns below mean reflection setup or
+        // bind failures — preserved so the caller treats those as "unsupported / no data."
+        var metric = GetAggregateMetric(recordClassName, metricFieldName);
+        if (metric is null)
         {
-            var metric = GetAggregateMetric(recordClassName, metricFieldName);
-            if (metric is null)
-            {
-                return (null, []);
-            }
-
-            var timeRangeFilter = TimeRangeFilter.Between(
-                Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
-                Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
-            );
-
-            var request = CreateAggregateRequest(metric, timeRangeFilter);
-            if (request is null)
-            {
-                return (null, []);
-            }
-
-            var (clientClass, clientObject) = healthConnectClient.GetJniClientObjects();
-            if (clientClass is null || clientObject is null)
-            {
-                return (null, []);
-            }
-
-            var aggregationResult = await InvokeKotlinSuspendMethod(clientClass, clientObject, "aggregate", request);
-            if (aggregationResult is null)
-            {
-                return (null, []);
-            }
-
-            var value = ExtractAggregateValue(aggregationResult, metric);
-            var dataOrigins = ExtractDataOrigins(aggregationResult);
-
-            return (value, dataOrigins);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error aggregating health records: {ex.Message}");
             return (null, []);
         }
+
+        var timeRangeFilter = TimeRangeFilter.Between(
+            Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
+            Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
+        );
+
+        var request = CreateAggregateRequest(metric, timeRangeFilter);
+        if (request is null)
+        {
+            return (null, []);
+        }
+
+        var (clientClass, clientObject) = healthConnectClient.GetJniClientObjects();
+        if (clientClass is null || clientObject is null)
+        {
+            return (null, []);
+        }
+
+        var aggregationResult = await InvokeKotlinSuspendMethod(clientClass, clientObject, "aggregate", request);
+        if (aggregationResult is null)
+        {
+            return (null, []);
+        }
+
+        var value = ExtractAggregateValue(aggregationResult, metric);
+        var dataOrigins = ExtractDataOrigins(aggregationResult);
+
+        return (value, dataOrigins);
     }
 
     /// <summary>
@@ -549,146 +537,144 @@ internal static class JavaReflectionHelper
         HealthDataType dataType,
         string? unit)
     {
-        try
+        // No try/catch here: the outer service layer (HealthService.GetAggregatedHealthDataByInterval)
+        // is the single error boundary — it wraps platform exceptions in
+        // AggregatedIntervalReadResult.ErrorException so callers can distinguish "platform
+        // returned no data" from "platform call failed." An inner swallow here would hide
+        // real errors behind an empty list, which is exactly the bug the Result refactor is
+        // fixing.
+        var metric = GetAggregateMetric(recordClassName, metricFieldName);
+        if (metric is null)
         {
-            var metric = GetAggregateMetric(recordClassName, metricFieldName);
-            if (metric is null)
+            return [];
+        }
+
+        var timeRangeFilter = TimeRangeFilter.Between(
+            Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
+            Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
+        );
+
+        var duration = Java.Time.Duration.OfMillis((long)interval.TotalMilliseconds);
+
+        var metricsSet = new Java.Util.HashSet();
+        metricsSet.Add(metric);
+
+        var emptySet = new Java.Util.HashSet();
+
+        var requestClass = Java.Lang.Class.ForName(Reflection.AggregateGroupByDurationRequestClassName);
+        if (requestClass is null)
+        {
+            Debug.WriteLine("Failed to find AggregateGroupByDurationRequest class");
+            return [];
+        }
+
+        // Constructor: AggregateGroupByDurationRequest(Set<AggregateMetric>, TimeRangeFilter, Duration, Set<DataOrigin>)
+        var requestConstructor = requestClass.GetConstructors()?.FirstOrDefault(c =>
+            c.GetParameterTypes()?.Length == 4);
+        if (requestConstructor is null)
+        {
+            Debug.WriteLine("Failed to find AggregateGroupByDurationRequest constructor");
+            return [];
+        }
+
+        requestConstructor.Accessible = true;
+        var request = requestConstructor.NewInstance(metricsSet, timeRangeFilter, duration, emptySet);
+        if (request is null)
+        {
+            Debug.WriteLine("Failed to create AggregateGroupByDurationRequest");
+            return [];
+        }
+
+        var (clientClass, clientObject) = healthConnectClient.GetJniClientObjects();
+        if (clientClass is null || clientObject is null)
+        {
+            return [];
+        }
+
+        var result = await InvokeKotlinSuspendMethod(clientClass, clientObject, "aggregateGroupByDuration", request);
+        if (result is null)
+        {
+            return [];
+        }
+
+        // Result is a List<AggregationResultGroupedByDuration>
+        // May be JavaList or java.util.Arrays$ArrayList (IList)
+        var results = new List<AggregatedResult>();
+
+        Java.Util.IList javaList;
+        if (result is Java.Util.IList iList)
+        {
+            javaList = iList;
+        }
+        else
+        {
+            return [];
+        }
+
+        for (int i = 0; i < javaList.Size(); i++)
+        {
+            var item = javaList.Get(i);
+            if (item is null)
             {
-                return [];
+                continue;
             }
 
-            var timeRangeFilter = TimeRangeFilter.Between(
-                Instant.OfEpochMilli(timeRange.StartTime.ToUnixTimeMilliseconds())!,
-                Instant.OfEpochMilli(timeRange.EndTime.ToUnixTimeMilliseconds())!
-            );
+            var startInstant = InvokeAccessibleMethod(item, "getStartTime") as Java.Time.Instant;
+            var endInstant = InvokeAccessibleMethod(item, "getEndTime") as Java.Time.Instant;
 
-            var duration = Java.Time.Duration.OfMillis((long)interval.TotalMilliseconds);
-
-            var metricsSet = new Java.Util.HashSet();
-            metricsSet.Add(metric);
-
-            var emptySet = new Java.Util.HashSet();
-
-            var requestClass = Java.Lang.Class.ForName(Reflection.AggregateGroupByDurationRequestClassName);
-            if (requestClass is null)
+            // Get the AggregationResult from the grouped item
+            var getResultMethod = item.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getResult")
+                ?? item.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getResult");
+            if (getResultMethod is null)
             {
-                Debug.WriteLine("Failed to find AggregateGroupByDurationRequest class");
-                return [];
+                continue;
             }
 
-            // Constructor: AggregateGroupByDurationRequest(Set<AggregateMetric>, TimeRangeFilter, Duration, Set<DataOrigin>)
-            var requestConstructor = requestClass.GetConstructors()?.FirstOrDefault(c =>
-                c.GetParameterTypes()?.Length == 4);
-            if (requestConstructor is null)
+            getResultMethod.Accessible = true;
+            var aggregationResult = getResultMethod.Invoke(item);
+            if (aggregationResult is null)
             {
-                Debug.WriteLine("Failed to find AggregateGroupByDurationRequest constructor");
-                return [];
+                continue;
             }
 
-            requestConstructor.Accessible = true;
-            var request = requestConstructor.NewInstance(metricsSet, timeRangeFilter, duration, emptySet);
-            if (request is null)
+            var value = ExtractAggregateValue(aggregationResult, metric);
+            if (value is null)
             {
-                Debug.WriteLine("Failed to create AggregateGroupByDurationRequest");
-                return [];
+                continue;
             }
 
-            var (clientClass, clientObject) = healthConnectClient.GetJniClientObjects();
-            if (clientClass is null || clientObject is null)
+            double numericValue = 0;
+            if (value is Java.Lang.Number number)
             {
-                return [];
-            }
-
-            var result = await InvokeKotlinSuspendMethod(clientClass, clientObject, "aggregateGroupByDuration", request);
-            if (result is null)
-            {
-                return [];
-            }
-
-            // Result is a List<AggregationResultGroupedByDuration>
-            // May be JavaList or java.util.Arrays$ArrayList (IList)
-            var results = new List<AggregatedResult>();
-
-            Java.Util.IList javaList;
-            if (result is Java.Util.IList iList)
-            {
-                javaList = iList;
+                numericValue = number.DoubleValue();
             }
             else
             {
-                return [];
+                numericValue = value.ExtractEnergyValue();
             }
 
-            for (int i = 0; i < javaList.Size(); i++)
+            var bucketStart = startInstant is not null
+                ? DateTimeOffset.FromUnixTimeMilliseconds(startInstant.ToEpochMilli())
+                : timeRange.StartTime;
+            var bucketEnd = endInstant is not null
+                ? DateTimeOffset.FromUnixTimeMilliseconds(endInstant.ToEpochMilli())
+                : timeRange.EndTime;
+
+            var dataOrigins = ExtractDataOrigins(aggregationResult);
+
+            results.Add(new AggregatedResult
             {
-                var item = javaList.Get(i);
-                if (item is null)
-                {
-                    continue;
-                }
-
-                var startInstant = InvokeAccessibleMethod(item, "getStartTime") as Java.Time.Instant;
-                var endInstant = InvokeAccessibleMethod(item, "getEndTime") as Java.Time.Instant;
-
-                // Get the AggregationResult from the grouped item
-                var getResultMethod = item.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getResult")
-                    ?? item.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getResult");
-                if (getResultMethod is null)
-                {
-                    continue;
-                }
-
-                getResultMethod.Accessible = true;
-                var aggregationResult = getResultMethod.Invoke(item);
-                if (aggregationResult is null)
-                {
-                    continue;
-                }
-
-                var value = ExtractAggregateValue(aggregationResult, metric);
-                if (value is null)
-                {
-                    continue;
-                }
-
-                double numericValue = 0;
-                if (value is Java.Lang.Number number)
-                {
-                    numericValue = number.DoubleValue();
-                }
-                else
-                {
-                    numericValue = value.ExtractEnergyValue();
-                }
-
-                var bucketStart = startInstant is not null
-                    ? DateTimeOffset.FromUnixTimeMilliseconds(startInstant.ToEpochMilli())
-                    : timeRange.StartTime;
-                var bucketEnd = endInstant is not null
-                    ? DateTimeOffset.FromUnixTimeMilliseconds(endInstant.ToEpochMilli())
-                    : timeRange.EndTime;
-
-                var dataOrigins = ExtractDataOrigins(aggregationResult);
-
-                results.Add(new AggregatedResult
-                {
-                    StartTime = bucketStart,
-                    EndTime = bucketEnd,
-                    Value = numericValue,
-                    Unit = unit,
-                    DataType = dataType,
-                    DataSdk = HealthDataSdk.GoogleHealthConnect,
-                    DataOrigins = dataOrigins
-                });
-            }
-
-            return results;
+                StartTime = bucketStart,
+                EndTime = bucketEnd,
+                Value = numericValue,
+                Unit = unit,
+                DataType = dataType,
+                DataSdk = HealthDataSdk.GoogleHealthConnect,
+                DataOrigins = dataOrigins
+            });
         }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error aggregating health records by duration: {ex.Message}");
-            return [];
-        }
+
+        return results;
     }
 
     /// <summary>
@@ -698,58 +684,53 @@ internal static class JavaReflectionHelper
         this IHealthConnectClient healthConnectClient,
         IList<IKClass> recordTypes)
     {
-        try
+        // No try/catch: exceptions propagate to HealthService.GetChangesToken which wraps
+        // them in ChangesTokenResult.ErrorException. Null returns below indicate reflection
+        // setup could not find the expected Health Connect classes — preserved.
+        var recordTypesSet = new Java.Util.HashSet();
+        foreach (var recordType in recordTypes)
         {
-            var recordTypesSet = new Java.Util.HashSet();
-            foreach (var recordType in recordTypes)
+            var recordTypeObj = Java.Lang.Object.GetObject<Java.Lang.Object>(recordType.Handle, JniHandleOwnership.DoNotTransfer);
+            if (recordTypeObj is not null)
             {
-                var recordTypeObj = Java.Lang.Object.GetObject<Java.Lang.Object>(recordType.Handle, JniHandleOwnership.DoNotTransfer);
-                if (recordTypeObj is not null)
-                {
-                    recordTypesSet.Add(recordTypeObj);
-                }
+                recordTypesSet.Add(recordTypeObj);
             }
-
-            var requestClass = Java.Lang.Class.ForName(Reflection.ChangesTokenRequestClassName);
-            if (requestClass is null)
-            {
-                Debug.WriteLine("Failed to find ChangesTokenRequest class");
-                return null;
-            }
-
-            // Constructor: ChangesTokenRequest(Set<KClass>, Set<DataOrigin>)
-            var requestConstructor = requestClass.GetConstructors()?.FirstOrDefault(c =>
-                c.GetParameterTypes()?.Length == 2);
-            if (requestConstructor is null)
-            {
-                Debug.WriteLine("Failed to find ChangesTokenRequest constructor");
-                return null;
-            }
-
-            requestConstructor.Accessible = true;
-            var emptySet = new Java.Util.HashSet();
-            var request = requestConstructor.NewInstance(recordTypesSet, emptySet);
-            if (request is null)
-            {
-                Debug.WriteLine("Failed to create ChangesTokenRequest");
-                return null;
-            }
-
-            var (clientClass, clientObject) = healthConnectClient.GetJniClientObjects();
-            if (clientClass is null || clientObject is null)
-            {
-                return null;
-            }
-
-            var result = await InvokeKotlinSuspendMethod(clientClass, clientObject, "getChangesToken", request);
-
-            return result?.ToString();
         }
-        catch (Exception ex)
+
+        var requestClass = Java.Lang.Class.ForName(Reflection.ChangesTokenRequestClassName);
+        if (requestClass is null)
         {
-            Debug.WriteLine($"Error getting changes token: {ex.Message}");
+            Debug.WriteLine("Failed to find ChangesTokenRequest class");
             return null;
         }
+
+        // Constructor: ChangesTokenRequest(Set<KClass>, Set<DataOrigin>)
+        var requestConstructor = requestClass.GetConstructors()?.FirstOrDefault(c =>
+            c.GetParameterTypes()?.Length == 2);
+        if (requestConstructor is null)
+        {
+            Debug.WriteLine("Failed to find ChangesTokenRequest constructor");
+            return null;
+        }
+
+        requestConstructor.Accessible = true;
+        var emptySet = new Java.Util.HashSet();
+        var request = requestConstructor.NewInstance(recordTypesSet, emptySet);
+        if (request is null)
+        {
+            Debug.WriteLine("Failed to create ChangesTokenRequest");
+            return null;
+        }
+
+        var (clientClass, clientObject) = healthConnectClient.GetJniClientObjects();
+        if (clientClass is null || clientObject is null)
+        {
+            return null;
+        }
+
+        var result = await InvokeKotlinSuspendMethod(clientClass, clientObject, "getChangesToken", request);
+
+        return result?.ToString();
     }
 
     /// <summary>
@@ -759,9 +740,10 @@ internal static class JavaReflectionHelper
         this IHealthConnectClient healthConnectClient,
         string token)
     {
-        try
-        {
-            var (clientClass, clientObject) = healthConnectClient.GetJniClientObjects();
+        // No try/catch: exceptions propagate to HealthService.GetChanges which wraps them in
+        // ChangesReadResult.ErrorException. Null returns below mean reflection could not
+        // bind — caller treats those as "token invalid or platform mismatch."
+        var (clientClass, clientObject) = healthConnectClient.GetJniClientObjects();
             if (clientClass is null || clientObject is null)
             {
                 return null;
@@ -885,12 +867,6 @@ internal static class JavaReflectionHelper
                 NextToken = nextToken ?? token,
                 HasMore = hasMore
             };
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error getting health changes: {ex.Message}");
-            return null;
-        }
     }
 
     /// <summary>

@@ -27,16 +27,22 @@ public partial class HealthService : IHealthService
         return Task.FromResult(results);
     }
 
-    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    public partial Task<HealthDataReadResult<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return Task.FromResult<List<TDto>>([]);
+        return Task.FromResult(new HealthDataReadResult<TDto>
+        {
+            ErrorException = new PlatformNotSupportedException("Health data is not supported on Windows."),
+        });
     }
 
-    public partial Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    public partial Task<HealthRecordReadResult<TDto>> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return Task.FromResult<TDto?>(null);
+        return Task.FromResult(new HealthRecordReadResult<TDto>
+        {
+            ErrorException = new PlatformNotSupportedException("Health data is not supported on Windows."),
+        });
     }
 
     public partial Task<WriteHealthDataResult> WriteHealthData<TDto>(IList<TDto> items, bool shouldCheckPermissions, CancellationToken cancellationToken)
@@ -57,26 +63,38 @@ public partial class HealthService : IHealthService
         return Task.FromResult(false);
     }
 
-    public partial Task<AggregatedResult?> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return Task.FromResult<AggregatedResult?>(null);
+        return Task.FromResult(new AggregatedReadResult
+        {
+            ErrorException = new PlatformNotSupportedException("Health data is not supported on Windows."),
+        });
     }
 
-    public partial Task<List<AggregatedResult>> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return Task.FromResult<List<AggregatedResult>>([]);
+        return Task.FromResult(new AggregatedIntervalReadResult
+        {
+            ErrorException = new PlatformNotSupportedException("Health data is not supported on Windows."),
+        });
     }
 
-    public partial Task<string?> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken)
+    public partial Task<ChangesTokenResult> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken)
     {
-        return Task.FromResult<string?>(null);
+        return Task.FromResult(new ChangesTokenResult
+        {
+            ErrorException = new PlatformNotSupportedException("Health data is not supported on Windows."),
+        });
     }
 
-    public partial Task<HealthChangesResult?> GetChanges(string token, CancellationToken cancellationToken)
+    public partial Task<ChangesReadResult> GetChanges(string token, CancellationToken cancellationToken)
     {
-        return Task.FromResult<HealthChangesResult?>(null);
+        return Task.FromResult(new ChangesReadResult
+        {
+            ErrorException = new PlatformNotSupportedException("Health data is not supported on Windows."),
+        });
     }
 
     public partial void OpenStorePageOfHealthProvider() { }

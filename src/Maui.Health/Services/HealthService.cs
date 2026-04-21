@@ -37,11 +37,11 @@ public partial class HealthService : IHealthService
     public partial Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken = default);
 
     /// <inheritdoc/>
-    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
+    public partial Task<HealthDataReadResult<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
+    public partial Task<HealthRecordReadResult<TDto>> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
@@ -64,18 +64,18 @@ public partial class HealthService : IHealthService
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<AggregatedResult?> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<List<AggregatedResult>> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken = default)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<string?> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken = default);
+    public partial Task<ChangesTokenResult> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken = default);
 
     /// <inheritdoc/>
-    public partial Task<HealthChangesResult?> GetChanges(string token, CancellationToken cancellationToken = default);
+    public partial Task<ChangesReadResult> GetChanges(string token, CancellationToken cancellationToken = default);
 
     /// <inheritdoc/>
     public partial void OpenStorePageOfHealthProvider();

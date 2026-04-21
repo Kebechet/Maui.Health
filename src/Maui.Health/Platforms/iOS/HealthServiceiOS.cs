@@ -189,18 +189,21 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    public partial Task<HealthDataReadResult<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return GetHealthDataInternal<TDto>(timeRange, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<List<TDto>> GetHealthDataInternal<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    private async Task<HealthDataReadResult<TDto>> GetHealthDataInternal<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (!IsSupported)
         {
-            return [];
+            return new HealthDataReadResult<TDto>
+            {
+                ErrorException = new InvalidOperationException("HealthKit is not available on this device."),
+            };
         }
 
         try
@@ -214,7 +217,11 @@ public partial class HealthService : IHealthService
                 var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (!permissionResult.IsSuccess)
                 {
-                    return [];
+                    return new HealthDataReadResult<TDto>
+                    {
+                        ErrorException = permissionResult.ErrorException
+                            ?? new InvalidOperationException($"Permission request failed: {permissionResult.Error}"),
+                    };
                 }
             }
 
@@ -240,7 +247,7 @@ public partial class HealthService : IHealthService
                 return await GetCumulativeHealthDataAsync<TDto>(quantityType, predicate, timeRange, healthDataType, cancellationToken);
             }
 
-            var tcs = new TaskCompletionSource<TDto[]>();
+            var tcs = new TaskCompletionSource<HealthDataReadResult<TDto>>();
 
             // Use HKSampleQuery to get individual records (for non-cumulative types like heart rate, weight)
             var query = new HKSampleQuery(
@@ -252,7 +259,11 @@ public partial class HealthService : IHealthService
                 {
                     if (error != null)
                     {
-                        tcs.TrySetResult([]);
+                        tcs.TrySetResult(new HealthDataReadResult<TDto>
+                        {
+                            ErrorException = new InvalidOperationException(
+                                $"HealthKit sample query failed: {error.LocalizedDescription}"),
+                        });
                         return;
                     }
 
@@ -266,7 +277,7 @@ public partial class HealthService : IHealthService
                         }
                     }
 
-                    tcs.TrySetResult(dtos.ToArray());
+                    tcs.TrySetResult(new HealthDataReadResult<TDto> { Records = dtos });
                 }
             );
 
@@ -278,15 +289,17 @@ public partial class HealthService : IHealthService
             });
 
             store.ExecuteQuery(query);
-            var results = await tcs.Task;
-            _logger.LogInformation("Found {Count} {DtoName} records", results.Length, typeof(TDto).Name);
-
-            return results.ToList();
+            var result = await tcs.Task;
+            if (result.IsSuccess)
+            {
+                _logger.LogInformation("Found {Count} {DtoName} records", result.Records.Count, typeof(TDto).Name);
+            }
+            return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching health data for {DtoName}", typeof(TDto).Name);
-            return [];
+            return new HealthDataReadResult<TDto> { ErrorException = ex };
         }
     }
 
@@ -478,18 +491,21 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    public partial Task<HealthRecordReadResult<TDto>> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return GetHealthRecordInternal<TDto>(id, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<TDto?> GetHealthRecordInternal<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    private async Task<HealthRecordReadResult<TDto>> GetHealthRecordInternal<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (!IsSupported)
         {
-            return null;
+            return new HealthRecordReadResult<TDto>
+            {
+                ErrorException = new InvalidOperationException("HealthKit is not available on this device."),
+            };
         }
 
         try
@@ -500,13 +516,20 @@ public partial class HealthService : IHealthService
                 var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (!permissionResult.IsSuccess)
                 {
-                    return null;
+                    return new HealthRecordReadResult<TDto>
+                    {
+                        ErrorException = permissionResult.ErrorException
+                            ?? new InvalidOperationException($"Permission request failed: {permissionResult.Error}"),
+                    };
                 }
             }
 
             if (!Guid.TryParse(id, out var guid))
             {
-                return null;
+                return new HealthRecordReadResult<TDto>
+                {
+                    ErrorException = new ArgumentException($"HealthKit record IDs must be a UUID; got '{id}'.", nameof(id)),
+                };
             }
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
@@ -515,7 +538,7 @@ public partial class HealthService : IHealthService
             var uuid = new NSUuid(guid.ToString());
             var predicate = HKQuery.GetPredicateForObject(uuid);
 
-            var tcs = new TaskCompletionSource<TDto?>();
+            var tcs = new TaskCompletionSource<HealthRecordReadResult<TDto>>();
 
             var query = new HKSampleQuery(
                 quantityType,
@@ -524,14 +547,29 @@ public partial class HealthService : IHealthService
                 null,
                 (_, results, error) =>
                 {
-                    if (error is not null || results is null)
+                    if (error is not null)
                     {
-                        tcs.TrySetResult(null);
+                        tcs.TrySetResult(new HealthRecordReadResult<TDto>
+                        {
+                            ErrorException = new InvalidOperationException(
+                                $"HealthKit sample query failed: {error.LocalizedDescription}"),
+                        });
+                        return;
+                    }
+
+                    if (results is null)
+                    {
+                        tcs.TrySetResult(new HealthRecordReadResult<TDto>
+                        {
+                            ErrorException = new InvalidOperationException(
+                                "HealthKit sample query returned null results."),
+                        });
                         return;
                     }
 
                     var sample = results.FirstOrDefault() as HKQuantitySample;
-                    tcs.TrySetResult(sample?.ToDto<TDto>());
+                    // Null sample = platform confirmed no such record; success with Record=null.
+                    tcs.TrySetResult(new HealthRecordReadResult<TDto> { Record = sample?.ToDto<TDto>() });
                 }
             );
 
@@ -548,7 +586,7 @@ public partial class HealthService : IHealthService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching health record {Id} for {DtoName}", id, typeof(TDto).Name);
-            return null;
+            return new HealthRecordReadResult<TDto> { ErrorException = ex };
         }
     }
 
@@ -614,18 +652,21 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<AggregatedResult?> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return GetAggregatedHealthDataInternal<TDto>(timeRange, cancellationToken);
     }
 
-    private async Task<AggregatedResult?> GetAggregatedHealthDataInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    private async Task<AggregatedReadResult> GetAggregatedHealthDataInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (!IsSupported)
         {
-            return null;
+            return new AggregatedReadResult
+            {
+                ErrorException = new InvalidOperationException("HealthKit is not available on this device."),
+            };
         }
 
         try
@@ -634,7 +675,11 @@ public partial class HealthService : IHealthService
             var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
             if (!permissionResult.IsSuccess)
             {
-                return null;
+                return new AggregatedReadResult
+                {
+                    ErrorException = permissionResult.ErrorException
+                        ?? new InvalidOperationException($"Permission request failed: {permissionResult.Error}"),
+                };
             }
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
@@ -648,7 +693,7 @@ public partial class HealthService : IHealthService
 
             var (statisticsOption, hkUnit) = GetStatisticsInfo(healthDataType);
 
-            var tcs = new TaskCompletionSource<AggregatedResult?>();
+            var tcs = new TaskCompletionSource<AggregatedReadResult>();
 
             var query = new HKStatisticsQuery(
                 quantityType,
@@ -656,9 +701,23 @@ public partial class HealthService : IHealthService
                 statisticsOption,
                 (_, statistics, error) =>
                 {
-                    if (error is not null || statistics is null)
+                    if (error is not null)
                     {
-                        tcs.TrySetResult(null);
+                        tcs.TrySetResult(new AggregatedReadResult
+                        {
+                            ErrorException = new InvalidOperationException(
+                                $"HealthKit statistics query failed: {error.LocalizedDescription}"),
+                        });
+                        return;
+                    }
+
+                    if (statistics is null)
+                    {
+                        tcs.TrySetResult(new AggregatedReadResult
+                        {
+                            ErrorException = new InvalidOperationException(
+                                "HealthKit statistics query returned null statistics."),
+                        });
                         return;
                     }
 
@@ -668,24 +727,27 @@ public partial class HealthService : IHealthService
 
                     if (quantity is null)
                     {
-                        tcs.TrySetResult(null);
+                        // No data in the window — legitimate empty, not an error.
+                        tcs.TrySetResult(new AggregatedReadResult { Aggregate = null });
                         return;
                     }
 
                     var value = quantity.GetDoubleValue(hkUnit);
                     var unit = GetUnitString(healthDataType);
-
                     var dataOrigins = ExtractDataOrigins(statistics);
 
-                    tcs.TrySetResult(new AggregatedResult
+                    tcs.TrySetResult(new AggregatedReadResult
                     {
-                        StartTime = timeRange.StartTime,
-                        EndTime = timeRange.EndTime,
-                        Value = value,
-                        Unit = unit,
-                        DataType = healthDataType,
-                        DataSdk = HealthDataSdk.AppleHealthKit,
-                        DataOrigins = dataOrigins
+                        Aggregate = new AggregatedResult
+                        {
+                            StartTime = timeRange.StartTime,
+                            EndTime = timeRange.EndTime,
+                            Value = value,
+                            Unit = unit,
+                            DataType = healthDataType,
+                            DataSdk = HealthDataSdk.AppleHealthKit,
+                            DataOrigins = dataOrigins,
+                        },
                     });
                 }
             );
@@ -700,9 +762,9 @@ public partial class HealthService : IHealthService
             store.ExecuteQuery(query);
             var result = await tcs.Task;
 
-            if (result is not null)
+            if (result.IsSuccess && result.Aggregate is not null)
             {
-                _logger.LogInformation("iOS Aggregated {DtoName}: {Value}", typeof(TDto).Name, result.Value);
+                _logger.LogInformation("iOS Aggregated {DtoName}: {Value}", typeof(TDto).Name, result.Aggregate.Value);
             }
 
             return result;
@@ -710,24 +772,27 @@ public partial class HealthService : IHealthService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error aggregating health data for {DtoName}", typeof(TDto).Name);
-            return null;
+            return new AggregatedReadResult { ErrorException = ex };
         }
     }
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<List<AggregatedResult>> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return GetAggregatedHealthDataByIntervalInternal<TDto>(timeRange, interval, cancellationToken);
     }
 
-    private async Task<List<AggregatedResult>> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+    private async Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (!IsSupported)
         {
-            return [];
+            return new AggregatedIntervalReadResult
+            {
+                ErrorException = new InvalidOperationException("HealthKit is not available on this device."),
+            };
         }
 
         try
@@ -736,7 +801,11 @@ public partial class HealthService : IHealthService
             var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
             if (!permissionResult.IsSuccess)
             {
-                return [];
+                return new AggregatedIntervalReadResult
+                {
+                    ErrorException = permissionResult.ErrorException
+                        ?? new InvalidOperationException($"Permission request failed: {permissionResult.Error}"),
+                };
             }
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
@@ -766,7 +835,7 @@ public partial class HealthService : IHealthService
                 Nanosecond = (nint)UnitsNet.Duration.FromMilliseconds(interval.Milliseconds).Nanoseconds,
             };
 
-            var tcs = new TaskCompletionSource<List<AggregatedResult>>();
+            var tcs = new TaskCompletionSource<AggregatedIntervalReadResult>();
 
             var query = new HKStatisticsCollectionQuery(
                 quantityType,
@@ -779,7 +848,13 @@ public partial class HealthService : IHealthService
             {
                 if (error is not null || results is null)
                 {
-                    tcs.TrySetResult([]);
+                    tcs.TrySetResult(new AggregatedIntervalReadResult
+                    {
+                        ErrorException = new InvalidOperationException(
+                            error is not null
+                                ? $"HealthKit statistics query failed: {error.LocalizedDescription}"
+                                : "HealthKit statistics query returned null results."),
+                    });
                     return;
                 }
 
@@ -816,7 +891,7 @@ public partial class HealthService : IHealthService
                         });
                     });
 
-                tcs.TrySetResult(aggregatedResults);
+                tcs.TrySetResult(new AggregatedIntervalReadResult { Buckets = aggregatedResults });
             };
 
             using var store = new HKHealthStore();
@@ -829,13 +904,16 @@ public partial class HealthService : IHealthService
             store.ExecuteQuery(query);
             var result = await tcs.Task;
 
-            _logger.LogInformation("Found {Count} interval buckets for {DtoName}", result.Count, typeof(TDto).Name);
+            if (result.IsSuccess)
+            {
+                _logger.LogInformation("Found {Count} interval buckets for {DtoName}", result.Buckets.Count, typeof(TDto).Name);
+            }
             return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error aggregating health data by interval for {DtoName}", typeof(TDto).Name);
-            return [];
+            return new AggregatedIntervalReadResult { ErrorException = ex };
         }
     }
 
@@ -847,11 +925,14 @@ public partial class HealthService : IHealthService
     /// we serialize it via NSKeyedArchiver to Base64 — the Apple-endorsed persistence mechanism
     /// (confirmed by WWDC 2020 "Synchronize health data with HealthKit" and community consensus).
     /// </summary>
-    public async partial Task<string?> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken)
+    public async partial Task<ChangesTokenResult> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken)
     {
         if (!IsSupported)
         {
-            return null;
+            return new ChangesTokenResult
+            {
+                ErrorException = new InvalidOperationException("HealthKit is not available on this device."),
+            };
         }
 
         try
@@ -885,20 +966,23 @@ public partial class HealthService : IHealthService
             var tokenData = new { Anchors = anchors, DataTypes = dataTypeStrings };
 
             _logger.LogInformation("iOS GetChangesToken: anchors serialized for {Count} data types", dataTypes.Count);
-            return JsonSerializer.Serialize(tokenData);
+            return new ChangesTokenResult { Token = JsonSerializer.Serialize(tokenData) };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating changes token");
-            return null;
+            return new ChangesTokenResult { ErrorException = ex };
         }
     }
 
-    public async partial Task<HealthChangesResult?> GetChanges(string token, CancellationToken cancellationToken)
+    public async partial Task<ChangesReadResult> GetChanges(string token, CancellationToken cancellationToken)
     {
         if (!IsSupported)
         {
-            return null;
+            return new ChangesReadResult
+            {
+                ErrorException = new InvalidOperationException("HealthKit is not available on this device."),
+            };
         }
 
         try
@@ -987,17 +1071,20 @@ public partial class HealthService : IHealthService
 
             _logger.LogInformation("iOS GetChanges: {Count} changes found", allChanges.Count);
 
-            return new HealthChangesResult
+            return new ChangesReadResult
             {
-                Changes = allChanges,
-                NextToken = JsonSerializer.Serialize(nextTokenData),
-                HasMore = false
+                Changes = new HealthChangesResult
+                {
+                    Changes = allChanges,
+                    NextToken = JsonSerializer.Serialize(nextTokenData),
+                    HasMore = false,
+                },
             };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting health changes");
-            return null;
+            return new ChangesReadResult { ErrorException = ex };
         }
     }
 
@@ -1117,7 +1204,7 @@ public partial class HealthService : IHealthService
 
     public partial void OpenStorePageOfHealthProvider() { }
 
-    private async Task<List<TDto>> GetCumulativeHealthDataAsync<TDto>(
+    private async Task<HealthDataReadResult<TDto>> GetCumulativeHealthDataAsync<TDto>(
         HKQuantityType quantityType,
         NSPredicate predicate,
         HealthTimeRange timeRange,
@@ -1125,7 +1212,7 @@ public partial class HealthService : IHealthService
         CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        var tcs = new TaskCompletionSource<TDto[]>();
+        var tcs = new TaskCompletionSource<HealthDataReadResult<TDto>>();
 
         var query = new HKStatisticsQuery(
             quantityType,
@@ -1133,16 +1220,32 @@ public partial class HealthService : IHealthService
             HKStatisticsOptions.CumulativeSum,
             (statisticsQuery, statistics, error) =>
             {
-                if (error != null || statistics == null)
+                if (error != null)
                 {
-                    tcs.TrySetResult([]);
+                    tcs.TrySetResult(new HealthDataReadResult<TDto>
+                    {
+                        ErrorException = new InvalidOperationException(
+                            $"HealthKit cumulative statistics query failed: {error.LocalizedDescription}"),
+                    });
                     return;
                 }
 
-                var sum = statistics.SumQuantity();
-                if (sum == null)
+                if (statistics is null)
                 {
-                    tcs.TrySetResult([]);
+                    tcs.TrySetResult(new HealthDataReadResult<TDto>
+                    {
+                        ErrorException = new InvalidOperationException(
+                            "HealthKit cumulative statistics query returned null statistics."),
+                    });
+                    return;
+                }
+
+                // No SumQuantity is a legitimate "no cumulative data in window" — success with
+                // empty Records, not a failure.
+                var sum = statistics.SumQuantity();
+                if (sum is null)
+                {
+                    tcs.TrySetResult(new HealthDataReadResult<TDto> { Records = [] });
                     return;
                 }
 
@@ -1176,7 +1279,10 @@ public partial class HealthService : IHealthService
                     } as TDto;
                 }
 
-                tcs.TrySetResult(dto != null ? [dto] : []);
+                tcs.TrySetResult(new HealthDataReadResult<TDto>
+                {
+                    Records = dto is not null ? [dto] : [],
+                });
             }
         );
 
@@ -1188,16 +1294,16 @@ public partial class HealthService : IHealthService
         });
 
         store.ExecuteQuery(query);
-        var results = await tcs.Task;
+        var result = await tcs.Task;
 
-        if (results.Length > 0)
+        if (result.IsSuccess && result.Records.Count > 0)
         {
             _logger.LogInformation("Found cumulative {DtoName}: {Value}", typeof(TDto).Name,
-                results[0] is StepsDto steps ? steps.Count.ToString() :
-                results[0] is ActiveCaloriesBurnedDto cal ? cal.Energy.ToString("F0") : "N/A");
+                result.Records[0] is StepsDto steps ? steps.Count.ToString() :
+                result.Records[0] is ActiveCaloriesBurnedDto cal ? cal.Energy.ToString("F0") : "N/A");
         }
 
-        return results.ToList();
+        return result;
     }
 
     public partial Task<DateTime> GetEarliestAccessibleDateTime(CancellationToken cancellationToken)

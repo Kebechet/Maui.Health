@@ -21,13 +21,16 @@ public partial class HealthWorkoutService
         _logger = logger;
     }
 
-    public async partial Task<List<WorkoutDto>> Read(HealthTimeRange activityTime)
+    public async partial Task<WorkoutReadResult> Read(HealthTimeRange activityTime)
     {
         try
         {
             if (!HKHealthStore.IsHealthDataAvailable)
             {
-                return [];
+                return new WorkoutReadResult
+                {
+                    ErrorException = new InvalidOperationException("HealthKit is not available on this device."),
+                };
             }
 
             _logger.LogInformation("iOS HealthWorkoutService Read: StartTime: {StartTime}, EndTime: {EndTime}",
@@ -37,7 +40,10 @@ public partial class HealthWorkoutService
             if (!permissionGranted)
             {
                 _logger.LogWarning("iOS HealthWorkoutService: Workout read permission not granted");
-                return [];
+                return new WorkoutReadResult
+                {
+                    ErrorException = new UnauthorizedAccessException("Workout read permission not granted."),
+                };
             }
 
             using var store = new HKHealthStore();
@@ -54,12 +60,12 @@ public partial class HealthWorkoutService
             }
 
             _logger.LogInformation("iOS HealthWorkoutService: Found {Count} workout records", dtos.Count);
-            return dtos;
+            return new WorkoutReadResult { Workouts = dtos };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "iOS HealthWorkoutService Read error");
-            return [];
+            return new WorkoutReadResult { ErrorException = ex };
         }
     }
 

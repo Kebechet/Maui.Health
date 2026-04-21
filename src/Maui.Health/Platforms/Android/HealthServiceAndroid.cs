@@ -207,13 +207,13 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<List<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    public partial Task<HealthDataReadResult<TDto>> GetHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return GetHealthDataInternal<TDto>(timeRange, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<List<TDto>> GetHealthDataInternal<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    private async Task<HealthDataReadResult<TDto>> GetHealthDataInternal<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         try
@@ -221,10 +221,12 @@ public partial class HealthService : IHealthService
             _logger.LogInformation("Android GetHealthDataAsync<{DtoName}>: StartTime: {StartTime}, EndTime: {EndTime}",
                 typeof(TDto).Name, timeRange.StartTime, timeRange.EndTime);
 
-            var sdkCheckResult = _sdkStatus;
-            if (!sdkCheckResult.IsSuccess)
+            if (!_sdkStatus.IsSuccess)
             {
-                return [];
+                return new HealthDataReadResult<TDto>
+                {
+                    ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
+                };
             }
 
             if (shouldCheckPermissions)
@@ -233,7 +235,11 @@ public partial class HealthService : IHealthService
                 var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
-                    return [];
+                    return new HealthDataReadResult<TDto>
+                    {
+                        ErrorException = requestPermissionResult.ErrorException
+                            ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
+                    };
                 }
             }
 
@@ -243,18 +249,22 @@ public partial class HealthService : IHealthService
             var response = await _healthConnectClient.ReadHealthRecords(recordClass, timeRange);
             if (response is null)
             {
-                return [];
+                return new HealthDataReadResult<TDto>
+                {
+                    ErrorException = new InvalidOperationException(
+                        $"Health Connect read returned null for {typeof(TDto).Name}."),
+                };
             }
 
             var results = response.Records.ToDtoList<TDto>();
 
             _logger.LogInformation("Found {Count} {DtoName} records", results.Count, typeof(TDto).Name);
-            return results;
+            return new HealthDataReadResult<TDto> { Records = results };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching health data for {DtoName}", typeof(TDto).Name);
-            return [];
+            return new HealthDataReadResult<TDto> { ErrorException = ex };
         }
     }
 
@@ -390,20 +400,23 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<TDto?> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    public partial Task<HealthRecordReadResult<TDto>> GetHealthRecord<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return GetHealthRecordInternal<TDto>(id, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<TDto?> GetHealthRecordInternal<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
+    private async Task<HealthRecordReadResult<TDto>> GetHealthRecordInternal<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         try
         {
             if (!_sdkStatus.IsSuccess)
             {
-                return null;
+                return new HealthRecordReadResult<TDto>
+                {
+                    ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
+                };
             }
 
             if (shouldCheckPermissions)
@@ -412,7 +425,11 @@ public partial class HealthService : IHealthService
                 var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
-                    return null;
+                    return new HealthRecordReadResult<TDto>
+                    {
+                        ErrorException = requestPermissionResult.ErrorException
+                            ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
+                    };
                 }
             }
 
@@ -420,17 +437,14 @@ public partial class HealthService : IHealthService
             var recordClass = healthDataType.ToKotlinClass();
 
             var record = await _healthConnectClient.ReadHealthRecord(recordClass, id);
-            if (record is null)
-            {
-                return null;
-            }
 
-            return record.ToDto<TDto>();
+            // Null Record on success = platform confirmed no such record (not an error).
+            return new HealthRecordReadResult<TDto> { Record = record?.ToDto<TDto>() };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching health record {Id} for {DtoName}", id, typeof(TDto).Name);
-            return null;
+            return new HealthRecordReadResult<TDto> { ErrorException = ex };
         }
     }
 
@@ -492,27 +506,34 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<AggregatedResult?> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return GetAggregatedHealthDataInternal<TDto>(timeRange, cancellationToken);
     }
 
-    private async Task<AggregatedResult?> GetAggregatedHealthDataInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    private async Task<AggregatedReadResult> GetAggregatedHealthDataInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         try
         {
             if (!_sdkStatus.IsSuccess)
             {
-                return null;
+                return new AggregatedReadResult
+                {
+                    ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
+                };
             }
 
             var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
             var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
             if (requestPermissionResult.IsError)
             {
-                return null;
+                return new AggregatedReadResult
+                {
+                    ErrorException = requestPermissionResult.ErrorException
+                        ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
+                };
             }
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
@@ -520,14 +541,20 @@ public partial class HealthService : IHealthService
             if (recordClassName is null || metricFieldName is null)
             {
                 _logger.LogWarning("Aggregation not supported for {DtoName}", typeof(TDto).Name);
-                return null;
+                // Type-not-supported is an API shape mismatch, not a transient platform error —
+                // surface it explicitly so callers don't silently skip the type.
+                return new AggregatedReadResult
+                {
+                    ErrorException = new NotSupportedException($"Aggregation is not supported for {typeof(TDto).Name}."),
+                };
             }
 
             var (result, dataOrigins) = await _healthConnectClient.AggregateHealthRecords(recordClassName, metricFieldName, timeRange);
             if (result is null)
             {
+                // Platform confirmed no data in the window — success with Aggregate=null.
                 _logger.LogInformation("No aggregate data found for {DtoName}", typeof(TDto).Name);
-                return null;
+                return new AggregatedReadResult { Aggregate = null };
             }
 
             double numericValue = 0;
@@ -554,47 +581,57 @@ public partial class HealthService : IHealthService
 
             _logger.LogInformation("Aggregated {DtoName}: {Value}", typeof(TDto).Name, numericValue);
 
-            return new AggregatedResult
+            return new AggregatedReadResult
             {
-                StartTime = timeRange.StartTime,
-                EndTime = timeRange.EndTime,
-                Value = numericValue,
-                Unit = unit,
-                DataType = healthDataType,
-                DataSdk = HealthDataSdk.GoogleHealthConnect,
-                DataOrigins = dataOrigins
+                Aggregate = new AggregatedResult
+                {
+                    StartTime = timeRange.StartTime,
+                    EndTime = timeRange.EndTime,
+                    Value = numericValue,
+                    Unit = unit,
+                    DataType = healthDataType,
+                    DataSdk = HealthDataSdk.GoogleHealthConnect,
+                    DataOrigins = dataOrigins,
+                },
             };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error aggregating health data for {DtoName}", typeof(TDto).Name);
-            return null;
+            return new AggregatedReadResult { ErrorException = ex };
         }
     }
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<List<AggregatedResult>> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return GetAggregatedHealthDataByIntervalInternal<TDto>(timeRange, interval, cancellationToken);
     }
 
-    private async Task<List<AggregatedResult>> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+    private async Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         try
         {
             if (!_sdkStatus.IsSuccess)
             {
-                return [];
+                return new AggregatedIntervalReadResult
+                {
+                    ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
+                };
             }
 
             var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
             var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
             if (requestPermissionResult.IsError)
             {
-                return [];
+                return new AggregatedIntervalReadResult
+                {
+                    ErrorException = requestPermissionResult.ErrorException
+                        ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
+                };
             }
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
@@ -602,29 +639,35 @@ public partial class HealthService : IHealthService
             if (recordClassName is null || metricFieldName is null)
             {
                 _logger.LogWarning("Interval aggregation not supported for {DtoName}", typeof(TDto).Name);
-                return [];
+                return new AggregatedIntervalReadResult
+                {
+                    ErrorException = new NotSupportedException($"Interval aggregation is not supported for {typeof(TDto).Name}."),
+                };
             }
 
-            var results = await _healthConnectClient.AggregateHealthRecordsByDuration(
+            var buckets = await _healthConnectClient.AggregateHealthRecordsByDuration(
                 recordClassName, metricFieldName, timeRange, interval, healthDataType, unit);
 
-            _logger.LogInformation("Found {Count} interval buckets for {DtoName}", results.Count, typeof(TDto).Name);
-            return results;
+            _logger.LogInformation("Found {Count} interval buckets for {DtoName}", buckets.Count, typeof(TDto).Name);
+            return new AggregatedIntervalReadResult { Buckets = buckets };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error aggregating health data by interval for {DtoName}", typeof(TDto).Name);
-            return [];
+            return new AggregatedIntervalReadResult { ErrorException = ex };
         }
     }
 
-    public async partial Task<string?> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken)
+    public async partial Task<ChangesTokenResult> GetChangesToken(IList<HealthDataType> dataTypes, CancellationToken cancellationToken)
     {
         try
         {
             if (!_sdkStatus.IsSuccess)
             {
-                return null;
+                return new ChangesTokenResult
+                {
+                    ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
+                };
             }
 
             // Request read permissions for all requested data types
@@ -635,7 +678,11 @@ public partial class HealthService : IHealthService
             var requestPermissionResult = await RequestPermissions(permissions, false, cancellationToken);
             if (requestPermissionResult.IsError)
             {
-                return null;
+                return new ChangesTokenResult
+                {
+                    ErrorException = requestPermissionResult.ErrorException
+                        ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
+                };
             }
 
             var recordTypes = dataTypes
@@ -643,24 +690,34 @@ public partial class HealthService : IHealthService
                 .ToList();
 
             var token = await _healthConnectClient.GetHealthChangesToken(recordTypes);
+            if (token is null)
+            {
+                return new ChangesTokenResult
+                {
+                    ErrorException = new InvalidOperationException("Health Connect returned a null changes token."),
+                };
+            }
 
             _logger.LogInformation("Got changes token for {Count} data types", dataTypes.Count);
-            return token;
+            return new ChangesTokenResult { Token = token };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting changes token");
-            return null;
+            return new ChangesTokenResult { ErrorException = ex };
         }
     }
 
-    public async partial Task<HealthChangesResult?> GetChanges(string token, CancellationToken cancellationToken)
+    public async partial Task<ChangesReadResult> GetChanges(string token, CancellationToken cancellationToken)
     {
         try
         {
             if (!_sdkStatus.IsSuccess)
             {
-                return null;
+                return new ChangesReadResult
+                {
+                    ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
+                };
             }
 
             var result = await _healthConnectClient.GetHealthChanges(token);
@@ -670,12 +727,14 @@ public partial class HealthService : IHealthService
                 _logger.LogInformation("Got {Count} changes, hasMore: {HasMore}", result.Changes.Count, result.HasMore);
             }
 
-            return result;
+            // Null Changes on success = token was invalid or expired (not an error per se; caller
+            // should re-issue a token).
+            return new ChangesReadResult { Changes = result };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting health changes");
-            return null;
+            return new ChangesReadResult { ErrorException = ex };
         }
     }
 
