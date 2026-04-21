@@ -43,10 +43,12 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>4.0.0-preview.5</Version>
+    <Version>4.0.0-preview.6</Version>
     <PackageReleaseNotes>
-• CHANGED (#47): iOS UpdateHealthData is now atomic (no more delete-then-insert data-loss window).
-• CHANGED (#48): Unified DataOrigin value.
+• BREAKING: read-side methods on IHealthService and IHealthWorkoutService.Read return named Result types so callers can distinguish "no data" from "platform failed."
+• CHANGED: platform exceptions bubble to a single error boundary instead of being swallowed by inner helpers.
+• ADDED: HealthTimeRange clamps StartTime to Unix epoch (1970-01-01 UTC) to prevent sentinel-value blowups in platform aggregation queries.
+• FIXED: GetEarliestAccessibleDateTime returns the epoch floor instead of DateTime.MinValue.
     </PackageReleaseNotes>
   </PropertyGroup>
 
