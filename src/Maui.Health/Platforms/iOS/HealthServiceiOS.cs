@@ -1202,8 +1202,11 @@ public partial class HealthService : IHealthService
 
     public partial Task<DateTime> GetEarliestAccessibleDateTime(CancellationToken cancellationToken)
     {
-        // HealthKit has no documented lookback cap and authorization grants retroactive read access
-        // for the entire on-device history. Return DateTime.MinValue to signal "unlimited".
-        return Task.FromResult(DateTime.MinValue);
+        // HealthKit has no documented lookback cap and authorization grants retroactive read
+        // access for the entire on-device history. We return the HealthTimeRange floor
+        // (Unix epoch) instead of DateTime.MinValue so callers can feed this value straight
+        // back into HealthTimeRange / aggregation queries without tripping the sentinel-value
+        // blowup described on HealthTimeRange.MinSupportedStartUtc.
+        return Task.FromResult(HealthTimeRange.MinSupportedStartUtc.UtcDateTime);
     }
 }

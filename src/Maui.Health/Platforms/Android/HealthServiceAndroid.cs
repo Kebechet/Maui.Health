@@ -723,9 +723,12 @@ public partial class HealthService : IHealthService
 
             if (hasHistoryPermission)
             {
-                // READ_HEALTH_DATA_HISTORY lifts the 30-day cap entirely.
+                // READ_HEALTH_DATA_HISTORY lifts the 30-day cap entirely. Returning the
+                // HealthTimeRange floor (Unix epoch) instead of DateTime.MinValue keeps this
+                // value safely round-trippable into the platform's aggregation queries — see
+                // HealthTimeRange.MinSupportedStartUtc for why MinValue is unsafe.
                 // https://developer.android.com/reference/kotlin/androidx/health/connect/client/permission/HealthPermission#PERMISSION_READ_HEALTH_DATA_HISTORY()
-                return DateTime.MinValue;
+                return HealthTimeRange.MinSupportedStartUtc.UtcDateTime;
             }
 
             // Without the history permission: earliest accessible = firstGrantDate - 30 days.
