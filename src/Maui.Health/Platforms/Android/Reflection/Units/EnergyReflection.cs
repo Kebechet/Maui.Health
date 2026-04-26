@@ -2,6 +2,7 @@ using Android.Runtime;
 using AndroidX.Health.Connect.Client.Units;
 using Java.Lang.Reflect;
 using JClass = Java.Lang.Class;
+using Maui.Health.Platforms.Android.Helpers;
 using static Maui.Health.Platforms.Android.AndroidConstant;
 
 namespace Maui.Health.Platforms.Android.Reflection.Units;
@@ -18,7 +19,7 @@ internal static class EnergyReflection
     private static Method? _kilocalories;
 
     public static JClass Class
-        => _class ??= JClass.ForName(JavaReflection.EnergyClassName)
+        => _class ??= JavaClassResolver.Resolve(JavaReflection.EnergyClassName)
             ?? throw new InvalidOperationException(
                 $"Could not resolve {JavaReflection.EnergyClassName}.");
 

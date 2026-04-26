@@ -1,5 +1,6 @@
 using Java.Lang.Reflect;
 using JClass = Java.Lang.Class;
+using Maui.Health.Platforms.Android.Helpers;
 using static Maui.Health.Platforms.Android.AndroidConstant;
 
 namespace Maui.Health.Platforms.Android.Reflection;
@@ -20,7 +21,7 @@ internal static class RecordReflection
     private static Method? _getMetadata;
 
     public static JClass Class
-        => _class ??= JClass.ForName(JavaReflection.RecordClassName)
+        => _class ??= JavaClassResolver.Resolve(JavaReflection.RecordClassName)
             ?? throw new InvalidOperationException(
                 $"Could not resolve {JavaReflection.RecordClassName}.");
 

@@ -136,7 +136,7 @@ internal static class JavaReflectionHelper
             };
 
             var fullClassName = $"{HealthConnectUnitsNamespace}.{className}";
-            var unitClass = Java.Lang.Class.ForName(fullClassName);
+            var unitClass = JavaClassResolver.Resolve(fullClassName);
 
             if (unitClass is null)
             {
@@ -615,7 +615,7 @@ internal static class JavaReflectionHelper
             }
         }
 
-        var requestClass = Java.Lang.Class.ForName(JavaReflection.ChangesTokenRequestClassName);
+        var requestClass = JavaClassResolver.Resolve(JavaReflection.ChangesTokenRequestClassName);
         if (requestClass is null)
         {
             Debug.WriteLine("Failed to find ChangesTokenRequest class");
@@ -858,7 +858,7 @@ internal static class JavaReflectionHelper
     /// </summary>
     private static Java.Lang.Object? GetAggregateMetric(string recordClassName, string metricFieldName)
     {
-        var recordClass = Java.Lang.Class.ForName(recordClassName);
+        var recordClass = JavaClassResolver.Resolve(recordClassName);
         if (recordClass is null)
         {
             Debug.WriteLine($"Failed to find record class: {recordClassName}");

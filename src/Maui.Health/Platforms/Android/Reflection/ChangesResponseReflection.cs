@@ -1,5 +1,6 @@
 using Java.Lang.Reflect;
 using JClass = Java.Lang.Class;
+using Maui.Health.Platforms.Android.Helpers;
 using static Maui.Health.Platforms.Android.AndroidConstant;
 
 namespace Maui.Health.Platforms.Android.Reflection;
@@ -17,7 +18,7 @@ internal static class ChangesResponseReflection
     private static Method? _getHasMore;
 
     public static JClass Class
-        => _class ??= JClass.ForName(JavaReflection.ChangesResponseClassName)
+        => _class ??= JavaClassResolver.Resolve(JavaReflection.ChangesResponseClassName)
             ?? throw new InvalidOperationException(
                 $"Could not resolve {JavaReflection.ChangesResponseClassName}.");
 

@@ -1,5 +1,6 @@
 using Java.Lang.Reflect;
 using JClass = Java.Lang.Class;
+using Maui.Health.Platforms.Android.Helpers;
 using static Maui.Health.Platforms.Android.AndroidConstant;
 
 namespace Maui.Health.Platforms.Android.Reflection;
@@ -15,7 +16,7 @@ internal static class DataOriginReflection
     private static Method? _getPackageName;
 
     public static JClass Class
-        => _class ??= JClass.ForName(JavaReflection.DataOriginClassName)
+        => _class ??= JavaClassResolver.Resolve(JavaReflection.DataOriginClassName)
             ?? throw new InvalidOperationException(
                 $"Could not resolve {JavaReflection.DataOriginClassName}.");
 

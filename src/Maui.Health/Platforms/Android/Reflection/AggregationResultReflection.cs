@@ -1,5 +1,6 @@
 using Java.Lang.Reflect;
 using JClass = Java.Lang.Class;
+using Maui.Health.Platforms.Android.Helpers;
 using static Maui.Health.Platforms.Android.AndroidConstant;
 
 namespace Maui.Health.Platforms.Android.Reflection;
@@ -14,7 +15,7 @@ internal static class AggregationResultReflection
     private static Method? _getDataOrigins;
 
     public static JClass Class
-        => _class ??= JClass.ForName(JavaReflection.AggregationResultClassName)
+        => _class ??= JavaClassResolver.Resolve(JavaReflection.AggregationResultClassName)
             ?? throw new InvalidOperationException(
                 $"Could not resolve {JavaReflection.AggregationResultClassName}.");
 
