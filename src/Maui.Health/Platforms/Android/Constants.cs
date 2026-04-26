@@ -86,9 +86,12 @@ public static class AndroidConstant
     public const int MaxRecordsPerRequest = 1000;
 
     /// <summary>
-    /// Reflection-related constants for Android interop.
+    /// Reflection-related constants for Android interop. Named <c>JavaReflection</c> rather than
+    /// the more obvious <c>Reflection</c> to avoid colliding with the
+    /// <c>Maui.Health.Platforms.Android.Reflection</c> namespace that holds the per-class
+    /// reflection-handle caches.
     /// </summary>
-    public static class Reflection
+    public static class JavaReflection
     {
         /// <summary>
         /// Mass class full name for reflection.
@@ -191,8 +194,59 @@ public static class AndroidConstant
         public const string AggregateGroupByDurationRequestClassName = "androidx.health.connect.client.request.AggregateGroupByDurationRequest";
 
         /// <summary>
+        /// AggregationResult class full name for reflection.
+        /// </summary>
+        public const string AggregationResultClassName = "androidx.health.connect.client.aggregate.AggregationResult";
+
+        /// <summary>
+        /// AggregationResultGroupedByDuration class full name for reflection.
+        /// </summary>
+        public const string AggregationResultGroupedByDurationClassName = "androidx.health.connect.client.aggregate.AggregationResultGroupedByDuration";
+
+        /// <summary>
+        /// DataOrigin class full name for reflection.
+        /// </summary>
+        public const string DataOriginClassName = "androidx.health.connect.client.records.metadata.DataOrigin";
+
+        /// <summary>
         /// ChangesTokenRequest class full name for reflection.
         /// </summary>
         public const string ChangesTokenRequestClassName = "androidx.health.connect.client.request.ChangesTokenRequest";
+
+        /// <summary>
+        /// ChangesResponse class full name for reflection — return type of
+        /// <c>HealthConnectClient.getChanges(token)</c>.
+        /// </summary>
+        public const string ChangesResponseClassName = "androidx.health.connect.client.response.ChangesResponse";
+
+        /// <summary>
+        /// UpsertionChange class full name for reflection — one of two implementations of
+        /// <c>androidx.health.connect.client.changes.Change</c>.
+        /// </summary>
+        public const string UpsertionChangeClassName = "androidx.health.connect.client.changes.UpsertionChange";
+
+        /// <summary>
+        /// DeletionChange class full name for reflection — one of two implementations of
+        /// <c>androidx.health.connect.client.changes.Change</c>.
+        /// </summary>
+        public const string DeletionChangeClassName = "androidx.health.connect.client.changes.DeletionChange";
+
+        /// <summary>
+        /// Record interface full name for reflection — base for every concrete record type
+        /// (StepsRecord, WeightRecord, etc.). Method handles resolved on this interface dispatch
+        /// dynamically to the runtime subclass on <see cref="Java.Lang.Reflect.Method.Invoke(Java.Lang.Object, Java.Lang.Object[])"/>.
+        /// </summary>
+        public const string RecordClassName = "androidx.health.connect.client.records.Record";
+
+        /// <summary>
+        /// Metadata class full name for reflection — the value returned by <c>Record.getMetadata()</c>.
+        /// </summary>
+        public const string MetadataClassName = "androidx.health.connect.client.records.metadata.Metadata";
+
+        /// <summary>
+        /// ReadRecordResponse class full name for reflection — return type of
+        /// <c>HealthConnectClient.readRecord(class, id)</c>.
+        /// </summary>
+        public const string ReadRecordResponseClassName = "androidx.health.connect.client.response.ReadRecordResponse";
     }
 }

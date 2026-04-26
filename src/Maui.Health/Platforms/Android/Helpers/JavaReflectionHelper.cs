@@ -10,6 +10,7 @@ using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android.Callbacks;
 using Maui.Health.Platforms.Android.Extensions;
+using Maui.Health.Platforms.Android.Reflection;
 using System.Diagnostics;
 using static Maui.Health.Platforms.Android.AndroidConstant;
 
@@ -379,15 +380,7 @@ internal static class JavaReflectionHelper
             return null;
         }
 
-        var getRecordMethod = result.Class.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getRecord")
-            ?? result.Class.GetMethods()?.FirstOrDefault(m => m?.Name == "getRecord");
-        if (getRecordMethod is null)
-        {
-            return null;
-        }
-
-        getRecordMethod.Accessible = true;
-        return getRecordMethod.Invoke(result) as Java.Lang.Object;
+        return ReadRecordResponseReflection.GetRecord.Invoke(result);
     }
 
     /// <summary>
@@ -561,24 +554,8 @@ internal static class JavaReflectionHelper
 
         var emptySet = new Java.Util.HashSet();
 
-        var requestClass = Java.Lang.Class.ForName(Reflection.AggregateGroupByDurationRequestClassName);
-        if (requestClass is null)
-        {
-            Debug.WriteLine("Failed to find AggregateGroupByDurationRequest class");
-            return [];
-        }
-
-        // Constructor: AggregateGroupByDurationRequest(Set<AggregateMetric>, TimeRangeFilter, Duration, Set<DataOrigin>)
-        var requestConstructor = requestClass.GetConstructors()?.FirstOrDefault(c =>
-            c.GetParameterTypes()?.Length == 4);
-        if (requestConstructor is null)
-        {
-            Debug.WriteLine("Failed to find AggregateGroupByDurationRequest constructor");
-            return [];
-        }
-
-        requestConstructor.Accessible = true;
-        var request = requestConstructor.NewInstance(metricsSet, timeRangeFilter, duration, emptySet);
+        var request = AggregateGroupByDurationRequestReflection.Constructor
+            .NewInstance(metricsSet, timeRangeFilter, duration, emptySet);
         if (request is null)
         {
             Debug.WriteLine("Failed to create AggregateGroupByDurationRequest");
@@ -619,19 +596,13 @@ internal static class JavaReflectionHelper
                 continue;
             }
 
-            var startInstant = InvokeAccessibleMethod(item, "getStartTime") as Java.Time.Instant;
-            var endInstant = InvokeAccessibleMethod(item, "getEndTime") as Java.Time.Instant;
+            var startInstant = AggregationResultGroupedByDurationReflection.GetStartTime
+                .Invoke(item) as Java.Time.Instant;
+            var endInstant = AggregationResultGroupedByDurationReflection.GetEndTime
+                .Invoke(item) as Java.Time.Instant;
 
-            // Get the AggregationResult from the grouped item
-            var getResultMethod = item.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getResult")
-                ?? item.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getResult");
-            if (getResultMethod is null)
-            {
-                continue;
-            }
-
-            getResultMethod.Accessible = true;
-            var aggregationResult = getResultMethod.Invoke(item);
+            var aggregationResult = AggregationResultGroupedByDurationReflection.GetResult
+                .Invoke(item);
             if (aggregationResult is null)
             {
                 continue;
@@ -697,7 +668,7 @@ internal static class JavaReflectionHelper
             }
         }
 
-        var requestClass = Java.Lang.Class.ForName(Reflection.ChangesTokenRequestClassName);
+        var requestClass = Java.Lang.Class.ForName(JavaReflection.ChangesTokenRequestClassName);
         if (requestClass is null)
         {
             Debug.WriteLine("Failed to find ChangesTokenRequest class");
@@ -758,107 +729,62 @@ internal static class JavaReflectionHelper
 
             var changes = new List<HealthChange>();
 
-            // Extract changes list
-            var getChangesMethod = result.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getChanges")
-                ?? result.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getChanges");
-            if (getChangesMethod is not null)
+            var changesList = ChangesResponseReflection.GetChanges.Invoke(result);
+            if (changesList is Java.Util.IList javaChangesList)
             {
-                getChangesMethod.Accessible = true;
-                var changesList = getChangesMethod.Invoke(result);
-
-                if (changesList is Java.Util.IList javaChangesList)
+                for (int i = 0; i < javaChangesList.Size(); i++)
                 {
-                    for (int i = 0; i < javaChangesList.Size(); i++)
+                    var change = javaChangesList.Get(i);
+                    if (change is null)
                     {
-                        var change = javaChangesList.Get(i);
-                        if (change is null)
+                        continue;
+                    }
+
+                    var className = change.Class?.Name ?? "";
+
+                    if (className.Contains("UpsertionChange"))
+                    {
+                        var record = UpsertionChangeReflection.GetRecord.Invoke(change);
+                        if (record is null)
                         {
                             continue;
                         }
+                        var metadata = RecordReflection.GetMetadata.Invoke(record);
+                        var recordId = metadata is null
+                            ? null
+                            : MetadataReflection.GetId.Invoke(metadata)?.ToString();
 
-                        var className = change.Class?.Name ?? "";
-
-                        if (className.Contains("UpsertionChange"))
+                        if (recordId is not null)
                         {
-                            var getRecordMethod = change.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getRecord")
-                                ?? change.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getRecord");
-                            if (getRecordMethod is not null)
+                            changes.Add(new HealthChange
                             {
-                                getRecordMethod.Accessible = true;
-                                var record = getRecordMethod.Invoke(change);
-                                var metadataField = record?.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getMetadata")
-                                    ?? record?.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getMetadata");
-                                string? recordId = null;
-
-                                if (metadataField is not null)
-                                {
-                                    metadataField.Accessible = true;
-                                    var metadata = metadataField.Invoke(record);
-                                    var idMethod = metadata?.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getId")
-                                        ?? metadata?.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getId");
-                                    if (idMethod is not null)
-                                    {
-                                        idMethod.Accessible = true;
-                                        recordId = idMethod.Invoke(metadata)?.ToString();
-                                    }
-                                }
-
-                                if (recordId is not null)
-                                {
-                                    changes.Add(new HealthChange
-                                    {
-                                        Type = HealthChangeType.Upsert,
-                                        RecordId = recordId
-                                    });
-                                }
-                            }
+                                Type = HealthChangeType.Upsert,
+                                RecordId = recordId
+                            });
                         }
-                        else if (className.Contains("DeletionChange"))
+                    }
+                    else if (className.Contains("DeletionChange"))
+                    {
+                        var deletedId = DeletionChangeReflection.GetDeletedRecordId.Invoke(change)?.ToString();
+                        if (deletedId is not null)
                         {
-                            var getIdMethod = change.Class?.GetDeclaredMethods()?.FirstOrDefault(m =>
-                                m?.Name == "getDeletedRecordId" || m?.Name == "getRecordId")
-                                ?? change.Class?.GetMethods()?.FirstOrDefault(m =>
-                                    m?.Name == "getDeletedRecordId" || m?.Name == "getRecordId");
-                            if (getIdMethod is not null)
+                            changes.Add(new HealthChange
                             {
-                                getIdMethod.Accessible = true;
-                                var deletedId = getIdMethod.Invoke(change)?.ToString();
-                                if (deletedId is not null)
-                                {
-                                    changes.Add(new HealthChange
-                                    {
-                                        Type = HealthChangeType.Deletion,
-                                        RecordId = deletedId
-                                    });
-                                }
-                            }
+                                Type = HealthChangeType.Deletion,
+                                RecordId = deletedId
+                            });
                         }
                     }
                 }
             }
 
-            // Extract next token
-            var getNextTokenMethod = result.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getNextChangesToken")
-                ?? result.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getNextChangesToken");
-            string? nextToken = null;
-            if (getNextTokenMethod is not null)
-            {
-                getNextTokenMethod.Accessible = true;
-                nextToken = getNextTokenMethod.Invoke(result)?.ToString();
-            }
+            string? nextToken = ChangesResponseReflection.GetNextChangesToken.Invoke(result)?.ToString();
 
-            // Extract hasMore
-            var hasMoreMethod = result.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == "getHasMore" || m?.Name == "hasMore")
-                ?? result.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == "getHasMore" || m?.Name == "hasMore");
             bool hasMore = false;
-            if (hasMoreMethod is not null)
+            var hasMoreResult = ChangesResponseReflection.GetHasMore.Invoke(result);
+            if (hasMoreResult is Java.Lang.Boolean jBool)
             {
-                hasMoreMethod.Accessible = true;
-                var hasMoreResult = hasMoreMethod.Invoke(result);
-                if (hasMoreResult is Java.Lang.Boolean jBool)
-                {
-                    hasMore = jBool.BooleanValue();
-                }
+                hasMore = jBool.BooleanValue();
             }
 
             return new HealthChangesResult
@@ -1020,24 +946,8 @@ internal static class JavaReflectionHelper
 
         var emptySet = new Java.Util.HashSet();
 
-        var requestClass = Java.Lang.Class.ForName(Reflection.AggregateRequestClassName);
-        if (requestClass is null)
-        {
-            Debug.WriteLine("Failed to find AggregateRequest class");
-            return null;
-        }
-
-        // Constructor: AggregateRequest(Set<AggregateMetric>, TimeRangeFilter, Set<DataOrigin>)
-        var requestConstructor = requestClass.GetConstructors()?.FirstOrDefault(c =>
-            c.GetParameterTypes()?.Length == 3);
-        if (requestConstructor is null)
-        {
-            Debug.WriteLine("Failed to find AggregateRequest constructor");
-            return null;
-        }
-
-        requestConstructor.Accessible = true;
-        var request = requestConstructor.NewInstance(metricsSet, timeRangeFilter, emptySet);
+        var request = AggregateRequestReflection.Constructor
+            .NewInstance(metricsSet, timeRangeFilter, emptySet);
         if (request is null)
         {
             Debug.WriteLine("Failed to create AggregateRequest");
@@ -1048,31 +958,12 @@ internal static class JavaReflectionHelper
 
     /// <summary>
     /// Extracts the aggregated value from an AggregationResult using the get() method.
+    /// Returns null when the bucket has no recorded data for the metric — this is the
+    /// expected case for empty buckets and is distinct from a reflection-resolution failure
+    /// (which would throw).
     /// </summary>
     private static Java.Lang.Object? ExtractAggregateValue(Java.Lang.Object aggregationResult, Java.Lang.Object metric)
-    {
-        var aggregateMetricClass = Java.Lang.Class.ForName(Reflection.AggregateMetricClassName);
-        if (aggregateMetricClass is null)
-        {
-            Debug.WriteLine("Failed to find AggregateMetric class");
-            return null;
-        }
-
-        var getMethod = aggregationResult.Class?.GetDeclaredMethod("get", aggregateMetricClass);
-
-        // Fallback: search all methods named "get" with one parameter
-        getMethod ??= aggregationResult.Class?.GetDeclaredMethods()?.FirstOrDefault(m =>
-            m?.Name == "get" && m.GetParameterTypes()?.Length == 1);
-
-        if (getMethod is null)
-        {
-            Debug.WriteLine("Could not find get method on AggregationResult");
-            return null;
-        }
-
-        getMethod.Accessible = true;
-        return getMethod.Invoke(aggregationResult, metric);
-    }
+        => AggregationResultReflection.Get.Invoke(aggregationResult, metric);
 
     /// <summary>
     /// Extracts contributing apps' package names from an AggregationResult.
@@ -1082,7 +973,7 @@ internal static class JavaReflectionHelper
     {
         var dataOrigins = new List<string>();
 
-        var originsObj = InvokeAccessibleMethod(aggregationResult, "getDataOrigins");
+        var originsObj = AggregationResultReflection.GetDataOrigins.Invoke(aggregationResult);
         if (originsObj is not Java.Util.ISet originsSet)
         {
             return dataOrigins;
@@ -1097,7 +988,7 @@ internal static class JavaReflectionHelper
                 continue;
             }
 
-            var packageName = InvokeAccessibleMethod((Java.Lang.Object)origin, "getPackageName");
+            var packageName = DataOriginReflection.GetPackageName.Invoke((Java.Lang.Object)origin);
             if (packageName is not null)
             {
                 dataOrigins.Add(packageName.ToString());
@@ -1105,21 +996,5 @@ internal static class JavaReflectionHelper
         }
 
         return dataOrigins;
-    }
-
-    /// <summary>
-    /// Finds and invokes a no-arg method on a Java object, setting it accessible first.
-    /// </summary>
-    private static Java.Lang.Object? InvokeAccessibleMethod(Java.Lang.Object obj, string methodName)
-    {
-        var method = obj.Class?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == methodName)
-            ?? obj.Class?.GetMethods()?.FirstOrDefault(m => m?.Name == methodName);
-        if (method is null)
-        {
-            return null;
-        }
-
-        method.Accessible = true;
-        return method.Invoke(obj);
     }
 }

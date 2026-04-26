@@ -561,8 +561,8 @@ internal static class HealthRecordExtensions
         };
 
         var mass = JavaReflectionHelper.CreateUnitViaCompanion<Mass>(
-            Reflection.MassClassName,
-            Reflection.KilogramsMethodName,
+            JavaReflection.MassClassName,
+            JavaReflection.KilogramsMethodName,
             valueInKilograms);
 
         return new WeightRecord(
@@ -585,8 +585,8 @@ internal static class HealthRecordExtensions
         };
 
         var length = JavaReflectionHelper.CreateUnitViaCompanion<Length>(
-            Reflection.LengthClassName,
-            Reflection.MetersMethodName,
+            JavaReflection.LengthClassName,
+            JavaReflection.MetersMethodName,
             valueInMeters);
 
         return new HeightRecord(
@@ -608,8 +608,8 @@ internal static class HealthRecordExtensions
 
         var offset = ZoneOffsetExtensions.GetCurrent();
         var energy = JavaReflectionHelper.CreateUnitViaCompanion<Energy>(
-            Reflection.EnergyClassName,
-            Reflection.KilocaloriesMethodName,
+            JavaReflection.EnergyClassName,
+            JavaReflection.KilocaloriesMethodName,
             valueInKilocalories);
 
         return new ActiveCaloriesBurnedRecord(
@@ -688,8 +688,8 @@ internal static class HealthRecordExtensions
         };
 
         var mass = JavaReflectionHelper.CreateUnitViaCompanion<Mass>(
-            Reflection.MassClassName,
-            Reflection.KilogramsMethodName,
+            JavaReflection.MassClassName,
+            JavaReflection.KilogramsMethodName,
             valueInKilograms);
 
         return new WeightRecord(
@@ -712,8 +712,8 @@ internal static class HealthRecordExtensions
         };
 
         var length = JavaReflectionHelper.CreateUnitViaCompanion<Length>(
-            Reflection.LengthClassName,
-            Reflection.MetersMethodName,
+            JavaReflection.LengthClassName,
+            JavaReflection.MetersMethodName,
             valueInMeters);
 
         return new HeightRecord(
@@ -735,8 +735,8 @@ internal static class HealthRecordExtensions
 
         var offset = ZoneOffsetExtensions.GetCurrent();
         var energy = JavaReflectionHelper.CreateUnitViaCompanion<Energy>(
-            Reflection.EnergyClassName,
-            Reflection.KilocaloriesMethodName,
+            JavaReflection.EnergyClassName,
+            JavaReflection.KilocaloriesMethodName,
             valueInKilocalories);
 
         return new ActiveCaloriesBurnedRecord(

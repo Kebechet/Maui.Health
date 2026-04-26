@@ -769,11 +769,11 @@ public partial class HealthService : IHealthService
     {
         return healthDataType switch
         {
-            HealthDataType.Steps => (Reflection.StepsRecordClassName, Reflection.CountTotalMetricName, null),
-            HealthDataType.ActiveCaloriesBurned => (Reflection.ActiveCaloriesBurnedRecordClassName, Reflection.ActiveCaloriesTotalMetricName, Units.Kilocalorie),
-            HealthDataType.Hydration => (Reflection.HydrationRecordClassName, Reflection.VolumeTotalMetricName, Units.Liter),
-            HealthDataType.Weight => (Reflection.WeightRecordClassName, Reflection.WeightAvgMetricName, Units.Kilogram),
-            HealthDataType.HeartRate => (Reflection.HeartRateRecordClassName, Reflection.BpmAvgMetricName, Units.BeatsPerMinute),
+            HealthDataType.Steps => (JavaReflection.StepsRecordClassName, JavaReflection.CountTotalMetricName, null),
+            HealthDataType.ActiveCaloriesBurned => (JavaReflection.ActiveCaloriesBurnedRecordClassName, JavaReflection.ActiveCaloriesTotalMetricName, Units.Kilocalorie),
+            HealthDataType.Hydration => (JavaReflection.HydrationRecordClassName, JavaReflection.VolumeTotalMetricName, Units.Liter),
+            HealthDataType.Weight => (JavaReflection.WeightRecordClassName, JavaReflection.WeightAvgMetricName, Units.Kilogram),
+            HealthDataType.HeartRate => (JavaReflection.HeartRateRecordClassName, JavaReflection.BpmAvgMetricName, Units.BeatsPerMinute),
             _ => (null, null, null)
         };
     }
