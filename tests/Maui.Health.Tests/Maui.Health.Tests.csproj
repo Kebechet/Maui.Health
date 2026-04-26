@@ -16,6 +16,7 @@
 	<!-- Reference shared source files directly since the main project targets MAUI platform TFMs -->
 	<ItemGroup>
 		<Compile Include="..\..\src\Maui.Health\Extensions\DateRangeExtensions.cs" Link="Shared\DateRangeExtensions.cs" />
+		<Compile Include="..\..\src\Maui.Health\Extensions\HealthTimeRangeChunkingExtensions.cs" Link="Shared\HealthTimeRangeChunkingExtensions.cs" />
 		<Compile Include="..\..\src\Maui.Health\Extensions\MetricDtoExtensions.cs" Link="Shared\MetricDtoExtensions.cs" />
 		<Compile Include="..\..\src\Maui.Health\Extensions\WorkoutSessionExtensions.cs" Link="Shared\WorkoutSessionExtensions.cs" />
 		<Compile Include="..\..\src\Maui.Health\Models\DateRange.cs" Link="Shared\DateRange.cs" />

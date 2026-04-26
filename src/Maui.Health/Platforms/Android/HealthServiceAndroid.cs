@@ -610,6 +610,19 @@ public partial class HealthService : IHealthService
         return GetAggregatedHealthDataByIntervalInternal<TDto>(timeRange, interval, cancellationToken);
     }
 
+    /// <summary>
+    /// Maximum number of buckets Health Connect's <c>aggregateGroupByDuration</c> accepts in a
+    /// single call. Requests over this ceiling fail at runtime with:
+    /// <code>
+    /// android.health.connect.HealthConnectException:
+    ///   java.lang.IllegalArgumentException: Number of buckets must not exceed 5000
+    /// </code>
+    /// The limit isn't in the SDK docs — it only surfaces as a runtime exception. Confirmed
+    /// against AOSP source:
+    /// https://cs.android.com/android/platform/superproject/main/+/main:packages/modules/HealthFitness/framework/java/android/health/connect/aggregate/AggregateRecordsRequest.java
+    /// </summary>
+    private const int HealthConnectMaxBucketsPerCall = 5000;
+
     private async Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
@@ -645,8 +658,19 @@ public partial class HealthService : IHealthService
                 };
             }
 
-            var buckets = await _healthConnectClient.AggregateHealthRecordsByDuration(
-                recordClassName, metricFieldName, timeRange, interval, healthDataType, unit);
+            // Wide windows are split into ≤5000-bucket sub-calls so the platform never sees a
+            // request that would trip its bucket ceiling. Concatenating the per-chunk results in
+            // order produces the same bucket sequence the un-chunked call would have returned.
+            var chunks = timeRange.SplitIntoChunks(interval, HealthConnectMaxBucketsPerCall);
+            var buckets = new List<AggregatedResult>();
+            foreach (var chunk in chunks)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var chunkBuckets = await _healthConnectClient.AggregateHealthRecordsByDuration(
+                    recordClassName, metricFieldName, chunk, interval, healthDataType, unit);
+                buckets.AddRange(chunkBuckets);
+            }
 
             _logger.LogInformation("Found {Count} interval buckets for {DtoName}", buckets.Count, typeof(TDto).Name);
             return new AggregatedIntervalReadResult { Buckets = buckets };

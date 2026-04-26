@@ -206,9 +206,12 @@ public interface IHealthService
     /// <see cref="Result.ErrorException"/>). This matters for sync use cases where silently
     /// treating a failed read as "no data" would wrongly advance a watermark.</para>
     /// <para>Known platform-side failure modes that surface as <see cref="Result.IsError"/>
-    /// rather than silently returning empty: Health Connect's 5000-bucket-per-call limit
-    /// (<c>IllegalArgumentException</c>), permission denial, SDK unavailable on Android,
+    /// rather than silently returning empty: permission denial, SDK unavailable on Android,
     /// and HealthKit authorization / query errors on iOS.</para>
+    /// <para>Wide ranges that would exceed Health Connect's undocumented 5000-bucket-per-call
+    /// ceiling on <c>aggregateGroupByDuration</c> are split into sub-calls internally on
+    /// Android — callers don't need to clamp the range. iOS <c>HKStatisticsCollectionQuery</c>
+    /// has no documented analogous ceiling, so its path is not chunked.</para>
     /// </remarks>
     /// <param name="timeRange">The overall time range to aggregate</param>
     /// <param name="interval">The bucket interval (e.g., <c>TimeSpan.FromDays(1)</c> for daily)</param>

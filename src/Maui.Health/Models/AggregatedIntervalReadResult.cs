@@ -13,10 +13,10 @@ namespace Maui.Health.Models;
 ///
 /// <para>Failure: <see cref="Result.IsError"/> is <c>true</c> and
 /// <see cref="Result.ErrorException"/> carries the platform exception. Common causes on
-/// Android Health Connect include <c>IllegalArgumentException</c> when the requested range
-/// exceeds the platform's 5000-bucket limit, permission denial, and SDK unavailability; on
-/// iOS HealthKit, authorization and query-level failures. In all failure cases
-/// <see cref="Buckets"/> is empty.</para>
+/// Android Health Connect include permission denial and SDK unavailability; on iOS HealthKit,
+/// authorization and query-level failures. In all failure cases <see cref="Buckets"/> is
+/// empty. The 5000-bucket-per-call ceiling on Health Connect's <c>aggregateGroupByDuration</c>
+/// is handled internally by chunking — it does not surface here.</para>
 ///
 /// <para>This distinction matters for sync orchestration: callers should not treat a failed
 /// read as "no data" and advance their sync watermark — the underlying data may still be
