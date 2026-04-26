@@ -16,6 +16,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   • FIXED: GetEarliestAccessibleDateTime returns the epoch floor instead of DateTime.MinValue.
   ```
 
+- **Keep entries short and on-point — one line, one sentence, user-visible outcome.** Don't restate internal class names, refactor details, or the diagnosis chain. The reader cares what changed for them, not how it was implemented. Cite the underlying cause only when it's load-bearing for the user (e.g. "off the main thread" matters because consumers wrap calls in `Task.Run`; a class name that nobody outside the lib references does not).
+
+- **Group only user-visible changes.** Skip pure chores, internal refactors, and doc-only commits unless they have an observable effect (e.g. a perf refactor that measurably speeds up a public API does count).
+
 - Applies to `PackageReleaseNotes` in `Maui.Health.csproj` and any standalone changelog.
 
 ## Build Commands

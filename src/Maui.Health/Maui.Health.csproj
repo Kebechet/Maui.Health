@@ -43,12 +43,11 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>4.0.0-preview.6</Version>
+    <Version>4.0.0-preview.7</Version>
     <PackageReleaseNotes>
-• BREAKING: read-side methods on IHealthService and IHealthWorkoutService.Read return named Result types so callers can distinguish "no data" from "platform failed."
-• CHANGED: platform exceptions bubble to a single error boundary instead of being swallowed by inner helpers.
-• ADDED: HealthTimeRange clamps StartTime to Unix epoch (1970-01-01 UTC) to prevent sentinel-value blowups in platform aggregation queries.
-• FIXED: GetEarliestAccessibleDateTime returns the epoch floor instead of DateTime.MinValue.
+• FIXED: Android reads/writes now work off the main thread (e.g. inside Task.Run) — Class.forName routes through the app's PathClassLoader.
+• FIXED (#53): wide-window aggregations on Android no longer overflow Health Connect's 5000-bucket-per-call cap.
+• PERF: cached Android reflection handles cut per-call lookup overhead.
     </PackageReleaseNotes>
   </PropertyGroup>
 
