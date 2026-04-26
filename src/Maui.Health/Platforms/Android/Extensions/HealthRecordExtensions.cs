@@ -6,6 +6,7 @@ using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Models.Metrics.Write;
 using Maui.Health.Platforms.Android.Helpers;
+using Maui.Health.Platforms.Android.Reflection.Units;
 using System.Diagnostics;
 using static Maui.Health.Platforms.Android.AndroidConstant;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
@@ -560,15 +561,12 @@ internal static class HealthRecordExtensions
             _ => throw new ArgumentException($"Unsupported weight unit: '{dto.Unit}'. Use Units.Kilogram, Units.Pound, or Units.Gram.", nameof(dto))
         };
 
-        var mass = JavaReflectionHelper.CreateUnitViaCompanion<Mass>(
-            JavaReflection.MassClassName,
-            JavaReflection.KilogramsMethodName,
-            valueInKilograms);
+        var mass = MassReflection.FromKilograms(valueInKilograms);
 
         return new WeightRecord(
             dto.Timestamp.ToJavaInstant()!,
             ZoneOffsetExtensions.GetCurrent(),
-            mass!,
+            mass,
             Metadata.ManualEntry()
         );
     }
@@ -584,15 +582,12 @@ internal static class HealthRecordExtensions
             _ => throw new ArgumentException($"Unsupported height unit: '{dto.Unit}'. Use Units.Centimeter, Units.Meter, Units.Inch, or Units.Foot.", nameof(dto))
         };
 
-        var length = JavaReflectionHelper.CreateUnitViaCompanion<Length>(
-            JavaReflection.LengthClassName,
-            JavaReflection.MetersMethodName,
-            valueInMeters);
+        var length = LengthReflection.FromMeters(valueInMeters);
 
         return new HeightRecord(
             dto.Timestamp.ToJavaInstant()!,
             ZoneOffsetExtensions.GetCurrent(),
-            length!,
+            length,
             Metadata.ManualEntry()
         );
     }
@@ -607,17 +602,14 @@ internal static class HealthRecordExtensions
         };
 
         var offset = ZoneOffsetExtensions.GetCurrent();
-        var energy = JavaReflectionHelper.CreateUnitViaCompanion<Energy>(
-            JavaReflection.EnergyClassName,
-            JavaReflection.KilocaloriesMethodName,
-            valueInKilocalories);
+        var energy = EnergyReflection.FromKilocalories(valueInKilocalories);
 
         return new ActiveCaloriesBurnedRecord(
             dto.StartTime.ToJavaInstant()!,
             offset,
             dto.EndTime.ToJavaInstant()!,
             offset,
-            energy!,
+            energy,
             Metadata.ManualEntry()
         );
     }
@@ -687,15 +679,12 @@ internal static class HealthRecordExtensions
             _ => throw new ArgumentOutOfRangeException(nameof(dto.Unit), dto.Unit, null)
         };
 
-        var mass = JavaReflectionHelper.CreateUnitViaCompanion<Mass>(
-            JavaReflection.MassClassName,
-            JavaReflection.KilogramsMethodName,
-            valueInKilograms);
+        var mass = MassReflection.FromKilograms(valueInKilograms);
 
         return new WeightRecord(
             dto.Timestamp.ToJavaInstant()!,
             ZoneOffsetExtensions.GetCurrent(),
-            mass!,
+            mass,
             BuildManualEntryMetadata(recordId)
         );
     }
@@ -711,15 +700,12 @@ internal static class HealthRecordExtensions
             _ => throw new ArgumentOutOfRangeException(nameof(dto.Unit), dto.Unit, null)
         };
 
-        var length = JavaReflectionHelper.CreateUnitViaCompanion<Length>(
-            JavaReflection.LengthClassName,
-            JavaReflection.MetersMethodName,
-            valueInMeters);
+        var length = LengthReflection.FromMeters(valueInMeters);
 
         return new HeightRecord(
             dto.Timestamp.ToJavaInstant()!,
             ZoneOffsetExtensions.GetCurrent(),
-            length!,
+            length,
             BuildManualEntryMetadata(recordId)
         );
     }
@@ -734,17 +720,14 @@ internal static class HealthRecordExtensions
         };
 
         var offset = ZoneOffsetExtensions.GetCurrent();
-        var energy = JavaReflectionHelper.CreateUnitViaCompanion<Energy>(
-            JavaReflection.EnergyClassName,
-            JavaReflection.KilocaloriesMethodName,
-            valueInKilocalories);
+        var energy = EnergyReflection.FromKilocalories(valueInKilocalories);
 
         return new ActiveCaloriesBurnedRecord(
             dto.StartTime.ToJavaInstant()!,
             offset,
             dto.EndTime.ToJavaInstant()!,
             offset,
-            energy!,
+            energy,
             BuildManualEntryMetadata(recordId)
         );
     }

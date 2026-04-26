@@ -121,59 +121,6 @@ internal static class JavaReflectionHelper
         }
     }
 
-    /// <summary>
-    /// Creates a unit object (Mass, Length, Energy) using Kotlin Companion factory method.
-    /// </summary>
-    public static T? CreateUnitViaCompanion<T>(string className, string factoryMethodName, double value) where T : Java.Lang.Object
-    {
-        try
-        {
-            var unitClass = Java.Lang.Class.ForName(className);
-            if (unitClass is null)
-            {
-                Debug.WriteLine($"Failed to find class {className}");
-                return default;
-            }
-
-            var companionField = unitClass.GetDeclaredField(KotlinCompanionFieldName);
-            if (companionField is null)
-            {
-                Debug.WriteLine($"Failed to find Companion field in {className}");
-                return default;
-            }
-
-            companionField.Accessible = true;
-            var companion = companionField.Get(null);
-            if (companion is null)
-            {
-                Debug.WriteLine($"Failed to get Companion instance from {className}");
-                return default;
-            }
-
-            var factoryMethod = companion.Class?.GetDeclaredMethod(factoryMethodName, Java.Lang.Double.Type!);
-            if (factoryMethod is null)
-            {
-                Debug.WriteLine($"Failed to find factory method {factoryMethodName} in {className}");
-                return default;
-            }
-
-            factoryMethod.Accessible = true;
-            var result = factoryMethod.Invoke(companion, Java.Lang.Double.ValueOf(value));
-            if (result is null)
-            {
-                Debug.WriteLine($"Factory method {factoryMethodName} returned null for value {value}");
-                return default;
-            }
-
-            return Java.Lang.Object.GetObject<T>(result.Handle, JniHandleOwnership.DoNotTransfer);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"Error creating {typeof(T).Name} via Companion.{factoryMethodName}({value}): {ex.Message}");
-            return default;
-        }
-    }
-
     private static bool TryGetUnitConstant(string unitName, out Java.Lang.Object? unitConstant)
     {
         unitConstant = null;

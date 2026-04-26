@@ -1,5 +1,6 @@
 using Java.Lang.Reflect;
 using JClass = Java.Lang.Class;
+using static Maui.Health.Platforms.Android.AndroidConstant;
 
 namespace Maui.Health.Platforms.Android.Reflection;
 
@@ -90,5 +91,21 @@ internal static class JavaClassReflectionExtensions
         }
         ctor.Accessible = true;
         return ctor;
+    }
+
+    /// <summary>
+    /// Resolves the static <c>Companion</c> field's value on a Kotlin class. Used by the
+    /// per-unit reflection holders (Mass, Length, Energy) to obtain the singleton companion
+    /// object that hosts the static factory methods (<c>kilograms</c>, <c>meters</c>, etc.).
+    /// </summary>
+    public static Java.Lang.Object ResolveCompanion(this JClass cls)
+    {
+        var companionField = cls.GetDeclaredField(KotlinCompanionFieldName)
+            ?? throw new MissingMethodException(
+                $"Companion field not found on {cls.Name}.");
+        companionField.Accessible = true;
+        return companionField.Get(null)
+            ?? throw new InvalidOperationException(
+                $"Companion field on {cls.Name} returned null.");
     }
 }
