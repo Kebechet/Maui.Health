@@ -43,11 +43,9 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>4.0.0-preview.7</Version>
+    <Version>4.0.0-preview.8</Version>
     <PackageReleaseNotes>
-• FIXED: Android reads/writes now work off the main thread (e.g. inside Task.Run) — Class.forName routes through the app's PathClassLoader.
-• FIXED (#53): wide-window aggregations on Android no longer overflow Health Connect's 5000-bucket-per-call cap.
-• PERF: cached Android reflection handles cut per-call lookup overhead.
+• PERF: Android wide-window aggregation reads no longer freeze the UI for several seconds — Java handles in the read loops and reflection helpers are now disposed eagerly instead of stranding GREFs until a full GC.
     </PackageReleaseNotes>
   </PropertyGroup>
 

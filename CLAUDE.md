@@ -18,6 +18,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Keep entries short and on-point — one line, one sentence, user-visible outcome.** Don't restate internal class names, refactor details, or the diagnosis chain. The reader cares what changed for them, not how it was implemented. Cite the underlying cause only when it's load-bearing for the user (e.g. "off the main thread" matters because consumers wrap calls in `Task.Run`; a class name that nobody outside the lib references does not).
 
+- **Length cap: aim for ~25 words per bullet, hard limit ~40.** If a bullet doesn't fit on one terminal line at typical width, you're saying too much.
+
+- **Smell-checks that mean a bullet is too long:**
+  - lists more than two internal symbols / call sites
+  - explains a "previously … now …" diagnosis chain instead of just stating the new behaviour
+  - cites a numeric threshold, framework limitation, or memory/GC mechanism that the consumer doesn't act on
+  - has more than one sentence
+
+  Cut until none of those apply. Lead with the user-visible effect; one short clause after a dash for the mechanism is plenty.
+
 - **Group only user-visible changes.** Skip pure chores, internal refactors, and doc-only commits unless they have an observable effect (e.g. a perf refactor that measurably speeds up a public API does count).
 
 - Applies to `PackageReleaseNotes` in `Maui.Health.csproj` and any standalone changelog.
