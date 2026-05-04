@@ -68,11 +68,20 @@ internal static class KotlinResolver
         if (result is Java.Util.IList javaList)
         {
             var aggregationResults = new List<AggregationResultGroupedByDuration>();
-            for (int i = 0; i < javaList.Size(); i++)
+            var listCount = javaList.Size();
+            for (int i = 0; i < listCount; i++)
             {
-                if (javaList.Get(i) is AggregationResultGroupedByDuration item)
+                // Pattern-match shares the same managed wrapper as `raw` when it succeeds,
+                // so retained items aren't disposed (caller owns them via the returned list).
+                // Unmatched items are disposed here to release their JNI global refs.
+                var raw = javaList.Get(i);
+                if (raw is AggregationResultGroupedByDuration item)
                 {
                     aggregationResults.Add(item);
+                }
+                else
+                {
+                    raw?.Dispose();
                 }
             }
             return (IList<TResult?>)aggregationResults;

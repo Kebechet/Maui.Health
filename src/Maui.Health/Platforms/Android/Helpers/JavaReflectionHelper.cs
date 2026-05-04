@@ -23,6 +23,42 @@ namespace Maui.Health.Platforms.Android.Helpers;
 internal static class JavaReflectionHelper
 {
     /// <summary>
+    /// Scans a <see cref="Java.Lang.Reflect.Method"/> array, returns the first match for the
+    /// predicate, and disposes every non-matching element to release its JNI global ref.
+    /// <c>GetDeclaredMethods()</c> / <c>GetMethods()</c> materialize a wrapper for every
+    /// method on the class — using LINQ <c>FirstOrDefault</c> keeps one and leaks the rest
+    /// until GC. With ~20 methods/class × per-record extraction × hundreds of records,
+    /// that turns into thousands of stranded GREFs.
+    /// </summary>
+    private static Java.Lang.Reflect.Method? FindMethodAndDisposeRest(
+        Java.Lang.Reflect.Method?[]? methods,
+        Func<Java.Lang.Reflect.Method, bool> predicate)
+    {
+        if (methods is null)
+        {
+            return null;
+        }
+
+        Java.Lang.Reflect.Method? matched = null;
+        foreach (var m in methods)
+        {
+            if (m is null)
+            {
+                continue;
+            }
+
+            if (matched is null && predicate(m))
+            {
+                matched = m;
+                continue;
+            }
+
+            m.Dispose();
+        }
+        return matched;
+    }
+
+    /// <summary>
     /// Tries to extract a double value using the official Units API with a unit constant.
     /// </summary>
     public static bool TryOfficialUnitsApi(this Java.Lang.Object obj, string unitName, out double value)
@@ -31,29 +67,42 @@ internal static class JavaReflectionHelper
 
         try
         {
-            var objClass = obj.Class;
-            // Search declared methods first, then all methods (including inherited) as fallback
-            var inUnitMethod = objClass?.GetDeclaredMethods()?.FirstOrDefault(m =>
-                m != null && (m.Name.Equals("InUnit", StringComparison.OrdinalIgnoreCase) ||
-                              m.Name.Equals("inUnit", StringComparison.OrdinalIgnoreCase)))
-                ?? objClass?.GetMethods()?.FirstOrDefault(m =>
-                    m != null && (m.Name.Equals("InUnit", StringComparison.OrdinalIgnoreCase) ||
-                                  m.Name.Equals("inUnit", StringComparison.OrdinalIgnoreCase)));
+            using var objClass = obj.Class;
+            if (objClass is null)
+            {
+                return false;
+            }
+
+            // Search declared methods first, then all methods (including inherited) as fallback.
+            // FindMethodAndDisposeRest disposes every non-match to keep the GREF table flat.
+            var inUnitMethod = FindMethodAndDisposeRest(
+                objClass.GetDeclaredMethods(),
+                m => m.Name.Equals("InUnit", StringComparison.OrdinalIgnoreCase) ||
+                     m.Name.Equals("inUnit", StringComparison.OrdinalIgnoreCase));
+            inUnitMethod ??= FindMethodAndDisposeRest(
+                objClass.GetMethods(),
+                m => m.Name.Equals("InUnit", StringComparison.OrdinalIgnoreCase) ||
+                     m.Name.Equals("inUnit", StringComparison.OrdinalIgnoreCase));
 
             if (inUnitMethod is null)
             {
                 return false;
             }
 
-            if (!TryGetUnitConstant(unitName, out var unitConstant))
+            using (inUnitMethod)
             {
-                return false;
+                if (!TryGetUnitConstant(unitName, out var unitConstant))
+                {
+                    return false;
+                }
+
+                using (unitConstant)
+                {
+                    inUnitMethod.Accessible = true;
+                    using var result = inUnitMethod.Invoke(obj, unitConstant!);
+                    return result.TryConvertToDouble(out value);
+                }
             }
-
-            inUnitMethod.Accessible = true;
-            var result = inUnitMethod.Invoke(obj, unitConstant!);
-
-            return result.TryConvertToDouble(out value);
         }
         catch
         {
@@ -70,8 +119,8 @@ internal static class JavaReflectionHelper
 
         try
         {
-            var objClass = obj.Class;
-            var field = objClass?.GetDeclaredField(propertyName);
+            using var objClass = obj.Class;
+            using var field = objClass?.GetDeclaredField(propertyName);
 
             if (field is null)
             {
@@ -79,7 +128,7 @@ internal static class JavaReflectionHelper
             }
 
             field.Accessible = true;
-            var fieldValue = field.Get(obj);
+            using var fieldValue = field.Get(obj);
 
             return fieldValue.TryConvertToDouble(out value);
         }
@@ -98,22 +147,35 @@ internal static class JavaReflectionHelper
 
         try
         {
-            var objClass = obj.Class;
-            // GetDeclaredMethod only searches the exact class, not parent classes.
-            // Fall back to searching all methods (including inherited) by name.
-            var method = objClass?.GetDeclaredMethod(methodName)
-                ?? objClass?.GetDeclaredMethods()?.FirstOrDefault(m => m?.Name == methodName && m.GetParameterTypes()?.Length == 0)
-                ?? objClass?.GetMethods()?.FirstOrDefault(m => m?.Name == methodName && m.GetParameterTypes()?.Length == 0);
+            using var objClass = obj.Class;
+            if (objClass is null)
+            {
+                return false;
+            }
+
+            // GetDeclaredMethod only searches the exact class, not parent classes — preferred
+            // path (single result, no array to clean up). Fall back to scanning all declared
+            // methods, then all methods (including inherited), disposing non-matches to keep
+            // the GREF table flat.
+            var method = objClass.GetDeclaredMethod(methodName);
+            method ??= FindMethodAndDisposeRest(
+                objClass.GetDeclaredMethods(),
+                m => m.Name == methodName && m.GetParameterTypes()?.Length == 0);
+            method ??= FindMethodAndDisposeRest(
+                objClass.GetMethods(),
+                m => m.Name == methodName && m.GetParameterTypes()?.Length == 0);
 
             if (method is null)
             {
                 return false;
             }
 
-            method.Accessible = true;
-            var result = method.Invoke(obj);
-
-            return result.TryConvertToDouble(out value);
+            using (method)
+            {
+                method.Accessible = true;
+                using var result = method.Invoke(obj);
+                return result.TryConvertToDouble(out value);
+            }
         }
         catch
         {
@@ -136,6 +198,7 @@ internal static class JavaReflectionHelper
             };
 
             var fullClassName = $"{HealthConnectUnitsNamespace}.{className}";
+            // unitClass is cached by JavaClassResolver — do NOT dispose it here.
             var unitClass = JavaClassResolver.Resolve(fullClassName);
 
             if (unitClass is null)
@@ -143,13 +206,14 @@ internal static class JavaReflectionHelper
                 return false;
             }
 
-            var field = unitClass.GetDeclaredField(unitName);
+            using var field = unitClass.GetDeclaredField(unitName);
             if (field is null)
             {
                 return false;
             }
 
             field.Accessible = true;
+            // unitConstant is the OUT — caller takes ownership and is responsible for disposal.
             unitConstant = field.Get(null);
 
             return unitConstant != null;
@@ -535,27 +599,32 @@ internal static class JavaReflectionHelper
             return [];
         }
 
-        for (int i = 0; i < javaList.Size(); i++)
+        var bucketCount = javaList.Size();
+        for (int i = 0; i < bucketCount; i++)
         {
-            var item = javaList.Get(i);
+            // Each Java.Lang.Object obtained here holds a JNI global ref (GREF). Without
+            // disposing inside the loop, ~5 GREFs/iteration × 5000 buckets pushes Mono past
+            // its ~46k GREF threshold and triggers a stop-the-world full GC mid-iteration —
+            // that's the multi-second UI freeze observed during wide-window first syncs.
+            using var item = javaList.Get(i);
             if (item is null)
             {
                 continue;
             }
 
-            var startInstant = AggregationResultGroupedByDurationReflection.GetStartTime
+            using var startInstant = AggregationResultGroupedByDurationReflection.GetStartTime
                 .Invoke(item) as Java.Time.Instant;
-            var endInstant = AggregationResultGroupedByDurationReflection.GetEndTime
+            using var endInstant = AggregationResultGroupedByDurationReflection.GetEndTime
                 .Invoke(item) as Java.Time.Instant;
 
-            var aggregationResult = AggregationResultGroupedByDurationReflection.GetResult
+            using var aggregationResult = AggregationResultGroupedByDurationReflection.GetResult
                 .Invoke(item);
             if (aggregationResult is null)
             {
                 continue;
             }
 
-            var value = ExtractAggregateValue(aggregationResult, metric);
+            using var value = ExtractAggregateValue(aggregationResult, metric);
             if (value is null)
             {
                 continue;
@@ -662,84 +731,95 @@ internal static class JavaReflectionHelper
         // ChangesReadResult.ErrorException. Null returns below mean reflection could not
         // bind — caller treats those as "token invalid or platform mismatch."
         var (clientClass, clientObject) = healthConnectClient.GetJniClientObjects();
-            if (clientClass is null || clientObject is null)
-            {
-                return null;
-            }
+        if (clientClass is null || clientObject is null)
+        {
+            return null;
+        }
 
-            var tokenObj = new Java.Lang.String(token);
-            var result = await InvokeKotlinSuspendMethod(clientClass, clientObject, "getChanges", tokenObj);
-            if (result is null)
-            {
-                return null;
-            }
+        var tokenObj = new Java.Lang.String(token);
+        var result = await InvokeKotlinSuspendMethod(clientClass, clientObject, "getChanges", tokenObj);
+        if (result is null)
+        {
+            return null;
+        }
 
-            var changes = new List<HealthChange>();
+        var changes = new List<HealthChange>();
 
-            var changesList = ChangesResponseReflection.GetChanges.Invoke(result);
-            if (changesList is Java.Util.IList javaChangesList)
+        // Each Java.Lang.Object obtained inside the loop holds a JNI global ref. Without
+        // disposing, a long offline period can produce a huge changes list and trip Mono's
+        // GREF threshold mid-iteration — same root cause as the AggregateHealthRecordsByDuration
+        // bucket-loop fix.
+        using var changesList = ChangesResponseReflection.GetChanges.Invoke(result);
+        if (changesList is Java.Util.IList javaChangesList)
+        {
+            var changeCount = javaChangesList.Size();
+            for (int i = 0; i < changeCount; i++)
             {
-                for (int i = 0; i < javaChangesList.Size(); i++)
+                using var change = javaChangesList.Get(i);
+                if (change is null)
                 {
-                    var change = javaChangesList.Get(i);
-                    if (change is null)
+                    continue;
+                }
+
+                using var classObj = change.Class;
+                var className = classObj?.Name ?? "";
+
+                if (className.Contains("UpsertionChange"))
+                {
+                    using var record = UpsertionChangeReflection.GetRecord.Invoke(change);
+                    if (record is null)
                     {
                         continue;
                     }
-
-                    var className = change.Class?.Name ?? "";
-
-                    if (className.Contains("UpsertionChange"))
+                    using var metadata = RecordReflection.GetMetadata.Invoke(record);
+                    string? recordId = null;
+                    if (metadata is not null)
                     {
-                        var record = UpsertionChangeReflection.GetRecord.Invoke(change);
-                        if (record is null)
-                        {
-                            continue;
-                        }
-                        var metadata = RecordReflection.GetMetadata.Invoke(record);
-                        var recordId = metadata is null
-                            ? null
-                            : MetadataReflection.GetId.Invoke(metadata)?.ToString();
-
-                        if (recordId is not null)
-                        {
-                            changes.Add(new HealthChange
-                            {
-                                Type = HealthChangeType.Upsert,
-                                RecordId = recordId
-                            });
-                        }
+                        using var idObj = MetadataReflection.GetId.Invoke(metadata);
+                        recordId = idObj?.ToString();
                     }
-                    else if (className.Contains("DeletionChange"))
+
+                    if (recordId is not null)
                     {
-                        var deletedId = DeletionChangeReflection.GetDeletedRecordId.Invoke(change)?.ToString();
-                        if (deletedId is not null)
+                        changes.Add(new HealthChange
                         {
-                            changes.Add(new HealthChange
-                            {
-                                Type = HealthChangeType.Deletion,
-                                RecordId = deletedId
-                            });
-                        }
+                            Type = HealthChangeType.Upsert,
+                            RecordId = recordId
+                        });
+                    }
+                }
+                else if (className.Contains("DeletionChange"))
+                {
+                    using var deletedIdObj = DeletionChangeReflection.GetDeletedRecordId.Invoke(change);
+                    var deletedId = deletedIdObj?.ToString();
+                    if (deletedId is not null)
+                    {
+                        changes.Add(new HealthChange
+                        {
+                            Type = HealthChangeType.Deletion,
+                            RecordId = deletedId
+                        });
                     }
                 }
             }
+        }
 
-            string? nextToken = ChangesResponseReflection.GetNextChangesToken.Invoke(result)?.ToString();
+        using var nextTokenObj = ChangesResponseReflection.GetNextChangesToken.Invoke(result);
+        string? nextToken = nextTokenObj?.ToString();
 
-            bool hasMore = false;
-            var hasMoreResult = ChangesResponseReflection.GetHasMore.Invoke(result);
-            if (hasMoreResult is Java.Lang.Boolean jBool)
-            {
-                hasMore = jBool.BooleanValue();
-            }
+        bool hasMore = false;
+        using var hasMoreResult = ChangesResponseReflection.GetHasMore.Invoke(result);
+        if (hasMoreResult is Java.Lang.Boolean jBool)
+        {
+            hasMore = jBool.BooleanValue();
+        }
 
-            return new HealthChangesResult
-            {
-                Changes = changes,
-                NextToken = nextToken ?? token,
-                HasMore = hasMore
-            };
+        return new HealthChangesResult
+        {
+            Changes = changes,
+            NextToken = nextToken ?? token,
+            HasMore = hasMore
+        };
     }
 
     /// <summary>
@@ -920,22 +1000,25 @@ internal static class JavaReflectionHelper
     {
         var dataOrigins = new List<string>();
 
-        var originsObj = AggregationResultReflection.GetDataOrigins.Invoke(aggregationResult);
+        // Each Java.Lang.Object obtained here holds a JNI global ref. Without disposing,
+        // calls inside the bucket loop in AggregateHealthRecordsByDuration accumulate refs
+        // and trip Mono's GREF threshold — same root cause as the bucket-loop fix.
+        using var originsObj = AggregationResultReflection.GetDataOrigins.Invoke(aggregationResult);
         if (originsObj is not Java.Util.ISet originsSet)
         {
             return dataOrigins;
         }
 
-        var iterator = originsSet.Iterator();
+        using var iterator = originsSet.Iterator();
         while (iterator.HasNext)
         {
-            var origin = iterator.Next();
+            using var origin = iterator.Next();
             if (origin is null)
             {
                 continue;
             }
 
-            var packageName = DataOriginReflection.GetPackageName.Invoke((Java.Lang.Object)origin);
+            using var packageName = DataOriginReflection.GetPackageName.Invoke((Java.Lang.Object)origin);
             if (packageName is not null)
             {
                 dataOrigins.Add(packageName.ToString());

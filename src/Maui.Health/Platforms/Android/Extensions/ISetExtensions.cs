@@ -14,7 +14,11 @@ internal static class ISetExtensions
         }
 
         var listOfStrings = new List<T?>();
-        var iterator = javaSet.Iterator();
+        // Iterator wrapper holds a JNI global ref; dispose at end of scope.
+        // Per-element `element` is intentionally not disposed: JavaCast<T> may return the
+        // same managed wrapper instance, in which case disposing would also invalidate the
+        // parsedElement we're handing to the caller.
+        using var iterator = javaSet.Iterator();
 
         while (iterator.HasNext)
         {
@@ -35,11 +39,14 @@ internal static class ISetExtensions
         }
 
         var listOfStrings = new List<string?>();
-        var iterator = javaSet.Iterator();
+        // Iterator wrapper holds a JNI global ref; dispose at end of scope.
+        using var iterator = javaSet.Iterator();
 
         while (iterator.HasNext)
         {
-            var element = iterator.Next();
+            // The Java.Lang.String wrapper is converted to a managed string and discarded;
+            // dispose it to release the JNI global ref instead of waiting for finalization.
+            using var element = iterator.Next();
             listOfStrings.Add((string?)element?.JavaCast<Java.Lang.String>());
         }
 
