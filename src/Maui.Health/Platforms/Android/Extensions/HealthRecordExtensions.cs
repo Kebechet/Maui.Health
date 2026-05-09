@@ -2,6 +2,7 @@ using AndroidX.Health.Connect.Client.Records;
 using AndroidX.Health.Connect.Client.Records.Metadata;
 using AndroidX.Health.Connect.Client.Units;
 using Maui.Health.Constants;
+using Maui.Health.Extensions;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Models.Metrics.Write;
@@ -92,8 +93,8 @@ internal static class HealthRecordExtensions
             return null;
         }
 
-        var startTime = stepsRecord.StartTime.ToDateTimeOffset();
-        var endTime = stepsRecord.EndTime.ToDateTimeOffset();
+        var startTime = stepsRecord.StartTime.ToDateTimeOffset().RebaseToOffset(stepsRecord.StartZoneOffset.ToTimeSpan());
+        var endTime = stepsRecord.EndTime.ToDateTimeOffset().RebaseToOffset(stepsRecord.EndZoneOffset.ToTimeSpan());
 
         return new StepsDto
         {
@@ -115,7 +116,7 @@ internal static class HealthRecordExtensions
             return null;
         }
 
-        var timestamp = weightRecord.Time.ToDateTimeOffset();
+        var timestamp = weightRecord.Time.ToDateTimeOffset().RebaseToOffset(weightRecord.ZoneOffset.ToTimeSpan());
         var weightValue = weightRecord.Weight.ExtractMassValue();
 
         return new WeightDto
@@ -137,7 +138,7 @@ internal static class HealthRecordExtensions
             return null;
         }
 
-        var timestamp = heightRecord.Time.ToDateTimeOffset();
+        var timestamp = heightRecord.Time.ToDateTimeOffset().RebaseToOffset(heightRecord.ZoneOffset.ToTimeSpan());
         var heightValue = heightRecord.Height.ExtractLengthValue();
 
         return new HeightDto
@@ -159,8 +160,8 @@ internal static class HealthRecordExtensions
             return null;
         }
 
-        var startTime = caloriesRecord.StartTime.ToDateTimeOffset();
-        var endTime = caloriesRecord.EndTime.ToDateTimeOffset();
+        var startTime = caloriesRecord.StartTime.ToDateTimeOffset().RebaseToOffset(caloriesRecord.StartZoneOffset.ToTimeSpan());
+        var endTime = caloriesRecord.EndTime.ToDateTimeOffset().RebaseToOffset(caloriesRecord.EndZoneOffset.ToTimeSpan());
         var energyValue = caloriesRecord.Energy.ExtractEnergyValue();
 
         return new ActiveCaloriesBurnedDto
@@ -184,7 +185,7 @@ internal static class HealthRecordExtensions
             return null;
         }
 
-        var timestamp = heartRateRecord.StartTime.ToDateTimeOffset();
+        var timestamp = heartRateRecord.StartTime.ToDateTimeOffset().RebaseToOffset(heartRateRecord.StartZoneOffset.ToTimeSpan());
 
         var beatsPerMinute = 0.0;
         if (heartRateRecord.Samples.Count > 0)
@@ -216,7 +217,7 @@ internal static class HealthRecordExtensions
             return null;
         }
 
-        var timestamp = bodyFatRecord.Time.ToDateTimeOffset();
+        var timestamp = bodyFatRecord.Time.ToDateTimeOffset().RebaseToOffset(bodyFatRecord.ZoneOffset.ToTimeSpan());
         var percentage = bodyFatRecord.Percentage.ExtractPercentageValue();
 
         return new BodyFatDto
@@ -238,7 +239,7 @@ internal static class HealthRecordExtensions
             return null;
         }
 
-        var timestamp = vo2MaxRecord.Time.ToDateTimeOffset();
+        var timestamp = vo2MaxRecord.Time.ToDateTimeOffset().RebaseToOffset(vo2MaxRecord.ZoneOffset.ToTimeSpan());
         // Extract VO2Max value using reflection - try common property names
         var value = ((Java.Lang.Object)vo2MaxRecord).ExtractVo2MaxValue();
 

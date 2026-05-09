@@ -2,6 +2,7 @@
 using AndroidX.Activity;
 using AndroidX.Activity.Result;
 using AndroidX.Health.Connect.Client;
+using Java.Time;
 using Java.Util;
 using Maui.Health.Constants;
 using Maui.Health.Enums;
@@ -604,10 +605,16 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return GetAggregatedHealthDataByIntervalInternal<TDto>(timeRange, interval, cancellationToken);
+        return GetAggregatedHealthDataByIntervalInternal<TDto>(timeRange, interval, timeZone, cancellationToken);
+    }
+
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return GetAggregatedHealthDataByCalendarPeriodInternal<TDto>(timeRange, unit, count, timeZone, cancellationToken);
     }
 
     /// <summary>
@@ -623,7 +630,7 @@ public partial class HealthService : IHealthService
     /// </summary>
     private const int HealthConnectMaxBucketsPerCall = 5000;
 
-    private async Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+    private async Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         try
@@ -658,18 +665,48 @@ public partial class HealthService : IHealthService
                 };
             }
 
+            // Snap the start instant to the calendar-day boundary in `timeZone` so the chunked
+            // sub-calls (and thus aggregateGroupByDuration's bucket boundaries) anchor to local
+            // midnight instead of the caller's StartTime time-of-day. Without this every bucket
+            // would start at e.g. 22:39 local — drifting "May 1" rows to actually cover
+            // 22:39 May 1 → 22:39 May 2 local. SplitIntoChunks walks forward from StartTime, so
+            // snapping the source range first cascades correctly into every chunk.
+            var alignedTimeRange = HealthTimeRange.FromDateTimeOffset(
+                timeRange.StartTime.SnapToCalendarDayStart(timeZone),
+                timeRange.EndTime);
+
             // Wide windows are split into ≤5000-bucket sub-calls so the platform never sees a
             // request that would trip its bucket ceiling. Concatenating the per-chunk results in
             // order produces the same bucket sequence the un-chunked call would have returned.
-            var chunks = timeRange.SplitIntoChunks(interval, HealthConnectMaxBucketsPerCall);
+            var chunks = alignedTimeRange.SplitIntoChunks(interval, HealthConnectMaxBucketsPerCall);
             var buckets = new List<AggregatedResult>();
-            foreach (var chunk in chunks)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
 
-                var chunkBuckets = await _healthConnectClient.AggregateHealthRecordsByDuration(
-                    recordClassName, metricFieldName, chunk, interval, healthDataType, unit);
-                buckets.AddRange(chunkBuckets);
+            // Dispatch: whole-day-multiple intervals route through aggregateGroupByPeriod so
+            // bucket boundaries land on local-midnight in `timeZone` even across DST transitions
+            // (a "May 1" bucket spans 23 / 24 / 25 wall-clock hours as appropriate, never the
+            // 1-hour drift the fixed-Duration path would accumulate after spring-forward).
+            // Sub-day intervals (1h, 15min, etc.) keep the Duration path because Period only
+            // supports day/week/month/year units.
+            if(interval.TryGetWholeDayCount(out var days))
+            {
+                using var period = Period.OfDays(days)!;
+                foreach (var chunk in chunks)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var chunkBuckets = await _healthConnectClient.AggregateHealthRecordsByPeriod(
+                        recordClassName, metricFieldName, chunk, period, timeZone, healthDataType, unit);
+                    buckets.AddRange(chunkBuckets);
+                }
+            }
+            else
+            {
+                foreach (var chunk in chunks)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var chunkBuckets = await _healthConnectClient.AggregateHealthRecordsByDuration(
+                        recordClassName, metricFieldName, chunk, interval, healthDataType, unit);
+                    buckets.AddRange(chunkBuckets);
+                }
             }
 
             _logger.LogInformation("Found {Count} interval buckets for {DtoName}", buckets.Count, typeof(TDto).Name);
@@ -678,6 +715,75 @@ public partial class HealthService : IHealthService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error aggregating health data by interval for {DtoName}", typeof(TDto).Name);
+            return new AggregatedIntervalReadResult { ErrorException = ex };
+        }
+    }
+
+    private async Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriodInternal<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        if (count <= 0)
+        {
+            return new AggregatedIntervalReadResult
+            {
+                ErrorException = new ArgumentOutOfRangeException(nameof(count), count, "Count must be greater than zero."),
+            };
+        }
+
+        try
+        {
+            if (!_sdkStatus.IsSuccess)
+            {
+                return new AggregatedIntervalReadResult
+                {
+                    ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
+                };
+            }
+
+            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+            var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
+            if (requestPermissionResult.IsError)
+            {
+                return new AggregatedIntervalReadResult
+                {
+                    ErrorException = requestPermissionResult.ErrorException
+                        ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
+                };
+            }
+
+            var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
+            var (recordClassName, metricFieldName, hcUnit) = GetAggregateMetricInfo(healthDataType);
+            if (recordClassName is null || metricFieldName is null)
+            {
+                _logger.LogWarning("Calendar-period aggregation not supported for {DtoName}", typeof(TDto).Name);
+                return new AggregatedIntervalReadResult
+                {
+                    ErrorException = new NotSupportedException($"Calendar-period aggregation is not supported for {typeof(TDto).Name}."),
+                };
+            }
+
+            // Period factories from java.time produce calendar-aware bucket boundaries when fed
+            // to aggregateGroupByPeriod. Months and years can't be expressed via TimeSpan because
+            // they have variable length (28-31 days; 365/366 days) — that's the whole reason for
+            // having this method alongside GetAggregatedHealthDataByInterval.
+            using var period = unit switch
+            {
+                CalendarUnit.Day => Period.OfDays(count)!,
+                CalendarUnit.Week => Period.OfWeeks(count)!,
+                CalendarUnit.Month => Period.OfMonths(count)!,
+                CalendarUnit.Year => Period.OfYears(count)!,
+                _ => throw new NotImplementedException($"{nameof(GetAggregatedHealthDataByCalendarPeriod)} has no handler for {nameof(CalendarUnit)}.{unit}."),
+            };
+
+            var buckets = await _healthConnectClient.AggregateHealthRecordsByPeriod(
+                recordClassName, metricFieldName, timeRange, period, timeZone, healthDataType, hcUnit);
+
+            _logger.LogInformation("Found {Count} calendar-period buckets for {DtoName}", buckets.Count, typeof(TDto).Name);
+            return new AggregatedIntervalReadResult { Buckets = buckets };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error aggregating health data by calendar period for {DtoName}", typeof(TDto).Name);
             return new AggregatedIntervalReadResult { ErrorException = ex };
         }
     }

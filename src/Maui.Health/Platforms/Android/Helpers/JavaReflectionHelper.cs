@@ -6,6 +6,7 @@ using AndroidX.Health.Connect.Client.Time;
 using Java.Time;
 using Kotlin.Reflect;
 using Maui.Health.Enums;
+using Maui.Health.Extensions;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android.Callbacks;
@@ -662,6 +663,167 @@ internal static class JavaReflectionHelper
         }
 
         return results;
+    }
+
+    /// <summary>
+    /// Aggregates health records grouped by a calendar <see cref="Period"/> using Health
+    /// Connect's <c>aggregateGroupByPeriod()</c> API. Unlike
+    /// <see cref="AggregateHealthRecordsByDuration"/> which walks fixed
+    /// <see cref="TimeSpan"/>-based slots, this path walks calendar days/months/years in
+    /// <paramref name="timeZone"/>, so DST transition days produce 23h or 25h buckets, months
+    /// span 28-31 days, and years span 365/366 — all anchored to local midnight on both sides.
+    /// Caller owns the lifetime of <paramref name="period"/> (don't reuse a disposed instance).
+    /// </summary>
+    internal static async Task<List<AggregatedResult>> AggregateHealthRecordsByPeriod(
+        this IHealthConnectClient healthConnectClient,
+        string recordClassName,
+        string metricFieldName,
+        HealthTimeRange timeRange,
+        Period period,
+        TimeZoneInfo timeZone,
+        HealthDataType dataType,
+        string? unit)
+    {
+        // No try/catch here: the outer service layer (HealthService.GetAggregatedHealthDataByInterval)
+        // is the single error boundary — see AggregateHealthRecordsByDuration for the rationale.
+        var metric = GetAggregateMetric(recordClassName, metricFieldName);
+        if (metric is null)
+        {
+            return [];
+        }
+
+        // Calendar-aware filter: TimeRangeFilter.between(LocalDateTime, LocalDateTime) so
+        // Period boundaries land on the user's wall-clock midnight in `timeZone`. Using the
+        // Instant-based overload would force Health Connect into UTC bucket semantics.
+        var localStartDotnet = TimeZoneInfo.ConvertTime(timeRange.StartTime, timeZone).DateTime;
+        var localEndDotnet = TimeZoneInfo.ConvertTime(timeRange.EndTime, timeZone).DateTime;
+        using var startLdt = LocalDateTime.Of(
+            localStartDotnet.Year, localStartDotnet.Month, localStartDotnet.Day,
+            localStartDotnet.Hour, localStartDotnet.Minute, localStartDotnet.Second);
+        using var endLdt = LocalDateTime.Of(
+            localEndDotnet.Year, localEndDotnet.Month, localEndDotnet.Day,
+            localEndDotnet.Hour, localEndDotnet.Minute, localEndDotnet.Second);
+
+        var timeRangeFilter = TimeRangeFilter.Between(startLdt, endLdt);
+
+        var metricsSet = new Java.Util.HashSet();
+        metricsSet.Add(metric);
+
+        var emptySet = new Java.Util.HashSet();
+
+        var request = AggregateGroupByPeriodRequestReflection.Constructor
+            .NewInstance(metricsSet, timeRangeFilter, period, emptySet);
+        if (request is null)
+        {
+            Debug.WriteLine("Failed to create AggregateGroupByPeriodRequest");
+            return [];
+        }
+
+        var (clientClass, clientObject) = healthConnectClient.GetJniClientObjects();
+        if (clientClass is null || clientObject is null)
+        {
+            return [];
+        }
+
+        var result = await InvokeKotlinSuspendMethod(clientClass, clientObject, "aggregateGroupByPeriod", request);
+        if (result is null)
+        {
+            return [];
+        }
+
+        // Result is a List<AggregationResultGroupedByPeriod>
+        var results = new List<AggregatedResult>();
+
+        if (result is not Java.Util.IList javaList)
+        {
+            return [];
+        }
+
+        var bucketCount = javaList.Size();
+        for (int i = 0; i < bucketCount; i++)
+        {
+            // Each Java.Lang.Object obtained here holds a JNI global ref (GREF). Without
+            // disposing inside the loop, refs accumulate and trigger a stop-the-world full GC
+            // mid-iteration — same root cause as the AggregateHealthRecordsByDuration loop.
+            using var item = javaList.Get(i);
+            if (item is null)
+            {
+                continue;
+            }
+
+            using var startLdtFromBucket = AggregationResultGroupedByPeriodReflection.GetStartTime
+                .Invoke(item) as LocalDateTime;
+            using var endLdtFromBucket = AggregationResultGroupedByPeriodReflection.GetEndTime
+                .Invoke(item) as LocalDateTime;
+
+            using var aggregationResult = AggregationResultGroupedByPeriodReflection.GetResult
+                .Invoke(item);
+            if (aggregationResult is null)
+            {
+                continue;
+            }
+
+            using var value = ExtractAggregateValue(aggregationResult, metric);
+            if (value is null)
+            {
+                continue;
+            }
+
+            double numericValue = 0;
+            if (value is Java.Lang.Number number)
+            {
+                numericValue = number.DoubleValue();
+            }
+            else
+            {
+                numericValue = value.ExtractEnergyValue();
+            }
+
+            var bucketStart = ToDateTimeOffsetInZone(startLdtFromBucket, timeZone, timeRange.StartTime);
+            var bucketEnd = ToDateTimeOffsetInZone(endLdtFromBucket, timeZone, timeRange.EndTime);
+
+            var dataOrigins = ExtractDataOrigins(aggregationResult);
+
+            results.Add(new AggregatedResult
+            {
+                StartTime = bucketStart,
+                EndTime = bucketEnd,
+                Value = numericValue,
+                Unit = unit,
+                DataType = dataType,
+                DataSdk = HealthDataSdk.GoogleHealthConnect,
+                DataOrigins = dataOrigins
+            });
+        }
+
+        return results;
+    }
+
+    /// <summary>
+    /// Converts a Java <see cref="LocalDateTime"/> bucket boundary into a
+    /// <see cref="DateTimeOffset"/> by applying <paramref name="timeZone"/>'s offset at that
+    /// wall-clock moment. Falls back to <paramref name="fallback"/> when the LocalDateTime is
+    /// null (defensive — Health Connect always populates start/end on result buckets).
+    /// </summary>
+    private static DateTimeOffset ToDateTimeOffsetInZone(
+        LocalDateTime? localDateTime,
+        TimeZoneInfo timeZone,
+        DateTimeOffset fallback)
+    {
+        if (localDateTime is null)
+        {
+            return fallback;
+        }
+        var dotnetDateTime = new DateTime(
+            localDateTime.Year,
+            localDateTime.MonthValue,
+            localDateTime.DayOfMonth,
+            localDateTime.Hour,
+            localDateTime.Minute,
+            localDateTime.Second,
+            DateTimeKind.Unspecified);
+        var offset = timeZone.GetUtcOffset(dotnetDateTime);
+        return new DateTimeOffset(dotnetDateTime, offset);
     }
 
     /// <summary>

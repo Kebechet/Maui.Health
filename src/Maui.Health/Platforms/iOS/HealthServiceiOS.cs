@@ -778,13 +778,64 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return GetAggregatedHealthDataByIntervalInternal<TDto>(timeRange, interval, cancellationToken);
+        return GetAggregatedHealthDataByIntervalInternal<TDto>(timeRange, interval, timeZone, cancellationToken);
     }
 
-    private async Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+    private Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        if (interval <= TimeSpan.Zero)
+        {
+            return Task.FromResult(new AggregatedIntervalReadResult
+            {
+                ErrorException = new ArgumentOutOfRangeException(nameof(interval), interval, "Interval must be greater than zero."),
+            });
+        }
+
+        var intervalComponents = new NSDateComponents
+        {
+            Day = (nint)interval.Days,
+            Hour = (nint)interval.Hours,
+            Minute = (nint)interval.Minutes,
+            Second = (nint)interval.Seconds,
+            Nanosecond = (nint)UnitsNet.Duration.FromMilliseconds(interval.Milliseconds).Nanoseconds,
+        };
+
+        return RunStatisticsCollectionQuery<TDto>(timeRange, intervalComponents, timeZone, cancellationToken);
+    }
+
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        if (count <= 0)
+        {
+            return Task.FromResult(new AggregatedIntervalReadResult
+            {
+                ErrorException = new ArgumentOutOfRangeException(nameof(count), count, "Count must be greater than zero."),
+            });
+        }
+
+        // NSDateComponents are calendar-aware on the system calendar: setting Day/Month/Year
+        // makes HKStatisticsCollectionQuery walk that unit at variable wall-clock length
+        // (DST 23h/25h day, 28-31-day month, 365/366-day year) — exactly the variance
+        // TimeSpan can't carry. Week is 7×day on every calendar so we map it to Day rather
+        // than the positional NSDateComponents.WeekOfMonth.
+        var intervalComponents = unit switch
+        {
+            CalendarUnit.Day => new NSDateComponents { Day = (nint)count },
+            CalendarUnit.Week => new NSDateComponents { Day = (nint)(count * 7) },
+            CalendarUnit.Month => new NSDateComponents { Month = (nint)count },
+            CalendarUnit.Year => new NSDateComponents { Year = (nint)count },
+            _ => throw new NotImplementedException($"{nameof(GetAggregatedHealthDataByCalendarPeriod)} has no handler for {nameof(CalendarUnit)}.{unit}."),
+        };
+
+        return RunStatisticsCollectionQuery<TDto>(timeRange, intervalComponents, timeZone, cancellationToken);
+    }
+
+    private async Task<AggregatedIntervalReadResult> RunStatisticsCollectionQuery<TDto>(HealthTimeRange timeRange, NSDateComponents intervalComponents, TimeZoneInfo timeZone, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (!IsSupported)
@@ -811,8 +862,13 @@ public partial class HealthService : IHealthService
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
             var quantityType = HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier())!;
 
+            // Snap the start instant to the calendar-day boundary in `timeZone` so bucket
+            // anchors fall on local midnight. Without this, HKStatisticsCollectionQuery would
+            // anchor every bucket to the caller's StartTime time-of-day, drifting across days.
+            var alignedStart = timeRange.StartTime.SnapToCalendarDayStart(timeZone);
+
             var predicate = HKQuery.GetPredicateForSamples(
-                timeRange.StartTime.ToNSDate(),
+                alignedStart.ToNSDate(),
                 timeRange.EndTime.ToNSDate(),
                 HKQueryOptions.StrictStartDate
             );
@@ -821,27 +877,13 @@ public partial class HealthService : IHealthService
             var unit = GetUnitString(healthDataType);
             var isCumulative = IsCumulativeType(healthDataType);
 
-            if (interval <= TimeSpan.Zero)
-            {
-                throw new ArgumentOutOfRangeException(nameof(interval), interval, "Interval must be greater than zero.");
-            }
-
-            var intervalComponents = new NSDateComponents
-            {
-                Day = (nint)interval.Days,
-                Hour = (nint)interval.Hours,
-                Minute = (nint)interval.Minutes,
-                Second = (nint)interval.Seconds,
-                Nanosecond = (nint)UnitsNet.Duration.FromMilliseconds(interval.Milliseconds).Nanoseconds,
-            };
-
             var tcs = new TaskCompletionSource<AggregatedIntervalReadResult>();
 
             var query = new HKStatisticsCollectionQuery(
                 quantityType,
                 predicate,
                 statisticsOption,
-                timeRange.StartTime.ToNSDate(),
+                alignedStart.ToNSDate(),
                 intervalComponents);
 
             query.InitialResultsHandler = (_, results, error) =>
@@ -861,7 +903,7 @@ public partial class HealthService : IHealthService
                 var aggregatedResults = new List<AggregatedResult>();
 
                 results.EnumerateStatistics(
-                    timeRange.StartTime.ToNSDate(),
+                    alignedStart.ToNSDate(),
                     timeRange.EndTime.ToNSDate(),
                     (statistics, _) =>
                     {
@@ -875,8 +917,14 @@ public partial class HealthService : IHealthService
                         }
 
                         var value = quantity.GetDoubleValue(hkUnit);
-                        var bucketStart = statistics.StartDate.ToDateTimeOffset();
-                        var bucketEnd = statistics.EndDate.ToDateTimeOffset();
+                        // RebaseToZone preserves the absolute instant and rebases the carried
+                        // offset onto `timeZone`. Without it the iOS path returns bucket
+                        // boundaries as UTC `+00:00` because NSDate carries no zone info, so a
+                        // "May 6 CEST midnight" bucket would surface as `2026-05-05 22:00 +0000`
+                        // — same instant, but inconsistent with the Android path that produces
+                        // locally-offset DateTimeOffsets via aggregateGroupByPeriod.
+                        var bucketStart = statistics.StartDate.ToDateTimeOffset().RebaseToZone(timeZone);
+                        var bucketEnd = statistics.EndDate.ToDateTimeOffset().RebaseToZone(timeZone);
                         var dataOrigins = ExtractDataOrigins(statistics);
 
                         aggregatedResults.Add(new AggregatedResult

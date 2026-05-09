@@ -18,6 +18,9 @@
 		<Compile Include="..\..\src\Maui.Health\Extensions\DateRangeExtensions.cs" Link="Shared\DateRangeExtensions.cs" />
 		<Compile Include="..\..\src\Maui.Health\Extensions\HealthTimeRangeChunkingExtensions.cs" Link="Shared\HealthTimeRangeChunkingExtensions.cs" />
 		<Compile Include="..\..\src\Maui.Health\Extensions\MetricDtoExtensions.cs" Link="Shared\MetricDtoExtensions.cs" />
+		<Compile Include="..\..\src\Maui.Health\Extensions\MetricTimestampExtensions.cs" Link="Shared\MetricTimestampExtensions.cs" />
+		<Compile Include="..\..\src\Maui.Health\Extensions\CalendarDayAlignmentExtensions.cs" Link="Shared\CalendarDayAlignmentExtensions.cs" />
+		<Compile Include="..\..\src\Maui.Health\Extensions\AggregationIntervalExtensions.cs" Link="Shared\AggregationIntervalExtensions.cs" />
 		<Compile Include="..\..\src\Maui.Health\Extensions\WorkoutSessionExtensions.cs" Link="Shared\WorkoutSessionExtensions.cs" />
 		<Compile Include="..\..\src\Maui.Health\Models\DateRange.cs" Link="Shared\DateRange.cs" />
 		<Compile Include="..\..\src\Maui.Health\Models\Result.cs" Link="Shared\Result.cs" />

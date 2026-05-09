@@ -72,7 +72,16 @@ public partial class HealthService : IHealthService
         });
     }
 
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+        where TDto : HealthMetricBase
+    {
+        return Task.FromResult(new AggregatedIntervalReadResult
+        {
+            ErrorException = new PlatformNotSupportedException("Health data is not supported on Windows."),
+        });
+    }
+
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult(new AggregatedIntervalReadResult

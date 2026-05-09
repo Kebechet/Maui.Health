@@ -68,11 +68,30 @@ internal static class HKQuantitySampleExtensions
             [HKMetadataKey.SyncVersion] = NSNumber.FromInt32(syncVersion),
         };
 
+    /// <summary>
+    /// Wall-clock <see cref="DateTimeOffset"/> for <paramref name="moment"/> in the sample's
+    /// recording zone (<c>HKMetadataKeyTimeZone</c>). When the metadata is absent — typical for
+    /// older samples or writers that didn't stamp it — the offset falls back to UTC.
+    /// <see cref="NSTimeZone.SecondsFromGMT(NSDate)"/> is queried per-moment so DST transitions
+    /// inside an interval sample are honoured on the start and end independently.
+    /// </summary>
+    private static DateTimeOffset ToRecordingDateTimeOffset(this HKSample sample, NSDate moment)
+    {
+        var utcInstant = moment.ToDateTimeOffset();
+        var timeZone = sample.Metadata?.TimeZone;
+        if(timeZone is null)
+        {
+            return utcInstant;
+        }
+        var offset = TimeSpan.FromSeconds((long)timeZone.SecondsFromGMT(moment));
+        return utcInstant.ToOffset(offset);
+    }
+
     public static StepsDto ToStepsDto(this HKQuantitySample sample)
     {
         var value = sample.Quantity.GetDoubleValue(HKUnit.Count);
-        var startTime = sample.StartDate.ToDateTimeOffset();
-        var endTime = sample.EndDate.ToDateTimeOffset();
+        var startTime = sample.ToRecordingDateTimeOffset(sample.StartDate);
+        var endTime = sample.ToRecordingDateTimeOffset(sample.EndDate);
 
         return new StepsDto
         {
@@ -91,7 +110,7 @@ internal static class HKQuantitySampleExtensions
     {
         var valueInGrams = sample.Quantity.GetDoubleValue(HKUnit.Gram);
         var value = Mass.FromGrams(valueInGrams).Kilograms;
-        var timestamp = sample.StartDate.ToDateTimeOffset();
+        var timestamp = sample.ToRecordingDateTimeOffset(sample.StartDate);
 
         return new WeightDto
         {
@@ -109,7 +128,7 @@ internal static class HKQuantitySampleExtensions
     {
         var valueInMeters = sample.Quantity.GetDoubleValue(HKUnit.Meter);
         var value = Length.FromMeters(valueInMeters).Centimeters;
-        var timestamp = sample.StartDate.ToDateTimeOffset();
+        var timestamp = sample.ToRecordingDateTimeOffset(sample.StartDate);
 
         return new HeightDto
         {
@@ -126,8 +145,8 @@ internal static class HKQuantitySampleExtensions
     public static ActiveCaloriesBurnedDto ToActiveCaloriesBurnedDto(this HKQuantitySample sample)
     {
         var valueInKilocalories = sample.Quantity.GetDoubleValue(HKUnit.Kilocalorie);
-        var startTime = sample.StartDate.ToDateTimeOffset();
-        var endTime = sample.EndDate.ToDateTimeOffset();
+        var startTime = sample.ToRecordingDateTimeOffset(sample.StartDate);
+        var endTime = sample.ToRecordingDateTimeOffset(sample.EndDate);
 
         return new ActiveCaloriesBurnedDto
         {
@@ -146,7 +165,7 @@ internal static class HKQuantitySampleExtensions
     public static HeartRateDto ToHeartRateDto(this HKQuantitySample sample)
     {
         var beatsPerMinute = sample.Quantity.GetDoubleValue(HKUnit.Count.UnitDividedBy(HKUnit.Minute));
-        var timestamp = sample.StartDate.ToDateTimeOffset();
+        var timestamp = sample.ToRecordingDateTimeOffset(sample.StartDate);
 
         return new HeartRateDto
         {
@@ -164,7 +183,7 @@ internal static class HKQuantitySampleExtensions
     {
         var decimalValue = sample.Quantity.GetDoubleValue(HKUnit.Percent); // HKUnit.Percent is 0-1
         var percentage = Ratio.FromDecimalFractions(decimalValue).Percent;
-        var timestamp = sample.StartDate.ToDateTimeOffset();
+        var timestamp = sample.ToRecordingDateTimeOffset(sample.StartDate);
 
         return new BodyFatDto
         {
@@ -181,7 +200,7 @@ internal static class HKQuantitySampleExtensions
     public static Vo2MaxDto ToVo2MaxDto(this HKQuantitySample sample)
     {
         var value = sample.Quantity.GetDoubleValue(HKUnit.FromString(Units.HKVo2Max));
-        var timestamp = sample.StartDate.ToDateTimeOffset();
+        var timestamp = sample.ToRecordingDateTimeOffset(sample.StartDate);
 
         return new Vo2MaxDto
         {

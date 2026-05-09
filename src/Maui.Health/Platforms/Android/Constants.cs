@@ -204,6 +204,20 @@ public static class AndroidConstant
         public const string AggregationResultGroupedByDurationClassName = "androidx.health.connect.client.aggregate.AggregationResultGroupedByDuration";
 
         /// <summary>
+        /// AggregateGroupByPeriodRequest class full name for reflection. Used by Health Connect's
+        /// <c>aggregateGroupByPeriod()</c> calendar-aware aggregator (DST-correct daily buckets).
+        /// </summary>
+        public const string AggregateGroupByPeriodRequestClassName = "androidx.health.connect.client.request.AggregateGroupByPeriodRequest";
+
+        /// <summary>
+        /// AggregationResultGroupedByPeriod class full name for reflection. One element per
+        /// calendar-day bucket returned by <c>aggregateGroupByPeriod()</c>; carries the bucket
+        /// boundaries as <see cref="Java.Time.LocalDateTime"/> rather than
+        /// <see cref="Java.Time.Instant"/>.
+        /// </summary>
+        public const string AggregationResultGroupedByPeriodClassName = "androidx.health.connect.client.aggregate.AggregationResultGroupedByPeriod";
+
+        /// <summary>
         /// DataOrigin class full name for reflection.
         /// </summary>
         public const string DataOriginClassName = "androidx.health.connect.client.records.metadata.DataOrigin";

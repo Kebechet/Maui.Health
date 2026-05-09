@@ -215,9 +215,50 @@ public interface IHealthService
     /// </remarks>
     /// <param name="timeRange">The overall time range to aggregate</param>
     /// <param name="interval">The bucket interval (e.g., <c>TimeSpan.FromDays(1)</c> for daily)</param>
+    /// <param name="timeZone">
+    /// Time zone whose calendar boundaries the buckets align to. Pass <see cref="TimeZoneInfo.Local"/>
+    /// for device-local alignment (typical for fitness/UI apps where "May 1's steps" should match the
+    /// user's wall clock), <see cref="TimeZoneInfo.Utc"/> for a globally stable axis (research, audit,
+    /// cross-TZ aggregation), or any other <see cref="TimeZoneInfo"/> for fixed-zone alignment
+    /// (e.g. user's home zone resolved server-side). The first bucket starts at the calendar-day
+    /// boundary in <paramref name="timeZone"/> at or before <c>timeRange.StartTime</c>; subsequent
+    /// buckets follow at <paramref name="interval"/> steps. Without alignment, buckets would start
+    /// at whatever moment <c>timeRange.StartTime</c> happens to be, drifting across calendar days.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token</param>
     [Experimental("MH004")]
-    Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, CancellationToken cancellationToken = default)
+    Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken = default)
+        where TDto : HealthMetricBase;
+
+    /// <summary>
+    /// Get aggregated health data bucketed by a calendar unit (day, week, month, year).
+    /// Unlike <see cref="GetAggregatedHealthDataByInterval{TDto}"/> which uses fixed-length
+    /// <see cref="TimeSpan"/> buckets, this path walks the system calendar — buckets respect
+    /// DST (23h / 25h day on transition days), variable month length (28-31 days), and leap
+    /// years (365 / 366 days). Use this when the buckets need to align to wall-clock months
+    /// or years that <see cref="TimeSpan"/> can't faithfully represent.
+    /// </summary>
+    /// <remarks>
+    /// <para>For days and weeks, this method and <see cref="GetAggregatedHealthDataByInterval{TDto}"/>
+    /// with <see cref="TimeSpan.FromDays(double)"/> produce equivalent buckets — both route to
+    /// the platform's calendar-aware path. For months and years there is no equivalent on the
+    /// interval method because <see cref="TimeSpan"/> has no calendar concept.</para>
+    /// <para>Bucket boundaries anchor to the wall-clock day-of-month / month-of-year of
+    /// <paramref name="timeRange"/>'s start in <paramref name="timeZone"/>. Examples for a
+    /// range starting May 14: <see cref="CalendarUnit.Month"/>+1 produces buckets
+    /// May 14 → June 14 → July 14 …; <see cref="CalendarUnit.Year"/>+1 produces May 14 →
+    /// next-year May 14.</para>
+    /// </remarks>
+    /// <param name="timeRange">The overall time range to aggregate</param>
+    /// <param name="unit">Calendar unit for bucketing (Day, Week, Month, Year)</param>
+    /// <param name="count">Number of <paramref name="unit"/>s per bucket. Must be positive.</param>
+    /// <param name="timeZone">
+    /// Time zone whose calendar boundaries the buckets align to. See the equivalent parameter
+    /// on <see cref="GetAggregatedHealthDataByInterval{TDto}"/> for the rationale.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    [Experimental("MH004")]
+    Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <summary>
