@@ -43,13 +43,9 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>4.0.0-preview.9</Version>
+    <Version>4.0.0-preview.10</Version>
     <PackageReleaseNotes>
-• FIXED: Read DTOs now carry the recording-time offset on Timestamp/StartTime/EndTime — previously every read returned a UTC offset, so a record taken at midnight CEST surfaced as 22:00 the previous day to consumers reading .DateTime.
-• CHANGED: GetAggregatedHealthDataByInterval now requires a TimeZoneInfo parameter; bucket boundaries align to calendar-day starts in that zone, eliminating sync-time-of-day drift that caused "May 1" rows to actually count steps from 22:39 May 1 to 22:39 May 2.
-• FIXED: Daily aggregates on Android use aggregateGroupByPeriod (calendar-aware) for whole-day-multiple intervals, so DST transition days produce correct 23h/25h buckets anchored to local midnight on both sides; sub-day intervals still use the fixed-Duration path.
-• FIXED: iOS aggregate bucket StartTime/EndTime now carry the caller's time-zone offset instead of UTC +00:00, matching the Android path so consumers see "2026-05-06 00:00 +02:00" rather than "2026-05-05 22:00 +00:00" for the same instant.
-• ADDED: GetAggregatedHealthDataByCalendarPeriod&lt;TDto&gt;(HealthTimeRange, CalendarUnit, int count, TimeZoneInfo, ct) for variable-length calendar units (Day, Week, Month, Year). Uses java.time.Period on Android and NSDateComponents on iOS for true calendar-month / calendar-year aggregation that TimeSpan can't express.
+• FIXED: Wide-window daily aggregation on Android no longer throws "Number of groups must not exceed 5000" when the requested range crosses a net DST shift (e.g. 1970-01-01 to today in Europe/Prague). The chunker now reserves one bucket of headroom because the period-dispatch path counts calendar days, not fixed 24h slots.
     </PackageReleaseNotes>
   </PropertyGroup>
 
