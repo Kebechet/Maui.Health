@@ -178,6 +178,65 @@ public class HealthTimeRangeChunkingTests
     }
 
     [Fact]
+    public void SplitIntoChunks_FiveThousandDayChunk_Overflows5000CalendarDaysInDstZone()
+    {
+        // Reproduces SATISFIT-APP-5Q. The chunker walks fixed 24-hour slots, but Health Connect's
+        // aggregateGroupByPeriod counts *calendar* days in the request timezone. Anchored at
+        // local midnight in a DST zone, a 5000 fixed-day chunk lands at local-midnight+1h after a
+        // net DST shift — Health Connect interprets that as 5001 calendar groups and throws
+        // "Number of groups must not exceed 5000".
+
+        // Arrange — 1970-01-01 00:00 Europe/Prague (CET, +01:00). 5000 fixed days later we land
+        // in September 1983 with DST active (CEST, +02:00), so the local clock shows 01:00 — one
+        // calendar boundary past local midnight.
+        var prague = TimeZoneInfo.FindSystemTimeZoneById("Europe/Prague");
+        var startLocal = new DateTime(1970, 1, 1, 0, 0, 0);
+        var start = new DateTimeOffset(startLocal, prague.GetUtcOffset(startLocal));
+        var range = HealthTimeRange.FromDateTimeOffset(start, start.AddDays(20000));
+
+        // Act
+        var firstChunk = range.SplitIntoChunks(TimeSpan.FromDays(1), maxBucketsPerCall: 5000).First();
+
+        // Assert
+        var calendarDays = CountCalendarDaysInZone(firstChunk, prague);
+        Assert.Equal(5001, calendarDays);
+    }
+
+    [Fact]
+    public void SplitIntoChunks_With4999DayChunkInDstZone_StaysWithin5000CalendarDays()
+    {
+        // The fix for SATISFIT-APP-5Q: passing 4999 reserves one bucket of headroom. DST always
+        // shifts by ±1 hour, so worst-case net drift inside a chunk pushes calendar-day count up
+        // by at most one — 4999 + 1 = 5000 ≤ Health Connect's ceiling.
+
+        // Arrange
+        var prague = TimeZoneInfo.FindSystemTimeZoneById("Europe/Prague");
+        var startLocal = new DateTime(1970, 1, 1, 0, 0, 0);
+        var start = new DateTimeOffset(startLocal, prague.GetUtcOffset(startLocal));
+        var range = HealthTimeRange.FromDateTimeOffset(start, start.AddDays(20000));
+
+        // Act
+        var chunks = range.SplitIntoChunks(TimeSpan.FromDays(1), maxBucketsPerCall: 4999).ToList();
+
+        // Assert
+        foreach (var chunk in chunks)
+        {
+            var calendarDays = CountCalendarDaysInZone(chunk, prague);
+            Assert.True(calendarDays <= 5000, $"Chunk {chunk.StartTime:o}..{chunk.EndTime:o} spans {calendarDays} calendar days in Europe/Prague; must fit Health Connect's 5000-group ceiling.");
+        }
+    }
+
+    private static int CountCalendarDaysInZone(HealthTimeRange chunk, TimeZoneInfo timeZone)
+    {
+        var localStart = TimeZoneInfo.ConvertTime(chunk.StartTime, timeZone);
+        var localEnd = TimeZoneInfo.ConvertTime(chunk.EndTime, timeZone);
+        var fullDays = (localEnd.Date - localStart.Date).Days;
+        // A non-midnight local end means the platform has to allocate a partial group on top of
+        // the full days — same accounting aggregateGroupByPeriod uses internally.
+        return fullDays + (localEnd.TimeOfDay > TimeSpan.Zero ? 1 : 0);
+    }
+
+    [Fact]
     public void SplitIntoChunks_NonPositiveCeiling_Throws()
     {
         // Arrange

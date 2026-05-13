@@ -618,17 +618,20 @@ public partial class HealthService : IHealthService
     }
 
     /// <summary>
-    /// Maximum number of buckets Health Connect's <c>aggregateGroupByDuration</c> accepts in a
-    /// single call. Requests over this ceiling fail at runtime with:
-    /// <code>
-    /// android.health.connect.HealthConnectException:
-    ///   java.lang.IllegalArgumentException: Number of buckets must not exceed 5000
-    /// </code>
-    /// The limit isn't in the SDK docs — it only surfaces as a runtime exception. Confirmed
-    /// against AOSP source:
+    /// Undocumented Health Connect ceiling on aggregation bucket / group count per call. Surfaces
+    /// as <c>IllegalArgumentException: Number of buckets must not exceed 5000</c> for
+    /// <c>aggregateGroupByDuration</c> and <c>...Number of groups must not exceed 5000</c> for
+    /// <c>aggregateGroupByPeriod</c>. AOSP:
     /// https://cs.android.com/android/platform/superproject/main/+/main:packages/modules/HealthFitness/framework/java/android/health/connect/aggregate/AggregateRecordsRequest.java
     /// </summary>
     private const int HealthConnectMaxBucketsPerCall = 5000;
+
+    /// <summary>
+    /// One bucket of headroom for the period-dispatch path, where DST drift can push a
+    /// fixed-time chunk one calendar day past the ceiling. See
+    /// <c>HealthTimeRangeChunkingTests.SplitIntoChunks_FiveThousandDayChunk_Overflows5000CalendarDaysInDstZone</c>.
+    /// </summary>
+    private const int SafeChunkBucketCount = HealthConnectMaxBucketsPerCall - 1;
 
     private async Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
@@ -678,7 +681,7 @@ public partial class HealthService : IHealthService
             // Wide windows are split into ≤5000-bucket sub-calls so the platform never sees a
             // request that would trip its bucket ceiling. Concatenating the per-chunk results in
             // order produces the same bucket sequence the un-chunked call would have returned.
-            var chunks = alignedTimeRange.SplitIntoChunks(interval, HealthConnectMaxBucketsPerCall);
+            var chunks = alignedTimeRange.SplitIntoChunks(interval, SafeChunkBucketCount);
             var buckets = new List<AggregatedResult>();
 
             // Dispatch: whole-day-multiple intervals route through aggregateGroupByPeriod so
