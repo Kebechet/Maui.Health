@@ -43,9 +43,34 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>4.0.0-preview.10</Version>
+    <Version>4.0.0</Version>
     <PackageReleaseNotes>
-• FIXED: Wide-window daily aggregation on Android no longer throws "Number of groups must not exceed 5000" when the requested range crosses a net DST shift (e.g. 1970-01-01 to today in Europe/Prague). The chunker now reserves one bucket of headroom because the period-dispatch path counts calendar days, not fixed 24h slots.
+v4.0.0 — major release. Full write/update/delete support, native aggregation, change tracking, and Result-based error handling across the API.
+
+BREAKING CHANGES
+• GetHealthData now returns HealthDataReadResult&lt;TDto&gt; instead of List&lt;TDto&gt;, so a failed platform call (Result.IsError) is no longer indistinguishable from "no records". Read the records off Result on success.
+• WriteHealthData now returns WriteHealthDataResult instead of bool (#44), carrying typed errors and the platform-assigned record IDs.
+• HealthTimeRange: removed the redundant date/time properties.
+
+NEW
+• Bulk write: WriteHealthData(IList&lt;TDto&gt;) writes in a single platform call and returns record IDs 1:1 with the input, so app-authored records link to their native counterpart without a reconciling read.
+• UpdateHealthData (#45) — in-place update on Android (Health Connect updateRecords) and atomic sync-identifier replacement on iOS (HealthKit), with typed iOS-only failure modes. [Experimental MH007]
+• DeleteHealthData — delete an app-authored record by ID. [Experimental MH002]
+• GetHealthRecord — fetch a single record by platform ID. [Experimental MH001]
+• Native aggregation: GetAggregatedHealthData, GetAggregatedHealthDataByInterval (TimeSpan buckets, time-zone aligned), and GetAggregatedHealthDataByCalendarPeriod (calendar-aware day/week/month/year buckets respecting DST, variable month length, and leap years). Uses platform-native aggregation that deduplicates across health apps. [Experimental MH003/MH004]
+• Change tracking: GetChangesToken / GetChanges for delta sync of upserts and deletions. [Experimental MH005/MH006]
+• GetPermissionStatuses — per-permission authorization status without triggering the permission UI.
+• GetEarliestAccessibleDateTime — earliest UTC date reads are currently allowed from, abstracting per-platform history rules.
+• Write DTOs via IHealthWritable, plus unit-aware conversions (unit enums and conversion constants) for both read and write.
+• Live workout tracking via the Activity service: pause/resume and automatic duplicate detection.
+
+FIXES &amp; IMPROVEMENTS
+• Unified DataOrigin value across platforms (#48).
+• iOS measurement update (#47).
+• Android: faster and more correct reflection resolving, fixed a potential lookup/search miss, and reduced minor perf overhead.
+• Wide-window daily aggregation on Android no longer throws "Number of groups must not exceed 5000" when the requested range crosses a net DST shift (e.g. 1970-01-01 to today in Europe/Prague). The chunker now reserves one bucket of headroom because the period-dispatch path counts calendar days, not fixed 24h slots (#53).
+• Fixed disposal of hanging references and a crash when calling health methods through Task.Run.
+• Error swallowing fixed — runtime failures now surface through the Result types instead of being silently dropped.
     </PackageReleaseNotes>
   </PropertyGroup>
 
