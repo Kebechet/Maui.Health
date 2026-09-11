@@ -65,6 +65,18 @@ Then setup all [Android and iOS necessities](https://github.com/Kebechet/Maui.He
       ```
       This is required on Android 11–13 due to [package visibility filtering](https://developer.android.com/training/package-visibility). Without it, `getSdkStatus()` cannot detect Health Connect even when it's installed, causing permission requests to silently fail. On Android 14+ Health Connect is a system service so this isn't strictly needed, but it does no harm.
     - change of min. Android version to v26
+    - reading while the app is **not in the foreground** needs one more permission, which this library
+      deliberately does not declare — permissions are the consuming app's to own, and Google Play holds
+      the app accountable for them:
+      ```xml
+      <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND"/>
+      ```
+      Declaring it is not enough on its own: Health Connect permissions are granted at runtime, so also
+      pass `canRequestBackgroundReadPermission: true` to `RequestPermissions`. The request is skipped
+      automatically on devices whose Health Connect version does not support the feature. Without both
+      halves, a read or aggregate that lands after the app leaves the foreground fails with
+      `SecurityException: … must be in foreground`. See
+      [background reads](https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#background-reads).
 - iOS (3)  [docs](https://learn.microsoft.com/en-us/previous-versions/xamarin/ios/platform/healthkit), [docs2](https://developer.apple.com/documentation/healthkit)
     - generating new provisioning profile containing HealthKit permissions. These permissions are changed in [Identifiers](https://developer.apple.com/account/resources/identifiers/list)
     - adding `Entitlements.plist`

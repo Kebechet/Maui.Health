@@ -29,7 +29,7 @@ public partial class HealthService : IHealthService
 
     private IHealthConnectClient _healthConnectClient => HealthConnectClient.GetOrCreate(_activityContext);
 
-    public async partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, CancellationToken cancellationToken)
+    public async partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, bool canRequestBackgroundReadPermission, CancellationToken cancellationToken)
     {
         try
         {
@@ -58,6 +58,15 @@ public partial class HealthService : IHealthService
             {
                 //https://developer.android.com/health-and-fitness/guides/health-connect/plan/data-types#alpha10
                 permissionsToGrant.Add(AndroidConstant.FullHistoryReadPermission);
+            }
+
+            // Gated on the device feature rather than requested unconditionally: on a Health Connect
+            // version that does not know this permission, asking for it puts a string into the request
+            // the user can never satisfy, which leaves missingPermissions non-empty forever and
+            // re-opens the system dialog on every call.
+            if (canRequestBackgroundReadPermission && _healthConnectClient.IsBackgroundReadSupported())
+            {
+                permissionsToGrant.Add(AndroidConstant.BackgroundReadPermission);
             }
 
             var grantedPermissions = await KotlinResolver.ProcessList<Java.Lang.String>(_healthConnectClient.PermissionController.GetGrantedPermissions);
@@ -233,7 +242,7 @@ public partial class HealthService : IHealthService
             if (shouldCheckPermissions)
             {
                 var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-                var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
+                var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
                     return new HealthDataReadResult<TDto>
@@ -290,7 +299,7 @@ public partial class HealthService : IHealthService
             if (shouldCheckPermissions)
             {
                 var requiredPermission = MetricDtoExtensions.GetRequiredWritePermission<TDto>();
-                var requestPermissionResult = await RequestPermissions([requiredPermission], false, cancellationToken);
+                var requestPermissionResult = await RequestPermissions([requiredPermission], cancellationToken: cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
                     return new WriteHealthDataResult
@@ -356,7 +365,7 @@ public partial class HealthService : IHealthService
             if (shouldCheckPermissions)
             {
                 var requiredPermission = MetricDtoExtensions.GetRequiredWritePermission<TDto>();
-                var requestPermissionResult = await RequestPermissions([requiredPermission], false, cancellationToken);
+                var requestPermissionResult = await RequestPermissions([requiredPermission], cancellationToken: cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
                     return new UpdateHealthDataResult
@@ -423,7 +432,7 @@ public partial class HealthService : IHealthService
             if (shouldCheckPermissions)
             {
                 var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-                var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
+                var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
                     return new HealthRecordReadResult<TDto>
@@ -475,7 +484,7 @@ public partial class HealthService : IHealthService
                     HealthDataType = readPermission.HealthDataType,
                     PermissionType = PermissionType.Write
                 };
-                var requestPermissionResult = await RequestPermissions([writePermission], false, cancellationToken);
+                var requestPermissionResult = await RequestPermissions([writePermission], cancellationToken: cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
                     return false;
@@ -527,7 +536,7 @@ public partial class HealthService : IHealthService
             }
 
             var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
+            var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
             if (requestPermissionResult.IsError)
             {
                 return new AggregatedReadResult
@@ -647,7 +656,7 @@ public partial class HealthService : IHealthService
             }
 
             var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
+            var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
             if (requestPermissionResult.IsError)
             {
                 return new AggregatedIntervalReadResult
@@ -690,7 +699,7 @@ public partial class HealthService : IHealthService
             // 1-hour drift the fixed-Duration path would accumulate after spring-forward).
             // Sub-day intervals (1h, 15min, etc.) keep the Duration path because Period only
             // supports day/week/month/year units.
-            if(interval.TryGetWholeDayCount(out var days))
+            if (interval.TryGetWholeDayCount(out var days))
             {
                 using var period = Period.OfDays(days)!;
                 foreach (var chunk in chunks)
@@ -744,7 +753,7 @@ public partial class HealthService : IHealthService
             }
 
             var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var requestPermissionResult = await RequestPermissions([permission], false, cancellationToken);
+            var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
             if (requestPermissionResult.IsError)
             {
                 return new AggregatedIntervalReadResult
@@ -808,7 +817,7 @@ public partial class HealthService : IHealthService
                 .Select(dt => new HealthPermissionDto { HealthDataType = dt, PermissionType = PermissionType.Read })
                 .ToList();
 
-            var requestPermissionResult = await RequestPermissions(permissions, false, cancellationToken);
+            var requestPermissionResult = await RequestPermissions(permissions, cancellationToken: cancellationToken);
             if (requestPermissionResult.IsError)
             {
                 return new ChangesTokenResult

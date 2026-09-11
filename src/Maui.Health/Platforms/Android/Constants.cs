@@ -26,6 +26,14 @@ public static class AndroidConstant
     public const string FullHistoryReadPermission = "android.permission.health.READ_HEALTH_DATA_HISTORY";
 
     /// <summary>
+    /// Permission for reading health data while the app is not in the foreground. Without it Health
+    /// Connect rejects reads and aggregates made from the background with a SecurityException, which
+    /// a delayed or resumed sync can hit without ever intending to run in the background.
+    /// https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#background-reads
+    /// </summary>
+    public const string BackgroundReadPermission = "android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND";
+
+    /// <summary>
     /// Prefix for all Health Connect permission strings.
     /// Used to detect whether any health permission is currently granted.
     /// </summary>
