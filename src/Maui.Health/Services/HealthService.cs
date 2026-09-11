@@ -26,13 +26,13 @@ public partial class HealthService : IHealthService
     }
 
     /// <inheritdoc/>
-    public Task<RequestPermissionResult> RequestPermission(HealthPermissionDto healthPermission, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default)
+    public Task<RequestPermissionResult> RequestPermission(HealthPermissionDto healthPermission, bool canRequestFullHistoryPermission = false, bool canRequestBackgroundReadPermission = false, CancellationToken cancellationToken = default)
     {
-        return RequestPermissions([healthPermission], canRequestFullHistoryPermission, cancellationToken);
+        return RequestPermissions([healthPermission], canRequestFullHistoryPermission, canRequestBackgroundReadPermission, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
+    public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, bool canRequestBackgroundReadPermission = false, CancellationToken cancellationToken = default);
 
     /// <inheritdoc/>
     public partial Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken = default);

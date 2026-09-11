@@ -20,11 +20,14 @@ public partial class HealthService : IHealthService
 
     /// <inheritdoc/>
     /// <remarks>
-    /// iOS has full history permission by default (canRequestFullHistoryPermission is ignored).
+    /// iOS has full history permission by default (canRequestFullHistoryPermission is ignored), and
+    /// HealthKit reads need no separate background grant (canRequestBackgroundReadPermission is
+    /// ignored) - background delivery is arranged per query type, not by a permission.
     /// </remarks>
     public async partial Task<RequestPermissionResult> RequestPermissions(
         IList<HealthPermissionDto> healthPermissions,
         bool canRequestFullHistoryPermission,
+        bool canRequestBackgroundReadPermission,
         CancellationToken cancellationToken)
     {
         if (!IsSupported)

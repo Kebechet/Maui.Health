@@ -26,7 +26,12 @@ public interface IHealthService
     /// <summary>
     /// Request a single health permission
     /// </summary>
-    Task<RequestPermissionResult> RequestPermission(HealthPermissionDto healthPermission, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
+    /// <param name="canRequestBackgroundReadPermission">
+    /// Android only, ignored elsewhere. Adds the background-read permission to the request when the
+    /// device supports it, so reads made while the app is not in the foreground are not rejected.
+    /// The consuming app must declare it in its own manifest; this library ships no manifest.
+    /// </param>
+    Task<RequestPermissionResult> RequestPermission(HealthPermissionDto healthPermission, bool canRequestFullHistoryPermission = false, bool canRequestBackgroundReadPermission = false, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Request multiple health permissions.
@@ -34,7 +39,12 @@ public interface IHealthService
     /// due to Apple's privacy design — see <see cref="RequestPermissionResult"/> for details.
     /// For a per-permission breakdown, use <see cref="GetPermissionStatuses"/> after this call.
     /// </summary>
-    Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, CancellationToken cancellationToken = default);
+    /// <param name="canRequestBackgroundReadPermission">
+    /// Android only, ignored elsewhere. Adds the background-read permission to the request when the
+    /// device supports it, so reads made while the app is not in the foreground are not rejected.
+    /// The consuming app must declare it in its own manifest; this library ships no manifest.
+    /// </param>
+    Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, bool canRequestBackgroundReadPermission = false, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get the current authorization status of the specified health permissions without triggering the permission UI.

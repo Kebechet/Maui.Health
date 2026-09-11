@@ -9,7 +9,7 @@ public partial class HealthService : IHealthService
 {
     public partial bool IsSupported => false;
 
-    public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, CancellationToken cancellationToken)
+    public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, bool canRequestBackgroundReadPermission, CancellationToken cancellationToken)
     {
         return Task.FromResult(new RequestPermissionResult());
     }
