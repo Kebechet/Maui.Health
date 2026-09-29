@@ -21,6 +21,11 @@ public static class Units
     public const string Gram = "g";
 
     /// <summary>
+    /// Milligram unit label.
+    /// </summary>
+    public const string Milligram = "mg";
+
+    /// <summary>
     /// Centimeter unit label.
     /// </summary>
     public const string Centimeter = "cm";
