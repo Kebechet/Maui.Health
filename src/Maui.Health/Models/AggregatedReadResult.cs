@@ -1,3 +1,4 @@
+using Maui.Health.Enums.Errors;
 using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Models;
@@ -15,9 +16,11 @@ namespace Maui.Health.Models;
 ///
 /// <para>Failure (<see cref="Result.IsError"/> true) means the aggregation call itself failed
 /// — check <see cref="Result.ErrorException"/> for the reason. Callers should not treat a
-/// failed aggregation as "no data."</para>
+/// failed aggregation as "no data." An aggregation refused because the app is in the background
+/// sets <see cref="Result{TError}.Error"/> to
+/// <see cref="ReadHealthDataError.BackgroundReadNotPermitted"/>.</para>
 /// </remarks>
-public class AggregatedReadResult : Result
+public class AggregatedReadResult : Result<ReadHealthDataError>
 {
     /// <summary>
     /// The single aggregate value for the window, or null if there was nothing to aggregate

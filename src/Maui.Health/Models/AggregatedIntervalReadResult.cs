@@ -1,3 +1,4 @@
+using Maui.Health.Enums.Errors;
 using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Models;
@@ -16,13 +17,15 @@ namespace Maui.Health.Models;
 /// Android Health Connect include permission denial and SDK unavailability; on iOS HealthKit,
 /// authorization and query-level failures. In all failure cases <see cref="Buckets"/> is
 /// empty. The 5000-bucket-per-call ceiling on Health Connect's <c>aggregateGroupByDuration</c>
-/// is handled internally by chunking — it does not surface here.</para>
+/// is handled internally by chunking — it does not surface here. An aggregation refused because
+/// the app is in the background sets <see cref="Result{TError}.Error"/> to
+/// <see cref="ReadHealthDataError.BackgroundReadNotPermitted"/>.</para>
 ///
 /// <para>This distinction matters for sync orchestration: callers should not treat a failed
 /// read as "no data" and advance their sync watermark — the underlying data may still be
 /// there and retrievable on a subsequent, narrower call.</para>
 /// </remarks>
-public class AggregatedIntervalReadResult : Result
+public class AggregatedIntervalReadResult : Result<ReadHealthDataError>
 {
     /// <summary>
     /// The aggregated buckets returned by the platform. Empty on failure; may also be

@@ -1,3 +1,4 @@
+using Maui.Health.Enums.Errors;
 using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Models;
@@ -14,14 +15,15 @@ namespace Maui.Health.Models;
 /// <para>Failure: <see cref="Result.IsError"/> is <c>true</c> and
 /// <see cref="Result.ErrorException"/> carries the platform exception (permission denial,
 /// SDK unavailable, platform query error, cancellation). In all failure cases
-/// <see cref="Records"/> is empty.</para>
+/// <see cref="Records"/> is empty. A read refused because the app is in the background sets
+/// <see cref="Result{TError}.Error"/> to <see cref="ReadHealthDataError.BackgroundReadNotPermitted"/>.</para>
 ///
 /// <para>This distinction matters for sync orchestration: callers should not treat a failed
 /// read as "no data" and advance a sync watermark — the data may still be there and
 /// retrievable on a subsequent call.</para>
 /// </remarks>
 /// <typeparam name="TDto">The type of health metric DTO requested.</typeparam>
-public class HealthDataReadResult<TDto> : Result
+public class HealthDataReadResult<TDto> : Result<ReadHealthDataError>
     where TDto : HealthMetricBase
 {
     /// <summary>

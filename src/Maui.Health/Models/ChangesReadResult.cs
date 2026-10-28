@@ -1,3 +1,5 @@
+using Maui.Health.Enums.Errors;
+
 namespace Maui.Health.Models;
 
 /// <summary>
@@ -10,9 +12,11 @@ namespace Maui.Health.Models;
 /// <see cref="Services.IHealthService.GetChangesToken(System.Collections.Generic.IList{Enums.HealthDataType}, System.Threading.CancellationToken)"/>.</para>
 ///
 /// <para>Failure (<see cref="Result.IsError"/> true) means the platform call itself failed;
-/// check <see cref="Result.ErrorException"/>.</para>
+/// check <see cref="Result.ErrorException"/>. A read refused because the app is in the
+/// background sets <see cref="Result{TError}.Error"/> to
+/// <see cref="ReadHealthDataError.BackgroundReadNotPermitted"/>.</para>
 /// </remarks>
-public class ChangesReadResult : Result
+public class ChangesReadResult : Result<ReadHealthDataError>
 {
     /// <summary>
     /// The changes payload, or null when the token was invalid/expired. Always null on

@@ -3,6 +3,7 @@ using AndroidX.Health.Connect.Client;
 using AndroidX.Health.Connect.Client.Records;
 using Maui.Health.Constants;
 using Maui.Health.Enums;
+using Maui.Health.Enums.Errors;
 using Maui.Health.Extensions;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
@@ -36,6 +37,11 @@ public partial class HealthWorkoutService
             _logger.LogInformation("Android HealthWorkoutService Read: StartTime: {StartTime}, EndTime: {EndTime}",
                 activityTime.StartTime, activityTime.EndTime);
 
+            if (BackgroundReadGuard.IsReadBlocked(_logger, $"{nameof(HealthWorkoutService)}.{nameof(Read)}"))
+            {
+                return new WorkoutReadResult { Error = ReadHealthDataError.BackgroundReadNotPermitted };
+            }
+
             var recordClass = Kotlin.Jvm.JvmClassMappingKt.GetKotlinClass(
                 Java.Lang.Class.FromType(typeof(ExerciseSessionRecord)));
 
@@ -66,6 +72,15 @@ public partial class HealthWorkoutService
 
             _logger.LogInformation("Android HealthWorkoutService: Found {Count} workout records", results.Count);
             return new WorkoutReadResult { Workouts = results };
+        }
+        catch (Exception ex) when (ex.IsBackgroundReadRefusal())
+        {
+            BackgroundReadGuard.LogRefusal(_logger, ex, $"{nameof(HealthWorkoutService)}.{nameof(Read)}");
+            return new WorkoutReadResult
+            {
+                Error = ReadHealthDataError.BackgroundReadNotPermitted,
+                ErrorException = ex,
+            };
         }
         catch (Exception ex)
         {
