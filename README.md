@@ -75,7 +75,7 @@ Then setup all [Android and iOS necessities](https://github.com/Kebechet/Maui.He
       pass `canRequestBackgroundReadPermission: true` to `RequestPermissions`. The request is skipped
       automatically on devices whose Health Connect version does not support the feature. Without both
       halves, Health Connect refuses a read or aggregate that lands after the app leaves the foreground,
-      so the library skips it and returns a failed result with
+      and the library returns a failed result with
       `Error = ReadHealthDataError.BackgroundReadNotPermitted`; retry once the app is in the foreground. See
       [background reads](https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#background-reads).
 - iOS (3)  [docs](https://learn.microsoft.com/en-us/previous-versions/xamarin/ios/platform/healthkit), [docs2](https://developer.apple.com/documentation/healthkit)

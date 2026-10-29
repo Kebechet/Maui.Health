@@ -51,7 +51,7 @@ NEW
 • Read results carry a typed Error (#58): ReadHealthDataError.BackgroundReadNotPermitted marks a read Health Connect refuses while the app is in the background.
 
 CHANGED
-• Android (#58): reads, aggregates, GetChanges and workout reads are skipped in the background without READ_HEALTH_DATA_IN_BACKGROUND, instead of failing with a logged SecurityException.
+• Android (#58): a read Health Connect refuses or limits in the background returns BackgroundReadNotPermitted and is logged as information, not as an error.
 
 PREVIOUS RELEASE — v5.0.0: the Health Connect background-read permission can now be requested.
 

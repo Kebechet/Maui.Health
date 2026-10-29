@@ -226,15 +226,11 @@ public partial class HealthService : IHealthService
     private async Task<HealthDataReadResult<TDto>> GetHealthDataInternal<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
+        var operationName = $"{nameof(GetHealthData)}<{typeof(TDto).Name}>";
         try
         {
             _logger.LogInformation("Android GetHealthDataAsync<{DtoName}>: StartTime: {StartTime}, EndTime: {EndTime}",
                 typeof(TDto).Name, timeRange.StartTime, timeRange.EndTime);
-
-            if (BackgroundReadGuard.IsReadBlocked(_logger, $"{nameof(GetHealthData)}<{typeof(TDto).Name}>"))
-            {
-                return new HealthDataReadResult<TDto> { Error = ReadHealthDataError.BackgroundReadNotPermitted };
-            }
 
             if (!_sdkStatus.IsSuccess)
             {
@@ -271,19 +267,19 @@ public partial class HealthService : IHealthService
                 };
             }
 
+            if (BackgroundRead.IsReadPossiblyIncomplete(_healthConnectClient))
+            {
+                return BackgroundRead.ToRefusedResult<HealthDataReadResult<TDto>>(_logger, operationName);
+            }
+
             var results = response.Records.ToDtoList<TDto>();
 
             _logger.LogInformation("Found {Count} {DtoName} records", results.Count, typeof(TDto).Name);
             return new HealthDataReadResult<TDto> { Records = results };
         }
-        catch (Exception ex) when (ex.IsBackgroundReadRefusal())
+        catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
         {
-            BackgroundReadGuard.LogRefusal(_logger, ex, $"{nameof(GetHealthData)}<{typeof(TDto).Name}>");
-            return new HealthDataReadResult<TDto>
-            {
-                Error = ReadHealthDataError.BackgroundReadNotPermitted,
-                ErrorException = ex,
-            };
+            return BackgroundRead.ToRefusedResult<HealthDataReadResult<TDto>>(_logger, operationName, ex);
         }
         catch (Exception ex)
         {
@@ -433,13 +429,9 @@ public partial class HealthService : IHealthService
     private async Task<HealthRecordReadResult<TDto>> GetHealthRecordInternal<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
+        var operationName = $"{nameof(GetHealthRecord)}<{typeof(TDto).Name}>";
         try
         {
-            if (BackgroundReadGuard.IsReadBlocked(_logger, $"{nameof(GetHealthRecord)}<{typeof(TDto).Name}>"))
-            {
-                return new HealthRecordReadResult<TDto> { Error = ReadHealthDataError.BackgroundReadNotPermitted };
-            }
-
             if (!_sdkStatus.IsSuccess)
             {
                 return new HealthRecordReadResult<TDto>
@@ -470,14 +462,9 @@ public partial class HealthService : IHealthService
             // Null Record on success = platform confirmed no such record (not an error).
             return new HealthRecordReadResult<TDto> { Record = record?.ToDto<TDto>() };
         }
-        catch (Exception ex) when (ex.IsBackgroundReadRefusal())
+        catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
         {
-            BackgroundReadGuard.LogRefusal(_logger, ex, $"{nameof(GetHealthRecord)}<{typeof(TDto).Name}>");
-            return new HealthRecordReadResult<TDto>
-            {
-                Error = ReadHealthDataError.BackgroundReadNotPermitted,
-                ErrorException = ex,
-            };
+            return BackgroundRead.ToRefusedResult<HealthRecordReadResult<TDto>>(_logger, operationName, ex);
         }
         catch (Exception ex)
         {
@@ -553,13 +540,9 @@ public partial class HealthService : IHealthService
     private async Task<AggregatedReadResult> GetAggregatedHealthDataInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
+        var operationName = $"{nameof(GetAggregatedHealthData)}<{typeof(TDto).Name}>";
         try
         {
-            if (BackgroundReadGuard.IsReadBlocked(_logger, $"{nameof(GetAggregatedHealthData)}<{typeof(TDto).Name}>"))
-            {
-                return new AggregatedReadResult { Error = ReadHealthDataError.BackgroundReadNotPermitted };
-            }
-
             if (!_sdkStatus.IsSuccess)
             {
                 return new AggregatedReadResult
@@ -638,14 +621,9 @@ public partial class HealthService : IHealthService
                 },
             };
         }
-        catch (Exception ex) when (ex.IsBackgroundReadRefusal())
+        catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
         {
-            BackgroundReadGuard.LogRefusal(_logger, ex, $"{nameof(GetAggregatedHealthData)}<{typeof(TDto).Name}>");
-            return new AggregatedReadResult
-            {
-                Error = ReadHealthDataError.BackgroundReadNotPermitted,
-                ErrorException = ex,
-            };
+            return BackgroundRead.ToRefusedResult<AggregatedReadResult>(_logger, operationName, ex);
         }
         catch (Exception ex)
         {
@@ -687,13 +665,9 @@ public partial class HealthService : IHealthService
     private async Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
+        var operationName = $"{nameof(GetAggregatedHealthDataByInterval)}<{typeof(TDto).Name}>";
         try
         {
-            if (BackgroundReadGuard.IsReadBlocked(_logger, $"{nameof(GetAggregatedHealthDataByInterval)}<{typeof(TDto).Name}>"))
-            {
-                return new AggregatedIntervalReadResult { Error = ReadHealthDataError.BackgroundReadNotPermitted };
-            }
-
             if (!_sdkStatus.IsSuccess)
             {
                 return new AggregatedIntervalReadResult
@@ -771,14 +745,9 @@ public partial class HealthService : IHealthService
             _logger.LogInformation("Found {Count} interval buckets for {DtoName}", buckets.Count, typeof(TDto).Name);
             return new AggregatedIntervalReadResult { Buckets = buckets };
         }
-        catch (Exception ex) when (ex.IsBackgroundReadRefusal())
+        catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
         {
-            BackgroundReadGuard.LogRefusal(_logger, ex, $"{nameof(GetAggregatedHealthDataByInterval)}<{typeof(TDto).Name}>");
-            return new AggregatedIntervalReadResult
-            {
-                Error = ReadHealthDataError.BackgroundReadNotPermitted,
-                ErrorException = ex,
-            };
+            return BackgroundRead.ToRefusedResult<AggregatedIntervalReadResult>(_logger, operationName, ex);
         }
         catch (Exception ex)
         {
@@ -798,13 +767,9 @@ public partial class HealthService : IHealthService
             };
         }
 
+        var operationName = $"{nameof(GetAggregatedHealthDataByCalendarPeriod)}<{typeof(TDto).Name}>";
         try
         {
-            if (BackgroundReadGuard.IsReadBlocked(_logger, $"{nameof(GetAggregatedHealthDataByCalendarPeriod)}<{typeof(TDto).Name}>"))
-            {
-                return new AggregatedIntervalReadResult { Error = ReadHealthDataError.BackgroundReadNotPermitted };
-            }
-
             if (!_sdkStatus.IsSuccess)
             {
                 return new AggregatedIntervalReadResult
@@ -854,14 +819,9 @@ public partial class HealthService : IHealthService
             _logger.LogInformation("Found {Count} calendar-period buckets for {DtoName}", buckets.Count, typeof(TDto).Name);
             return new AggregatedIntervalReadResult { Buckets = buckets };
         }
-        catch (Exception ex) when (ex.IsBackgroundReadRefusal())
+        catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
         {
-            BackgroundReadGuard.LogRefusal(_logger, ex, $"{nameof(GetAggregatedHealthDataByCalendarPeriod)}<{typeof(TDto).Name}>");
-            return new AggregatedIntervalReadResult
-            {
-                Error = ReadHealthDataError.BackgroundReadNotPermitted,
-                ErrorException = ex,
-            };
+            return BackgroundRead.ToRefusedResult<AggregatedIntervalReadResult>(_logger, operationName, ex);
         }
         catch (Exception ex)
         {
@@ -913,17 +873,6 @@ public partial class HealthService : IHealthService
             _logger.LogInformation("Got changes token for {Count} data types", dataTypes.Count);
             return new ChangesTokenResult { Token = token };
         }
-        // Not checked up front like the reads: Health Connect does not document issuing a token as a
-        // foreground-only call. Should it refuse one, the refusal still maps to the typed error.
-        catch (Exception ex) when (ex.IsBackgroundReadRefusal())
-        {
-            BackgroundReadGuard.LogRefusal(_logger, ex, nameof(GetChangesToken));
-            return new ChangesTokenResult
-            {
-                Error = ReadHealthDataError.BackgroundReadNotPermitted,
-                ErrorException = ex,
-            };
-        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting changes token");
@@ -935,11 +884,6 @@ public partial class HealthService : IHealthService
     {
         try
         {
-            if (BackgroundReadGuard.IsReadBlocked(_logger, nameof(GetChanges)))
-            {
-                return new ChangesReadResult { Error = ReadHealthDataError.BackgroundReadNotPermitted };
-            }
-
             if (!_sdkStatus.IsSuccess)
             {
                 return new ChangesReadResult
@@ -959,14 +903,9 @@ public partial class HealthService : IHealthService
             // should re-issue a token).
             return new ChangesReadResult { Changes = result };
         }
-        catch (Exception ex) when (ex.IsBackgroundReadRefusal())
+        catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
         {
-            BackgroundReadGuard.LogRefusal(_logger, ex, nameof(GetChanges));
-            return new ChangesReadResult
-            {
-                Error = ReadHealthDataError.BackgroundReadNotPermitted,
-                ErrorException = ex,
-            };
+            return BackgroundRead.ToRefusedResult<ChangesReadResult>(_logger, nameof(GetChanges), ex);
         }
         catch (Exception ex)
         {

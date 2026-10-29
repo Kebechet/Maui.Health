@@ -3,7 +3,6 @@ using AndroidX.Health.Connect.Client;
 using AndroidX.Health.Connect.Client.Records;
 using Maui.Health.Constants;
 using Maui.Health.Enums;
-using Maui.Health.Enums.Errors;
 using Maui.Health.Extensions;
 using Maui.Health.Models;
 using Maui.Health.Models.Metrics;
@@ -32,15 +31,11 @@ public partial class HealthWorkoutService
 
     public async partial Task<WorkoutReadResult> Read(HealthTimeRange activityTime)
     {
+        const string operationName = $"{nameof(HealthWorkoutService)}.{nameof(Read)}";
         try
         {
             _logger.LogInformation("Android HealthWorkoutService Read: StartTime: {StartTime}, EndTime: {EndTime}",
                 activityTime.StartTime, activityTime.EndTime);
-
-            if (BackgroundReadGuard.IsReadBlocked(_logger, $"{nameof(HealthWorkoutService)}.{nameof(Read)}"))
-            {
-                return new WorkoutReadResult { Error = ReadHealthDataError.BackgroundReadNotPermitted };
-            }
 
             var recordClass = Kotlin.Jvm.JvmClassMappingKt.GetKotlinClass(
                 Java.Lang.Class.FromType(typeof(ExerciseSessionRecord)));
@@ -53,6 +48,11 @@ public partial class HealthWorkoutService
                     ErrorException = new InvalidOperationException(
                         "Health Connect read returned null for ExerciseSessionRecord."),
                 };
+            }
+
+            if (BackgroundRead.IsReadPossiblyIncomplete(_healthConnectClient))
+            {
+                return BackgroundRead.ToRefusedResult<WorkoutReadResult>(_logger, operationName);
             }
 
             var results = new List<WorkoutDto>();
@@ -73,14 +73,9 @@ public partial class HealthWorkoutService
             _logger.LogInformation("Android HealthWorkoutService: Found {Count} workout records", results.Count);
             return new WorkoutReadResult { Workouts = results };
         }
-        catch (Exception ex) when (ex.IsBackgroundReadRefusal())
+        catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
         {
-            BackgroundReadGuard.LogRefusal(_logger, ex, $"{nameof(HealthWorkoutService)}.{nameof(Read)}");
-            return new WorkoutReadResult
-            {
-                Error = ReadHealthDataError.BackgroundReadNotPermitted,
-                ErrorException = ex,
-            };
+            return BackgroundRead.ToRefusedResult<WorkoutReadResult>(_logger, operationName, ex);
         }
         catch (Exception ex)
         {
