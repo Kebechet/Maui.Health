@@ -31,6 +31,7 @@ public partial class HealthWorkoutService
 
     public async partial Task<WorkoutReadResult> Read(HealthTimeRange activityTime)
     {
+        const string operationName = $"{nameof(HealthWorkoutService)}.{nameof(Read)}";
         try
         {
             _logger.LogInformation("Android HealthWorkoutService Read: StartTime: {StartTime}, EndTime: {EndTime}",
@@ -47,6 +48,11 @@ public partial class HealthWorkoutService
                     ErrorException = new InvalidOperationException(
                         "Health Connect read returned null for ExerciseSessionRecord."),
                 };
+            }
+
+            if (BackgroundRead.IsReadPossiblyIncomplete(_healthConnectClient))
+            {
+                return BackgroundRead.ToRefusedResult<WorkoutReadResult>(_logger, operationName);
             }
 
             var results = new List<WorkoutDto>();
@@ -66,6 +72,10 @@ public partial class HealthWorkoutService
 
             _logger.LogInformation("Android HealthWorkoutService: Found {Count} workout records", results.Count);
             return new WorkoutReadResult { Workouts = results };
+        }
+        catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
+        {
+            return BackgroundRead.ToRefusedResult<WorkoutReadResult>(_logger, operationName, ex);
         }
         catch (Exception ex)
         {

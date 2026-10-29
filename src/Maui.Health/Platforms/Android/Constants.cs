@@ -34,6 +34,37 @@ public static class AndroidConstant
     public const string BackgroundReadPermission = "android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND";
 
     /// <summary>
+    /// Fragments of the messages Health Connect raises when it refuses or limits a read. Only the message
+    /// reaches managed code, so a refusal is recognised by these. They are Health Connect's own wording and
+    /// must match it, not be reworded.
+    /// </summary>
+    internal static class HealthConnectMessage
+    {
+        /// <summary>
+        /// The background refusal of the Android 14 initial release, which names no permission:
+        /// "…must be in foreground to call aggregate method" and "… must be in foreground to read the change logs".
+        /// https://android.googlesource.com/platform/packages/modules/HealthFitness/+/refs/tags/android-14.0.0_r1/service/java/com/android/server/healthconnect/HealthConnectServiceImpl.java
+        /// </summary>
+        internal const string ForegroundRequired = "must be in foreground";
+
+        /// <summary>
+        /// Raised when Health Connect limits a filtered read to the app's own records but the request covers other
+        /// apps. It does that in the background without <see cref="BackgroundReadPermission"/>, and in the foreground
+        /// for an app that holds only write access to the type, so the message alone does not say which.
+        /// https://android.googlesource.com/platform/packages/modules/HealthFitness/+/refs/heads/main/service/java/com/android/server/healthconnect/HealthConnectServiceImpl.java
+        /// </summary>
+        internal const string OtherAppsReadRefused = "from other applications";
+
+        /// <summary>
+        /// Raised by Jetpack's <c>readRecord</c> when no record comes back for the ID. A read limited to the app's
+        /// own records returns none for another app's record, so in the background without
+        /// <see cref="BackgroundReadPermission"/> it can mean "not allowed" rather than "not there".
+        /// https://android.googlesource.com/platform/frameworks/support/+/refs/heads/androidx-main/health/connect/connect-client/src/main/java/androidx/health/connect/client/impl/HealthConnectClientUpsideDownImpl.kt
+        /// </summary>
+        internal const string NoRecords = "No records";
+    }
+
+    /// <summary>
     /// Prefix for all Health Connect permission strings.
     /// Used to detect whether any health permission is currently granted.
     /// </summary>

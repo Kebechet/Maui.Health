@@ -226,6 +226,7 @@ public partial class HealthService : IHealthService
     private async Task<HealthDataReadResult<TDto>> GetHealthDataInternal<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
+        var operationName = $"{nameof(GetHealthData)}<{typeof(TDto).Name}>";
         try
         {
             _logger.LogInformation("Android GetHealthDataAsync<{DtoName}>: StartTime: {StartTime}, EndTime: {EndTime}",
@@ -266,10 +267,19 @@ public partial class HealthService : IHealthService
                 };
             }
 
+            if (BackgroundRead.IsReadPossiblyIncomplete(_healthConnectClient))
+            {
+                return BackgroundRead.ToRefusedResult<HealthDataReadResult<TDto>>(_logger, operationName);
+            }
+
             var results = response.Records.ToDtoList<TDto>();
 
             _logger.LogInformation("Found {Count} {DtoName} records", results.Count, typeof(TDto).Name);
             return new HealthDataReadResult<TDto> { Records = results };
+        }
+        catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
+        {
+            return BackgroundRead.ToRefusedResult<HealthDataReadResult<TDto>>(_logger, operationName, ex);
         }
         catch (Exception ex)
         {
@@ -419,6 +429,7 @@ public partial class HealthService : IHealthService
     private async Task<HealthRecordReadResult<TDto>> GetHealthRecordInternal<TDto>(string id, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
+        var operationName = $"{nameof(GetHealthRecord)}<{typeof(TDto).Name}>";
         try
         {
             if (!_sdkStatus.IsSuccess)
@@ -450,6 +461,10 @@ public partial class HealthService : IHealthService
 
             // Null Record on success = platform confirmed no such record (not an error).
             return new HealthRecordReadResult<TDto> { Record = record?.ToDto<TDto>() };
+        }
+        catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
+        {
+            return BackgroundRead.ToRefusedResult<HealthRecordReadResult<TDto>>(_logger, operationName, ex);
         }
         catch (Exception ex)
         {
@@ -525,6 +540,7 @@ public partial class HealthService : IHealthService
     private async Task<AggregatedReadResult> GetAggregatedHealthDataInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
+        var operationName = $"{nameof(GetAggregatedHealthData)}<{typeof(TDto).Name}>";
         try
         {
             if (!_sdkStatus.IsSuccess)
@@ -605,6 +621,10 @@ public partial class HealthService : IHealthService
                 },
             };
         }
+        catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
+        {
+            return BackgroundRead.ToRefusedResult<AggregatedReadResult>(_logger, operationName, ex);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error aggregating health data for {DtoName}", typeof(TDto).Name);
@@ -645,6 +665,7 @@ public partial class HealthService : IHealthService
     private async Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
+        var operationName = $"{nameof(GetAggregatedHealthDataByInterval)}<{typeof(TDto).Name}>";
         try
         {
             if (!_sdkStatus.IsSuccess)
@@ -724,6 +745,10 @@ public partial class HealthService : IHealthService
             _logger.LogInformation("Found {Count} interval buckets for {DtoName}", buckets.Count, typeof(TDto).Name);
             return new AggregatedIntervalReadResult { Buckets = buckets };
         }
+        catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
+        {
+            return BackgroundRead.ToRefusedResult<AggregatedIntervalReadResult>(_logger, operationName, ex);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error aggregating health data by interval for {DtoName}", typeof(TDto).Name);
@@ -742,6 +767,7 @@ public partial class HealthService : IHealthService
             };
         }
 
+        var operationName = $"{nameof(GetAggregatedHealthDataByCalendarPeriod)}<{typeof(TDto).Name}>";
         try
         {
             if (!_sdkStatus.IsSuccess)
@@ -792,6 +818,10 @@ public partial class HealthService : IHealthService
 
             _logger.LogInformation("Found {Count} calendar-period buckets for {DtoName}", buckets.Count, typeof(TDto).Name);
             return new AggregatedIntervalReadResult { Buckets = buckets };
+        }
+        catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
+        {
+            return BackgroundRead.ToRefusedResult<AggregatedIntervalReadResult>(_logger, operationName, ex);
         }
         catch (Exception ex)
         {
@@ -872,6 +902,10 @@ public partial class HealthService : IHealthService
             // Null Changes on success = token was invalid or expired (not an error per se; caller
             // should re-issue a token).
             return new ChangesReadResult { Changes = result };
+        }
+        catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
+        {
+            return BackgroundRead.ToRefusedResult<ChangesReadResult>(_logger, nameof(GetChanges), ex);
         }
         catch (Exception ex)
         {

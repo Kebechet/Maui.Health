@@ -1,3 +1,4 @@
+using Maui.Health.Enums.Errors;
 using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Models;
@@ -13,10 +14,12 @@ namespace Maui.Health.Models;
 /// <para>Failure (<see cref="Result.IsError"/> true) means the platform call itself failed:
 /// permission denial, SDK unavailable, query error. In failure cases <see cref="Record"/> is
 /// always null, but the converse is not true — check <see cref="Result.IsSuccess"/> to
-/// distinguish "not found" from "platform failed."</para>
+/// distinguish "not found" from "platform failed." A read refused because the app is in the
+/// background sets <see cref="Result{TError}.Error"/> to
+/// <see cref="ReadHealthDataError.BackgroundReadNotPermitted"/>.</para>
 /// </remarks>
 /// <typeparam name="TDto">The type of health metric DTO requested.</typeparam>
-public class HealthRecordReadResult<TDto> : Result
+public class HealthRecordReadResult<TDto> : Result<ReadHealthDataError>
     where TDto : HealthMetricBase
 {
     /// <summary>

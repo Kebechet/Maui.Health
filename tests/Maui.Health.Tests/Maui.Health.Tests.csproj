@@ -66,6 +66,13 @@
 		<Compile Include="..\..\src\Maui.Health\Constants\WorkoutMetadata.cs" Link="Shared\WorkoutMetadata.cs" />
 		<Compile Include="..\..\src\Maui.Health\Enums\HealthPermissionStatus.cs" Link="Shared\HealthPermissionStatus.cs" />
 		<Compile Include="..\..\src\Maui.Health\Models\HealthPermissionStatusResult.cs" Link="Shared\HealthPermissionStatusResult.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\AggregatedResult.cs" Link="Shared\AggregatedResult.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\HealthDataReadResult.cs" Link="Shared\HealthDataReadResult.cs" />
+		<Compile Include="..\..\src\Maui.Health\Models\AggregatedIntervalReadResult.cs" Link="Shared\AggregatedIntervalReadResult.cs" />
+		<Compile Include="..\..\src\Maui.Health\Enums\Errors\ReadHealthDataError.cs" Link="Shared\ReadHealthDataError.cs" />
+		<!-- Android-only folder, but these two files touch no Android API: the refusal is recognised from message text alone. -->
+		<Compile Include="..\..\src\Maui.Health\Platforms\Android\Constants.cs" Link="Android\Constants.cs" />
+		<Compile Include="..\..\src\Maui.Health\Platforms\Android\Extensions\ExceptionExtensions.cs" Link="Android\ExceptionExtensions.cs" />
 	</ItemGroup>
 
 </Project>

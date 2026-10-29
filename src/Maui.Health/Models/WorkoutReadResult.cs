@@ -1,3 +1,4 @@
+using Maui.Health.Enums.Errors;
 using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Models;
@@ -11,9 +12,11 @@ namespace Maui.Health.Models;
 /// exist in the window.</para>
 ///
 /// <para>Failure (<see cref="Result.IsError"/> true): the platform call failed; check
-/// <see cref="Result.ErrorException"/>. <see cref="Workouts"/> is empty.</para>
+/// <see cref="Result.ErrorException"/>. <see cref="Workouts"/> is empty. A read refused because
+/// the app is in the background sets <see cref="Result{TError}.Error"/> to
+/// <see cref="ReadHealthDataError.BackgroundReadNotPermitted"/>.</para>
 /// </remarks>
-public class WorkoutReadResult : Result
+public class WorkoutReadResult : Result<ReadHealthDataError>
 {
     /// <summary>
     /// The workout records returned by the platform. Empty on failure; may also be
