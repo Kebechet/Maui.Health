@@ -61,6 +61,7 @@ dotnet build demo/DemoApp/DemoApp/DemoApp.csproj
   Maui.Health before 5.2.0, so libraries compiled against an older version still load. Types added later need no
   forwarder.
 - Both ship together with the version in `src/Directory.Build.props`.
+- Types.Health is `IsAotCompatible` (watch apps are NativeAOT): no reflection, and source-generated JSON.
 
 ### Platform Abstraction via Partial Classes
 

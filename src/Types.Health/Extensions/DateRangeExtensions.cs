@@ -15,14 +15,14 @@ public static class DateRangeExtensions
     public static string ToJson(this List<DateRange> intervals)
     {
         var serialized = intervals
-            .Select(i => new
+            .Select(i => new Dictionary<string, long?>
             {
-                Start = i.Start.ToUnixTimeMilliseconds(),
-                End = i.End?.ToUnixTimeMilliseconds()
+                [nameof(DateRange.Start)] = i.Start.ToUnixTimeMilliseconds(),
+                [nameof(DateRange.End)] = i.End?.ToUnixTimeMilliseconds(),
             })
             .ToList();
 
-        return System.Text.Json.JsonSerializer.Serialize(serialized);
+        return System.Text.Json.JsonSerializer.Serialize(serialized, DateRangeJsonContext.Default.ListDictionaryStringNullableInt64);
     }
 
     /// <summary>
@@ -39,7 +39,7 @@ public static class DateRangeExtensions
 
         try
         {
-            var intervals = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, long?>>>(json);
+            var intervals = System.Text.Json.JsonSerializer.Deserialize(json, DateRangeJsonContext.Default.ListDictionaryStringNullableInt64);
             if (intervals is null)
             {
                 return [];
@@ -81,7 +81,7 @@ public static class DateRangeExtensions
                 return [];
             }
 
-            var intervals = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, long?>>>(json);
+            var intervals = System.Text.Json.JsonSerializer.Deserialize(json, DateRangeJsonContext.Default.ListDictionaryStringNullableInt64);
             if (intervals is null)
             {
                 return [];
