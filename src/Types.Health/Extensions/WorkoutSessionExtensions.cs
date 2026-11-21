@@ -14,6 +14,7 @@ public static class WorkoutSessionExtensions
     /// Converts a WorkoutSession to a WorkoutDto
     /// </summary>
     /// <param name="session">The WorkoutSession to convert</param>
+    /// <param name="dataSdk">The health SDK that records the workout</param>
     /// <param name="endTime">The end time for the workout (defaults to current time if null)</param>
     /// <param name="energyBurned">Optional energy burned in kilocalories</param>
     /// <param name="distance">Optional distance in meters</param>

@@ -3,10 +3,10 @@ using Maui.Health.Enums.Errors;
 namespace Maui.Health.Models;
 
 /// <summary>
-/// Result of <see cref="Services.IHealthService.WriteHealthData{TDto}(System.Collections.Generic.IList{TDto}, bool, System.Threading.CancellationToken)"/>.
+/// Result of <c>IHealthService.WriteHealthData</c>.
 /// Inherits <see cref="Result{TError}"/>, so callers can check success with <see cref="Result{TError}.IsSuccess"/>
 /// or the typed <see cref="Result{TError}.Error"/>, and surface any native-layer exception via
-/// <see cref="Result{TError}.ErrorException"/>.
+/// <see cref="Result.ErrorException"/>.
 /// </summary>
 /// <remarks>
 /// <para>On success, <see cref="RecordIds"/> is 1:1 with the input list — <c>RecordIds[i]</c> is

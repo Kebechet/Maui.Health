@@ -21,7 +21,7 @@ public static class MetricDtoExtensions
     /// <summary>
     /// Maps a read DTO type to its corresponding HealthDataType enum value
     /// </summary>
-    internal static HealthDataType GetHealthDataType<TDto>() where TDto : HealthMetricBase
+    public static HealthDataType GetHealthDataType<TDto>() where TDto : HealthMetricBase
     {
         return typeof(TDto).Name switch
         {
@@ -41,7 +41,7 @@ public static class MetricDtoExtensions
     /// <summary>
     /// Maps a write DTO type to its corresponding HealthDataType enum value
     /// </summary>
-    internal static HealthDataType GetWriteHealthDataType<TDto>() where TDto : IHealthWritable
+    public static HealthDataType GetWriteHealthDataType<TDto>() where TDto : IHealthWritable
     {
         return typeof(TDto).Name switch
         {
@@ -60,7 +60,7 @@ public static class MetricDtoExtensions
     /// <summary>
     /// Gets the read permission required for a specific read DTO type
     /// </summary>
-    internal static HealthPermissionDto GetRequiredPermission<TDto>() where TDto : HealthMetricBase
+    public static HealthPermissionDto GetRequiredPermission<TDto>() where TDto : HealthMetricBase
     {
         return new HealthPermissionDto
         {
@@ -72,7 +72,7 @@ public static class MetricDtoExtensions
     /// <summary>
     /// Gets the write permission required for a specific write DTO type
     /// </summary>
-    internal static HealthPermissionDto GetRequiredWritePermission<TDto>() where TDto : IHealthWritable
+    public static HealthPermissionDto GetRequiredWritePermission<TDto>() where TDto : IHealthWritable
     {
         return new HealthPermissionDto
         {

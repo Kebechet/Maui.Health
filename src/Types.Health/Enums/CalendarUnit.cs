@@ -2,7 +2,7 @@ namespace Maui.Health.Enums;
 
 /// <summary>
 /// Calendar-aware bucket unit for
-/// <see cref="Services.IHealthService.GetAggregatedHealthDataByCalendarPeriod{TDto}"/>. Each
+/// <c>IHealthService.GetAggregatedHealthDataByCalendarPeriod</c>. Each
 /// value maps to a Java <c>Period</c> factory (<c>ofDays</c>, <c>ofWeeks</c>, <c>ofMonths</c>,
 /// <c>ofYears</c>) on Android and an <c>NSDateComponents</c> field on iOS, both of which walk
 /// the system calendar and respect calendar-length variance (DST 23h/25h days, 28-31-day
@@ -10,7 +10,7 @@ namespace Maui.Health.Enums;
 /// </summary>
 /// <remarks>
 /// Sub-day units like hours and minutes intentionally aren't here — calendar variance doesn't
-/// apply to them. Use <see cref="Services.IHealthService.GetAggregatedHealthDataByInterval{TDto}"/>
+/// apply to them. Use <c>IHealthService.GetAggregatedHealthDataByInterval</c>
 /// with a <see cref="System.TimeSpan"/> for sub-day buckets.
 /// </remarks>
 public enum CalendarUnit

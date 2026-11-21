@@ -3,13 +3,13 @@ using Maui.Health.Enums.Errors;
 namespace Maui.Health.Models;
 
 /// <summary>
-/// Result of <see cref="Services.IHealthService.GetChanges(string, System.Threading.CancellationToken)"/>.
+/// Result of <c>IHealthService.GetChanges</c>.
 /// </summary>
 /// <remarks>
 /// <para>Success with <see cref="Changes"/> non-null means the platform returned a changes
 /// payload. Success with <see cref="Changes"/> null means the token was invalid or expired
 /// (tokens expire after 30 days) and the caller should re-issue a token via
-/// <see cref="Services.IHealthService.GetChangesToken(System.Collections.Generic.IList{Enums.HealthDataType}, System.Threading.CancellationToken)"/>.</para>
+/// <c>IHealthService.GetChangesToken</c>.</para>
 ///
 /// <para>Failure (<see cref="Result.IsError"/> true) means the platform call itself failed;
 /// check <see cref="Result.ErrorException"/>. A read refused because the app is in the

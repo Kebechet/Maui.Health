@@ -2,7 +2,7 @@ namespace Maui.Health.Enums.Errors;
 
 /// <summary>
 /// Errors that can occur when updating an existing health record via
-/// <see cref="Services.IHealthService.UpdateHealthData{TDto}(string, TDto, bool, System.Threading.CancellationToken)"/>.
+/// <c>IHealthService.UpdateHealthData</c>.
 /// </summary>
 public enum UpdateHealthDataError
 {
@@ -50,7 +50,7 @@ public enum UpdateHealthDataError
 
     /// <summary>
     /// An unexpected exception was thrown during the update. The exception is
-    /// available on <see cref="Maui.Health.Models.Result{TError}.ErrorException"/>.
+    /// available on <see cref="Maui.Health.Models.Result.ErrorException"/>.
     /// </summary>
     UnexpectedException = 8,
 
@@ -59,8 +59,8 @@ public enum UpdateHealthDataError
     /// cannot atomically replace it. This happens for samples written by older SDK versions
     /// (before sync-identifier stamping was introduced) or by other apps that don't use this SDK.
     /// Callers that own the record can fall back to
-    /// <see cref="Services.IHealthService.DeleteHealthData{TDto}(string, bool, System.Threading.CancellationToken)"/>
-    /// followed by <see cref="Services.IHealthService.WriteHealthData{TDto}(TDto, bool, System.Threading.CancellationToken)"/>.
+    /// <c>IHealthService.DeleteHealthData</c>
+    /// followed by <c>IHealthService.WriteHealthData</c>.
     /// </summary>
     LegacyRecordNotUpdatable = 9,
 

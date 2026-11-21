@@ -43,7 +43,6 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>5.1.0</Version>
     <PackageReleaseNotes>
 v5.1.0 — a read refused because the app is in the background is reported, not logged as an error.
 
@@ -71,6 +70,10 @@ NEW
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="UnitsNet" Version="5.75.0" />
 	</ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Types.Health\Types.Health.csproj" />
+  </ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
 	  <PackageReference Include="Xamarin.AndroidX.Health.Connect.ConnectClient" Version="1.1.0.2" />

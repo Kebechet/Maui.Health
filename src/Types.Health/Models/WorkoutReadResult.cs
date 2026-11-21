@@ -4,7 +4,7 @@ using Maui.Health.Models.Metrics;
 namespace Maui.Health.Models;
 
 /// <summary>
-/// Result of <see cref="Services.IHealthWorkoutService.Read(HealthTimeRange)"/>.
+/// Result of <c>IHealthWorkoutService.Read</c>.
 /// </summary>
 /// <remarks>
 /// <para>Success: <see cref="Workouts"/> holds the workout rows the platform returned for

@@ -4,7 +4,7 @@ using Maui.Health.Models.Metrics;
 namespace Maui.Health.Models;
 
 /// <summary>
-/// Result of <see cref="Services.IHealthService.GetHealthRecord{TDto}(string, bool, System.Threading.CancellationToken)"/>.
+/// Result of <c>IHealthService.GetHealthRecord</c>.
 /// </summary>
 /// <remarks>
 /// <para>Success with <see cref="Record"/> non-null means the record exists on the device.

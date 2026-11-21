@@ -44,6 +44,13 @@ Feel free to contribute ❤️
 | **Heart Rate Variability** | ✅ HeartRateVariabilityRmssdRecord | ✅ HeartRateVariabilitySdnn | ❌ N/A |
 | **Blood Pressure** | ✅ BloodPressureRecord | ✅ Split into Systolic/Diastolic | 🚧 WIP (commented out) |
 
+## Kebechet.Types.Health
+
+The DTOs, enums and result types (`WorkoutDto`, `HeartRateDto`, `ActivityType`, `WorkoutSession`...) also ship
+without MAUI, in [Kebechet.Types.Health](https://www.nuget.org/packages/Kebechet.Types.Health). Reference it from
+code that your MAUI app shares with an app that isn't one, such as a watch app or a backend. A MAUI app doesn't
+need it directly: `Kebechet.Maui.Health` references it, and the types keep their `Maui.Health.*` namespaces.
+
 ## Usage
 
 ### 1. Registration

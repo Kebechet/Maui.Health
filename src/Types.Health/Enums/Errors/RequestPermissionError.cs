@@ -12,7 +12,7 @@ public enum RequestPermissionError
 
     /// <summary>
     /// Android only: Health Connect provider needs to be updated.
-    /// Show your custom UI, then call <see cref="Services.IHealthService.OpenStorePageOfHealthProvider"/> to open the store.
+    /// Show your custom UI, then call <c>IHealthService.OpenStorePageOfHealthProvider</c> to open the store.
     /// </summary>
     SdkUnavailableProviderUpdateRequired = 2,
 

@@ -2,7 +2,7 @@ namespace Maui.Health.Enums.Errors;
 
 /// <summary>
 /// Errors that can occur when writing health data via
-/// <see cref="Services.IHealthService.WriteHealthData{TDto}(System.Collections.Generic.IList{TDto}, bool, System.Threading.CancellationToken)"/>.
+/// <c>IHealthService.WriteHealthData</c>.
 /// </summary>
 public enum WriteHealthDataError
 {
@@ -15,7 +15,7 @@ public enum WriteHealthDataError
 
     /// <summary>
     /// Android only: Health Connect SDK is unavailable or needs an update.
-    /// Check <see cref="Maui.Health.Models.Result{TError}.ErrorException"/> for the underlying SDK status.
+    /// Check <see cref="Maui.Health.Models.Result.ErrorException"/> for the underlying SDK status.
     /// </summary>
     SdkUnavailable = 2,
 
@@ -41,7 +41,7 @@ public enum WriteHealthDataError
 
     /// <summary>
     /// An unexpected exception was thrown during the write. The exception is
-    /// available on <see cref="Maui.Health.Models.Result{TError}.ErrorException"/>.
+    /// available on <see cref="Maui.Health.Models.Result.ErrorException"/>.
     /// </summary>
     UnexpectedException = 6,
 }

@@ -4,7 +4,7 @@ using Maui.Health.Models.Metrics;
 namespace Maui.Health.Models;
 
 /// <summary>
-/// Result of <see cref="Services.IHealthService.GetAggregatedHealthDataByInterval{TDto}(HealthTimeRange, System.TimeSpan, System.TimeZoneInfo, System.Threading.CancellationToken)"/>.
+/// Result of <c>IHealthService.GetAggregatedHealthDataByInterval</c>.
 /// </summary>
 /// <remarks>
 /// <para>Success: <see cref="Result.IsSuccess"/> is <c>true</c> and <see cref="Buckets"/> holds

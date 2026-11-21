@@ -4,7 +4,7 @@ using Maui.Health.Models.Metrics;
 namespace Maui.Health.Models;
 
 /// <summary>
-/// Result of <see cref="Services.IHealthService.GetHealthData{TDto}(HealthTimeRange, bool, System.Threading.CancellationToken)"/>.
+/// Result of <c>IHealthService.GetHealthData</c>.
 /// </summary>
 /// <remarks>
 /// <para>Success: <see cref="Result.IsSuccess"/> is <c>true</c> and <see cref="Records"/> holds

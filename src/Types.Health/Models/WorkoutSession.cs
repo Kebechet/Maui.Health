@@ -68,13 +68,13 @@ public class WorkoutSession
     }
 
     /// <summary>
-    /// Creates a new workout session. Called by SDK platform code with a resolved
-    /// <paramref name="dataOrigin"/> (the running app's bundle identifier / package name)
-    /// and by the Preferences-restore path. Consumers receive <see cref="WorkoutSession"/>
-    /// instances via <see cref="Services.IHealthWorkoutService.GetActive"/>; they do not
-    /// construct one directly.
+    /// Creates a new workout session. Called by the health service that runs the session
+    /// (Kebechet.Maui.Health, a watch library) with a resolved <paramref name="dataOrigin"/>
+    /// (the running app's bundle identifier / package name) and by its restore path. Apps
+    /// receive <see cref="WorkoutSession"/> instances from that service's <c>GetActive</c>;
+    /// they do not construct one directly.
     /// </summary>
-    internal WorkoutSession(
+    public WorkoutSession(
         string id,
         ActivityType activityType,
         string? title,

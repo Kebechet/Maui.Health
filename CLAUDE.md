@@ -42,11 +42,25 @@ dotnet build src/Maui.Health/Maui.Health.csproj
 dotnet build src/Maui.Health/Maui.Health.csproj -f net10.0-android
 dotnet build src/Maui.Health/Maui.Health.csproj -f net10.0-ios
 
+# Build the platform-free types package (Kebechet.Types.Health)
+dotnet build src/Types.Health/Types.Health.csproj
+
 # Build the demo app
 dotnet build demo/DemoApp/DemoApp/DemoApp.csproj
 ```
 
 ## Architecture
+
+### Two packages
+
+- `src/Types.Health` (`Kebechet.Types.Health`, plain `net10.0`, no dependencies): `Enums/`, `Models/`, the platform-free
+  `Extensions/` and `Constants/WorkoutMetadata.cs`. Code that a MAUI app shares with a non-MAUI app (a watch app, a
+  backend) references it.
+- `src/Maui.Health` (`Kebechet.Maui.Health`): the services and platform code. It references Types.Health.
+- The types keep their `Maui.Health.*` namespaces. `src/Maui.Health/TypeForwarders.cs` forwards the types that lived in
+  Maui.Health before 5.2.0, so libraries compiled against an older version still load. Types added later need no
+  forwarder.
+- Both ship together with the version in `src/Directory.Build.props`.
 
 ### Platform Abstraction via Partial Classes
 
@@ -95,22 +109,18 @@ dotnet test tests/Maui.Health.Tests/Maui.Health.Tests.csproj
 - Test method names use three-part underscore format: `MethodUnderTest_Scenario_ExpectedResult`
 - Use `// Arrange`, `// Act`, `// Assert` comments in every test
 
-### Why tests use `<Compile Include>` instead of `<ProjectReference>`
+### How the tests reach the library
 
-`Maui.Health.csproj` targets MAUI TFMs (`net10.0-android`, `-ios`, `-maccatalyst`, `-windows`). `Maui.Health.Tests.csproj` targets plain `net9.0` because xUnit runners don't run under MAUI TFMs. You can't `<ProjectReference>` across that boundary, so the test csproj pulls in individual platform-agnostic source files via `<Compile Include="..\..\src\Maui.Health\..." Link="..." />`.
+`Maui.Health.Tests.csproj` targets plain `net10.0` because xUnit runners don't run under MAUI TFMs, so it can't
+`<ProjectReference>` `Maui.Health.csproj`. It references `src/Types.Health` instead, which holds the models, enums and
+platform-free extensions, so renames and new `required` members reach the tests through the compiler.
 
-**Drift hazard.** Nothing enforces the link list or the test files against library changes. Two ways it goes stale:
-1. A new library type (or a new dependency of an already-linked type) isn't added to the test csproj's `<Compile Include>` list → build fails with `CS0246: type not found`.
-2. A library type gains a new `required` member or a method gains a new parameter → existing test constructors/call sites fall behind → `CS9035` / `CS1503`.
+Code under test that has to stay in `Maui.Health` is linked as source with `<Compile Include ... Link=...>` (today the
+two Android background-read helpers, which touch no Android API). Nothing keeps that list in sync: when a linked file
+gains a dependency on another Maui.Health file, link that one too. Platform-free code you want to test belongs in
+Types.Health instead.
 
-Both kinds of drift are silent until someone runs `dotnet test`. Pre-my-work the project had been accumulating this for multiple releases.
-
-**Rules when touching the library:**
-- After adding any new type under `src/Maui.Health/Models/`, `Enums/`, or shared `Extensions/`, immediately add a matching `<Compile Include>` line to `tests/Maui.Health.Tests/Maui.Health.Tests.csproj` — even if no test uses it yet, because another linked file probably does.
-- After making a property `required` or changing a public method signature, grep the test folder for constructor and call-site drift (`grep -rn "new TypeName\s*{" tests/` / `grep -rn "\.MethodName(" tests/`) and fix the callers in the same commit.
-- Run `dotnet test tests/Maui.Health.Tests/Maui.Health.Tests.csproj` before committing any change to public types in `src/Maui.Health/Models/` or `Extensions/`. It's the only thing that catches drift early.
-
-**Longer-term fix** (not yet applied): split into `Maui.Health` (platform-dependent) + `Maui.Health.Core` (pure POCO). Tests would `<ProjectReference>` the Core project, drift disappears, IDE rename works across the boundary.
+Run `dotnet test tests/Maui.Health.Tests/Maui.Health.Tests.csproj` before committing a change to public types.
 
 ## Code Style Preferences
 
