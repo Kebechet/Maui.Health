@@ -47,11 +47,11 @@
 v5.2.0 — the health data types also ship without MAUI, in Kebechet.Types.Health; existing code needs no change.
 
 NEW
-• Kebechet.Types.Health: the DTOs, enums and results as a plain .NET package, for code shared with a watch app or a backend.
-• HealthDataSdk.GoogleHealthServices marks workouts recorded on a Wear OS watch with Health Services.
+• Kebechet.Types.Health (#62): the DTOs, enums and results as a plain .NET package, for code shared with a watch app or a backend.
+• HealthDataSdk.GoogleHealthServices (#62): marks workouts recorded on a Wear OS watch with Health Services.
 
 CHANGED
-• WorkoutSession's constructor and the DTO-to-permission helpers are public, so other health libraries can use them.
+• WorkoutSession (#62): its constructor and the DTO-to-permission helpers are public, so other health libraries can use them.
 
 PREVIOUS RELEASE — v5.1.0: a read refused because the app is in the background is reported, not logged as an error.
 
