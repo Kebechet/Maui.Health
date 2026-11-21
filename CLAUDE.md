@@ -54,7 +54,7 @@ dotnet build demo/DemoApp/DemoApp/DemoApp.csproj
 ### Two packages
 
 - `src/Types.Health` (`Kebechet.Types.Health`, plain `net10.0`, no dependencies): `Enums/`, `Models/`, the platform-free
-  `Extensions/` and `Constants/WorkoutMetadata.cs`. Code that a MAUI app shares with a non-MAUI app (a watch app, a
+  `Extensions/` and the `Constants/` that describe the data (`Units`, `WorkoutMetadata`). Code that a MAUI app shares with a non-MAUI app (a watch app, a
   backend) references it.
 - `src/Maui.Health` (`Kebechet.Maui.Health`): the services and platform code. It references Types.Health.
 - The types keep their `Maui.Health.*` namespaces. `src/Maui.Health/TypeForwarders.cs` forwards the types that lived in

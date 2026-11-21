@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 
 // These types moved to Kebechet.Types.Health in 5.2.0, keeping their namespaces. A library compiled against an
 // older Maui.Health still looks for them in this assembly, and the forwarders send the runtime on to Types.Health.
+[assembly: TypeForwardedTo(typeof(Maui.Health.Constants.Units))]
 [assembly: TypeForwardedTo(typeof(Maui.Health.Constants.WorkoutMetadata))]
 [assembly: TypeForwardedTo(typeof(Maui.Health.Enums.ActivityType))]
 [assembly: TypeForwardedTo(typeof(Maui.Health.Enums.CalendarUnit))]
