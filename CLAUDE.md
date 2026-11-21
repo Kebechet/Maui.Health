@@ -60,7 +60,7 @@ dotnet build demo/DemoApp/DemoApp/DemoApp.csproj
 - The types keep their `Maui.Health.*` namespaces. `src/Maui.Health/TypeForwarders.cs` forwards the types that lived in
   Maui.Health before 5.2.0, so libraries compiled against an older version still load. Types added later need no
   forwarder.
-- Both ship together with the version in `src/Directory.Build.props`.
+- Both ship together with the version in `src/Directory.Build.props`; the publish workflow pushes Types.Health first.
 - Types.Health is `IsAotCompatible` (watch apps are NativeAOT): no reflection, and source-generated JSON.
 
 ### Platform Abstraction via Partial Classes
