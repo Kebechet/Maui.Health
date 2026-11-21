@@ -13,4 +13,10 @@ public enum HealthDataSdk
 
     /// <summary>Apple HealthKit (iOS)</summary>
     AppleHealthKit = 2,
+
+    /// <summary>
+    /// Google Health Services (Wear OS), which records workouts and their live data on a watch.
+    /// https://developer.android.com/health-and-fitness/guides/health-services
+    /// </summary>
+    GoogleHealthServices = 3,
 }
