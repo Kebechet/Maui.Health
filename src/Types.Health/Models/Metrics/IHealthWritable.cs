@@ -1,4 +1,4 @@
-namespace Maui.Health.Models.Metrics;
+namespace Kebechet.Types.Health.Models.Metrics;
 
 /// <summary>
 /// Marker interface for types that can be written to the health store.

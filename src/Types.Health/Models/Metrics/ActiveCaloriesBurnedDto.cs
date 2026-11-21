@@ -1,4 +1,4 @@
-namespace Maui.Health.Models.Metrics;
+namespace Kebechet.Types.Health.Models.Metrics;
 
 /// <summary>
 /// Represents active calories burned data from health platforms collected over a time period.

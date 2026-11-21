@@ -1,4 +1,4 @@
-namespace Maui.Health.Enums;
+namespace Kebechet.Types.Health.Enums;
 
 /// <summary>
 /// Units of energy measurement

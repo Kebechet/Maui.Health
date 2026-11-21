@@ -1,4 +1,4 @@
-﻿namespace Maui.Health.Models;
+﻿namespace Kebechet.Types.Health.Models;
 
 /// <summary>
 /// Generic result type that indicates success or carries a typed error and/or exception.

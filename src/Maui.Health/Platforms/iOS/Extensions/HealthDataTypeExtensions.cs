@@ -1,5 +1,5 @@
 ﻿using HealthKit;
-using Maui.Health.Enums;
+using Kebechet.Types.Health.Enums;
 
 namespace Maui.Health.Platforms.iOS.Extensions;
 

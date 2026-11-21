@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Maui.Health.Extensions;
+namespace Kebechet.Types.Health.Extensions;
 
 // Source-generated rather than reflection-based JSON, so trimmed and NativeAOT apps (a watch app) can use the
 // pause intervals. The dictionaries keep the {"Start":ms,"End":ms} format that earlier versions stored.

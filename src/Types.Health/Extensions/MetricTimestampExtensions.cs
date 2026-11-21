@@ -1,4 +1,4 @@
-namespace Maui.Health.Extensions;
+namespace Kebechet.Types.Health.Extensions;
 
 /// <summary>
 /// Helpers that rebase a UTC instant onto a recording offset without changing the absolute moment.

@@ -1,6 +1,6 @@
-using Maui.Health.Models.Metrics;
+using Kebechet.Types.Health.Models.Metrics;
 
-namespace Maui.Health.Extensions;
+namespace Kebechet.Types.Health.Extensions;
 
 /// <summary>
 /// Extension methods for <see cref="DateOnly"/> to create <see cref="HealthTimeRange"/> instances.

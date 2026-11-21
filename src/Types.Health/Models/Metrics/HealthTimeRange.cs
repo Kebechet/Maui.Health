@@ -1,4 +1,4 @@
-namespace Maui.Health.Models.Metrics;
+namespace Kebechet.Types.Health.Models.Metrics;
 
 /// <summary>
 /// Represents a time range for querying health data.

@@ -1,4 +1,4 @@
-namespace Maui.Health.Enums.Errors;
+namespace Kebechet.Types.Health.Enums.Errors;
 
 /// <summary>
 /// Errors that can occur when writing health data via
@@ -15,7 +15,7 @@ public enum WriteHealthDataError
 
     /// <summary>
     /// Android only: Health Connect SDK is unavailable or needs an update.
-    /// Check <see cref="Maui.Health.Models.Result.ErrorException"/> for the underlying SDK status.
+    /// Check <see cref="Kebechet.Types.Health.Models.Result.ErrorException"/> for the underlying SDK status.
     /// </summary>
     SdkUnavailable = 2,
 
@@ -41,7 +41,7 @@ public enum WriteHealthDataError
 
     /// <summary>
     /// An unexpected exception was thrown during the write. The exception is
-    /// available on <see cref="Maui.Health.Models.Result.ErrorException"/>.
+    /// available on <see cref="Kebechet.Types.Health.Models.Result.ErrorException"/>.
     /// </summary>
     UnexpectedException = 6,
 }

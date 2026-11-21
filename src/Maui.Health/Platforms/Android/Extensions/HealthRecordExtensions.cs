@@ -1,14 +1,17 @@
+using System.Collections;
+using System.Diagnostics;
 using AndroidX.Health.Connect.Client.Records;
 using AndroidX.Health.Connect.Client.Records.Metadata;
 using AndroidX.Health.Connect.Client.Units;
+using Kebechet.Types.Health.Constants;
+using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Extensions;
+using Kebechet.Types.Health.Models;
+using Kebechet.Types.Health.Models.Metrics;
+using Kebechet.Types.Health.Models.Metrics.Write;
 using Maui.Health.Constants;
-using Maui.Health.Extensions;
-using Maui.Health.Models;
-using Maui.Health.Models.Metrics;
-using Maui.Health.Models.Metrics.Write;
 using Maui.Health.Platforms.Android.Helpers;
 using Maui.Health.Platforms.Android.Reflection.Units;
-using System.Diagnostics;
 using static Maui.Health.Platforms.Android.AndroidConstant;
 using StepsRecord = AndroidX.Health.Connect.Client.Records.StepsRecord;
 using WeightRecord = AndroidX.Health.Connect.Client.Records.WeightRecord;
@@ -17,9 +20,7 @@ using ActiveCaloriesBurnedRecord = AndroidX.Health.Connect.Client.Records.Active
 using HeartRateRecord = AndroidX.Health.Connect.Client.Records.HeartRateRecord;
 using ExerciseSessionRecord = AndroidX.Health.Connect.Client.Records.ExerciseSessionRecord;
 using HealthDeviceType = Android.Health.Connect.DataTypes.HealthDeviceType;
-using System.Collections;
 using Device = AndroidX.Health.Connect.Client.Records.Metadata.Device;
-using Maui.Health.Enums;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 

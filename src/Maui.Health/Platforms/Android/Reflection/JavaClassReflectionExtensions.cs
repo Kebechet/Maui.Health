@@ -13,7 +13,7 @@ namespace Maui.Health.Platforms.Android.Reflection;
 /// Resolution failures throw <see cref="MissingMethodException"/>. The Health Connect SDK and
 /// these class shapes are fixed at build time, so a missing method/constructor here means the
 /// binding doesn't match the platform we're running on — surfacing it as an exception lets the
-/// outer service-layer try/catch convert it to a <see cref="Maui.Health.Models.Result"/> error
+/// outer service-layer try/catch convert it to a <see cref="Kebechet.Types.Health.Models.Result"/> error
 /// instead of silently masking it as "no data".
 /// </remarks>
 internal static class JavaClassReflectionExtensions

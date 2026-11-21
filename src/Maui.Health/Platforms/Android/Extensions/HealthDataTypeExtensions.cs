@@ -1,6 +1,6 @@
 ﻿using AndroidX.Health.Connect.Client.Records;
+using Kebechet.Types.Health.Enums;
 using Kotlin.Jvm;
-using Maui.Health.Enums;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 

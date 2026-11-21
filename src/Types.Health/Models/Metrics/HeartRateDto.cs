@@ -1,4 +1,4 @@
-namespace Maui.Health.Models.Metrics;
+namespace Kebechet.Types.Health.Models.Metrics;
 
 /// <summary>
 /// Represents heart rate data from health platforms taken at a specific point in time

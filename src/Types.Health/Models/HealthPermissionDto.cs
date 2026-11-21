@@ -1,6 +1,6 @@
-﻿using Maui.Health.Enums;
+﻿using Kebechet.Types.Health.Enums;
 
-namespace Maui.Health.Models;
+namespace Kebechet.Types.Health.Models;
 
 /// <summary>
 /// Describes a health data permission request (data type + read/write).

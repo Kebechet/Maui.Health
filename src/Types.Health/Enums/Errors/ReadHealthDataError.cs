@@ -1,4 +1,4 @@
-namespace Maui.Health.Enums.Errors;
+namespace Kebechet.Types.Health.Enums.Errors;
 
 /// <summary>
 /// Read failures a caller is expected to handle differently from a generic failure. Any other

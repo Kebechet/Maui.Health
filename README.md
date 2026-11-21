@@ -49,7 +49,8 @@ Feel free to contribute ❤️
 The DTOs, enums and result types (`WorkoutDto`, `HeartRateDto`, `ActivityType`, `WorkoutSession`...) also ship
 without MAUI, in [Kebechet.Types.Health](https://www.nuget.org/packages/Kebechet.Types.Health). Reference it from
 code that your MAUI app shares with an app that isn't one, such as a watch app or a backend. A MAUI app doesn't
-need it directly: `Kebechet.Maui.Health` references it, and the types keep their `Maui.Health.*` namespaces.
+need it directly, because `Kebechet.Maui.Health` references it. The types live in the `Kebechet.Types.Health.*`
+namespaces (`Kebechet.Types.Health.Models`, `.Enums`...).
 
 ## Usage
 

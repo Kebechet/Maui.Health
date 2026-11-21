@@ -1,4 +1,4 @@
-namespace Maui.Health.Models.Metrics;
+namespace Kebechet.Types.Health.Models.Metrics;
 
 /// <summary>
 /// Interface for health metrics that represent data collected over a time range/duration

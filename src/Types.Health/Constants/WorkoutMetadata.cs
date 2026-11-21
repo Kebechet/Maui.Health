@@ -1,4 +1,4 @@
-namespace Maui.Health.Constants;
+namespace Kebechet.Types.Health.Constants;
 
 /// <summary>
 /// Metadata key constants for workout sessions.

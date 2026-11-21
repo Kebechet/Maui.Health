@@ -2,12 +2,12 @@
 
 using Microsoft.AspNetCore.Components;
 using Maui.Health.Services;
-using Maui.Health.Models.Metrics;
-using Maui.Health.Models;
-using Maui.Health.Enums;
-using Maui.Health.Enums.Errors;
+using Kebechet.Types.Health.Models.Metrics;
+using Kebechet.Types.Health.Models;
+using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Enums.Errors;
 
-using DuplicateWorkoutGroup = Maui.Health.Models.DuplicateWorkoutGroup;
+using DuplicateWorkoutGroup = Kebechet.Types.Health.Models.DuplicateWorkoutGroup;
 
 namespace DemoApp.Components.Pages;
 

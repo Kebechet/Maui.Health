@@ -1,4 +1,4 @@
-﻿namespace Maui.Health.Enums.Errors;
+﻿namespace Kebechet.Types.Health.Enums.Errors;
 
 /// <summary>
 /// Errors that can occur when requesting health data permissions from the user.

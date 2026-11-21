@@ -1,4 +1,4 @@
-﻿namespace Maui.Health.Enums;
+﻿namespace Kebechet.Types.Health.Enums;
 
 /// <summary>
 /// Type of health data permission (read, write, or both via flags).

@@ -1,4 +1,4 @@
-namespace Maui.Health.Enums;
+namespace Kebechet.Types.Health.Enums;
 
 /// <summary>
 /// The health data provider used on the current device.

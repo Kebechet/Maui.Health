@@ -1,4 +1,4 @@
-﻿namespace Maui.Health.Enums;
+﻿namespace Kebechet.Types.Health.Enums;
 
 /// <summary>
 /// Types of health data that can be read from or written to the health data store.

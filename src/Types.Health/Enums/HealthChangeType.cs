@@ -1,4 +1,4 @@
-namespace Maui.Health.Enums;
+namespace Kebechet.Types.Health.Enums;
 
 /// <summary>
 /// Type of change detected in health data differential sync.

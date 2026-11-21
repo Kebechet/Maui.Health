@@ -1,4 +1,4 @@
-namespace Maui.Health.Constants;
+namespace Kebechet.Types.Health.Constants;
 
 /// <summary>
 /// Unit label strings.

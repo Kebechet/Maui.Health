@@ -1,6 +1,6 @@
-using Maui.Health.Enums.Errors;
+using Kebechet.Types.Health.Enums.Errors;
 
-namespace Maui.Health.Models;
+namespace Kebechet.Types.Health.Models;
 
 /// <summary>
 /// Result of <c>IHealthService.WriteHealthData</c>.

@@ -1,4 +1,4 @@
-namespace Maui.Health.Extensions;
+namespace Kebechet.Types.Health.Extensions;
 
 /// <summary>
 /// Snaps a moment to the start of its calendar day in a given time zone, returning a

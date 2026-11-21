@@ -1,6 +1,6 @@
-using Maui.Health.Models;
+using Kebechet.Types.Health.Models;
 
-namespace Maui.Health.Extensions;
+namespace Kebechet.Types.Health.Extensions;
 
 /// <summary>
 /// Extension methods for DateRange parsing and serialization

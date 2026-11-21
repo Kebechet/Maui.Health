@@ -1,5 +1,5 @@
-using Maui.Health.Extensions;
-using Maui.Health.Models;
+using Kebechet.Types.Health.Extensions;
+using Kebechet.Types.Health.Models;
 using Xunit;
 
 namespace Maui.Health.Tests;

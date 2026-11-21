@@ -1,7 +1,7 @@
-using Maui.Health.Enums;
-using Maui.Health.Enums.Errors;
-using Maui.Health.Models;
-using Maui.Health.Models.Metrics;
+using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Enums.Errors;
+using Kebechet.Types.Health.Models;
+using Kebechet.Types.Health.Models.Metrics;
 
 namespace Maui.Health.Services;
 

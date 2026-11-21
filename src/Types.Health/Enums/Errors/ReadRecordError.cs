@@ -1,4 +1,4 @@
-﻿namespace Maui.Health.Enums.Errors;
+﻿namespace Kebechet.Types.Health.Enums.Errors;
 
 /// <summary>
 /// Errors that can occur when reading health records from the data store.

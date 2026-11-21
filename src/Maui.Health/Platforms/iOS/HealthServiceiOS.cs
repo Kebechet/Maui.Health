@@ -1,12 +1,13 @@
 ﻿using System.Text.Json;
 using Foundation;
 using HealthKit;
+using Kebechet.Types.Health.Constants;
+using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Enums.Errors;
+using Kebechet.Types.Health.Extensions;
+using Kebechet.Types.Health.Models;
+using Kebechet.Types.Health.Models.Metrics;
 using Maui.Health.Constants;
-using Maui.Health.Enums;
-using Maui.Health.Enums.Errors;
-using Maui.Health.Extensions;
-using Maui.Health.Models;
-using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.iOS.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Platform;
@@ -34,7 +35,7 @@ public partial class HealthService : IHealthService
         {
             return new RequestPermissionResult()
             {
-                Error = Enums.Errors.RequestPermissionError.SdkUnavailable
+                Error = RequestPermissionError.SdkUnavailable
             };
         }
 

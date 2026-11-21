@@ -1,11 +1,11 @@
 using Android.Content;
 using AndroidX.Health.Connect.Client;
 using AndroidX.Health.Connect.Client.Records;
+using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Extensions;
+using Kebechet.Types.Health.Models;
+using Kebechet.Types.Health.Models.Metrics;
 using Maui.Health.Constants;
-using Maui.Health.Enums;
-using Maui.Health.Extensions;
-using Maui.Health.Models;
-using Maui.Health.Models.Metrics;
 using Maui.Health.Platforms.Android;
 using Maui.Health.Platforms.Android.Callbacks;
 using Maui.Health.Platforms.Android.Extensions;

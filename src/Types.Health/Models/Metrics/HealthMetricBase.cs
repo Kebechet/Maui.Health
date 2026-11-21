@@ -1,7 +1,7 @@
-using Maui.Health.Enums;
-using Maui.Health.Models;
+using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Models;
 
-namespace Maui.Health.Models.Metrics;
+namespace Kebechet.Types.Health.Models.Metrics;
 
 /// <summary>
 /// Base class for all health metric DTOs providing common properties

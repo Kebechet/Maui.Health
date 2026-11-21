@@ -1,4 +1,4 @@
-namespace Maui.Health.Models;
+namespace Kebechet.Types.Health.Models;
 
 /// <summary>
 /// Result of a differential sync query containing changes since the last token.

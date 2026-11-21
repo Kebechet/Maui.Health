@@ -1,4 +1,4 @@
-namespace Maui.Health.Enums.Errors;
+namespace Kebechet.Types.Health.Enums.Errors;
 
 /// <summary>
 /// Errors that can occur when updating an existing health record via
@@ -50,7 +50,7 @@ public enum UpdateHealthDataError
 
     /// <summary>
     /// An unexpected exception was thrown during the update. The exception is
-    /// available on <see cref="Maui.Health.Models.Result.ErrorException"/>.
+    /// available on <see cref="Kebechet.Types.Health.Models.Result.ErrorException"/>.
     /// </summary>
     UnexpectedException = 8,
 

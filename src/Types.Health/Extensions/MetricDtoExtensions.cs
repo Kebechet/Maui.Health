@@ -1,9 +1,9 @@
-using Maui.Health.Enums;
-using Maui.Health.Models;
-using Maui.Health.Models.Metrics;
-using Maui.Health.Models.Metrics.Write;
+using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Models;
+using Kebechet.Types.Health.Models.Metrics;
+using Kebechet.Types.Health.Models.Metrics.Write;
 
-namespace Maui.Health.Extensions;
+namespace Kebechet.Types.Health.Extensions;
 
 /// <summary>
 /// Extension methods for health metric DTOs (permission mapping, aggregation).

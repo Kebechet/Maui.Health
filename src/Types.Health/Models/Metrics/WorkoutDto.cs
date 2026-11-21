@@ -1,6 +1,6 @@
-using Maui.Health.Enums;
+using Kebechet.Types.Health.Enums;
 
-namespace Maui.Health.Models.Metrics;
+namespace Kebechet.Types.Health.Models.Metrics;
 
 /// <summary>
 /// Represents a workout/exercise session from health platforms.

@@ -1,6 +1,6 @@
-using Maui.Health.Enums;
+using Kebechet.Types.Health.Enums;
 
-namespace Maui.Health.Models.Metrics.Write;
+namespace Kebechet.Types.Health.Models.Metrics.Write;
 
 /// <summary>
 /// Write DTO for height data

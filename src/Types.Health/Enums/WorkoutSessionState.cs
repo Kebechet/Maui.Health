@@ -1,4 +1,4 @@
-﻿namespace Maui.Health.Enums;
+﻿namespace Kebechet.Types.Health.Enums;
 /// <summary>
 /// Represents the state of a workout session. Used internally to be able fully copy classic google/ios activity.
 /// </summary>

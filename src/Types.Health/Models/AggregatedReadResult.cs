@@ -1,7 +1,7 @@
-using Maui.Health.Enums.Errors;
-using Maui.Health.Models.Metrics;
+using Kebechet.Types.Health.Enums.Errors;
+using Kebechet.Types.Health.Models.Metrics;
 
-namespace Maui.Health.Models;
+namespace Kebechet.Types.Health.Models;
 
 /// <summary>
 /// Result of <c>IHealthService.GetAggregatedHealthData</c> —

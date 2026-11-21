@@ -1,4 +1,4 @@
-namespace Maui.Health.Models;
+namespace Kebechet.Types.Health.Models;
 
 /// <summary>
 /// Represents device hardware and software metadata associated with a health record

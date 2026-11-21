@@ -1,10 +1,10 @@
 using Foundation;
 using HealthKit;
-using Maui.Health.Constants;
-using Maui.Health.Enums;
-using Maui.Health.Models;
-using Maui.Health.Models.Metrics;
-using Maui.Health.Models.Metrics.Write;
+using Kebechet.Types.Health.Constants;
+using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Models;
+using Kebechet.Types.Health.Models.Metrics;
+using Kebechet.Types.Health.Models.Metrics.Write;
 using UnitsNet;
 
 namespace Maui.Health.Platforms.iOS.Extensions;

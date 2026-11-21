@@ -57,9 +57,9 @@ dotnet build demo/DemoApp/DemoApp/DemoApp.csproj
   `Extensions/` and the `Constants/` that describe the data (`Units`, `WorkoutMetadata`). Code that a MAUI app shares with a non-MAUI app (a watch app, a
   backend) references it.
 - `src/Maui.Health` (`Kebechet.Maui.Health`): the services and platform code. It references Types.Health.
-- The types keep their `Maui.Health.*` namespaces. `src/Maui.Health/TypeForwarders.cs` forwards the types that lived in
-  Maui.Health before 5.2.0, so libraries compiled against an older version still load. Types added later need no
-  forwarder.
+- The types live in the `Kebechet.Types.Health.*` namespaces (since 6.0.0; before, they were `Maui.Health.Models`,
+  `.Enums`... inside Maui.Health). `Maui.Health.Extensions` and `Maui.Health.Constants` still hold the platform-bound
+  helpers that stayed in Maui.Health.
 - Both ship together with the version in `src/Directory.Build.props`; the publish workflow pushes Types.Health first.
 - Types.Health is `IsAotCompatible` (watch apps are NativeAOT): no reflection, and source-generated JSON.
 

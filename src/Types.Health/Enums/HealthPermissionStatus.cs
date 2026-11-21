@@ -1,4 +1,4 @@
-namespace Maui.Health.Enums;
+namespace Kebechet.Types.Health.Enums;
 
 /// <summary>
 /// Authorization status of a health permission.

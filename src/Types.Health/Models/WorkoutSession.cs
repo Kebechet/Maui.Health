@@ -1,6 +1,6 @@
-using Maui.Health.Enums;
+using Kebechet.Types.Health.Enums;
 
-namespace Maui.Health.Models;
+namespace Kebechet.Types.Health.Models;
 
 /// <summary>
 /// Tracks a workout session including pause/resume functionality

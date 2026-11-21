@@ -1,4 +1,4 @@
-namespace Maui.Health.Models.Metrics.Write;
+namespace Kebechet.Types.Health.Models.Metrics.Write;
 
 /// <summary>
 /// Write DTO for VO2 Max data (ml/kg/min)

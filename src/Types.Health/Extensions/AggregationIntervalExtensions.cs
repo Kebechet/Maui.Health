@@ -1,4 +1,4 @@
-namespace Maui.Health.Extensions;
+namespace Kebechet.Types.Health.Extensions;
 
 /// <summary>
 /// Classifies an aggregation <see cref="TimeSpan"/> for the platform aggregator dispatch.

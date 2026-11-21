@@ -1,4 +1,4 @@
-namespace Maui.Health.Models;
+namespace Kebechet.Types.Health.Models;
 
 /// <summary>
 /// Base class for health records with an identifier and data source.

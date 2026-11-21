@@ -1,4 +1,4 @@
-namespace Maui.Health.Models;
+namespace Kebechet.Types.Health.Models;
 
 /// <summary>
 /// Represents a date/time range with an optional end time

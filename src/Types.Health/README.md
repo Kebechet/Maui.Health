@@ -11,8 +11,8 @@ messages, storage, mapping. A MAUI app doesn't reference it directly, because `K
 dotnet add package Kebechet.Types.Health
 ```
 
-The types keep their `Maui.Health.*` namespaces, so code moves between the two packages unchanged. Both packages
-ship together with the same version.
+The types live in the `Kebechet.Types.Health.*` namespaces (`Kebechet.Types.Health.Models`,
+`Kebechet.Types.Health.Enums`...). Both packages ship together with the same version.
 
 ## License
 

@@ -1,4 +1,4 @@
-namespace Maui.Health.Models.Metrics.Write;
+namespace Kebechet.Types.Health.Models.Metrics.Write;
 
 /// <summary>
 /// Write DTO for body fat percentage data

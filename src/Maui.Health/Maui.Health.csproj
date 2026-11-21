@@ -44,7 +44,10 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
     <PackageReleaseNotes>
-v5.2.0 — the health data types also ship without MAUI, in Kebechet.Types.Health; existing code needs no change.
+v6.0.0 — the health data types move to Kebechet.Types.Health, a package without MAUI, under its own namespaces.
+
+BREAKING CHANGES
+• Namespaces (#62): DTOs, enums, results and their helpers are now in Kebechet.Types.Health.* — replace using Maui.Health.Models with using Kebechet.Types.Health.Models (same for .Enums, .Extensions, .Constants).
 
 NEW
 • Kebechet.Types.Health (#62): the DTOs, enums and results as a plain .NET package, for code shared with a watch app or a backend.

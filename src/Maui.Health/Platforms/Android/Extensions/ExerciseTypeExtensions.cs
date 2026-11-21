@@ -1,4 +1,4 @@
-using Maui.Health.Enums;
+using Kebechet.Types.Health.Enums;
 using Maui.Health.Platforms.Android.Enums;
 
 namespace Maui.Health.Platforms.Android.Extensions;

@@ -1,6 +1,6 @@
-using Maui.Health.Enums;
+using Kebechet.Types.Health.Enums;
 
-namespace Maui.Health.Models;
+namespace Kebechet.Types.Health.Models;
 
 /// <summary>
 /// Represents an aggregated health metric value over a time range.

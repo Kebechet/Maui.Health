@@ -1,6 +1,6 @@
-using Maui.Health.Models.Metrics;
+using Kebechet.Types.Health.Models.Metrics;
 
-namespace Maui.Health.Extensions;
+namespace Kebechet.Types.Health.Extensions;
 
 /// <summary>
 /// Splits a <see cref="HealthTimeRange"/> into smaller sub-ranges so an interval-aggregation
