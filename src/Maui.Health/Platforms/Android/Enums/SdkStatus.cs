@@ -1,4 +1,4 @@
-﻿namespace Maui.Health.Enums.Errors;
+﻿namespace Maui.Health.Platforms.Android.Enums;
 
 /// <summary>
 /// Errors that can occur when checking whether the health SDK is available on the device.

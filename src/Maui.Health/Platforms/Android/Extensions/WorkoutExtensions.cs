@@ -1,8 +1,8 @@
 using AndroidX.Health.Connect.Client.Records;
 using AndroidX.Health.Connect.Client.Records.Metadata;
 using Java.Time;
-using Maui.Health.Enums;
-using Maui.Health.Models.Metrics;
+using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Models.Metrics;
 using Maui.Health.Platforms.Android.Enums;
 
 namespace Maui.Health.Platforms.Android.Extensions;

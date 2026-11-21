@@ -1,7 +1,7 @@
 using AndroidX.Core.Content;
 using AndroidX.Health.Connect.Client;
-using Maui.Health.Enums.Errors;
-using Maui.Health.Models;
+using Kebechet.Types.Health.Enums.Errors;
+using Kebechet.Types.Health.Models;
 using Maui.Health.Platforms.Android.Extensions;
 using Microsoft.Extensions.Logging;
 using static Maui.Health.Platforms.Android.AndroidConstant;

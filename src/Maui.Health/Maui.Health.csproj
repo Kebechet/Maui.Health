@@ -43,27 +43,26 @@
     <DebugType>embedded</DebugType>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
-    <Version>5.1.0</Version>
     <PackageReleaseNotes>
-v5.1.0 — a read refused because the app is in the background is reported, not logged as an error.
+v6.0.0 — the health data types move to Kebechet.Types.Health, a package without MAUI, under its own namespaces.
+
+BREAKING CHANGES
+• Namespaces (#62): DTOs, enums, results and their helpers are now in Kebechet.Types.Health.* — replace using Maui.Health.Models with using Kebechet.Types.Health.Models (same for .Enums, .Extensions, .Constants).
+
+NEW
+• Kebechet.Types.Health (#62): the DTOs, enums and results as a plain .NET package, for code shared with a watch app or a backend.
+• HealthDataSdk.GoogleHealthServices (#62): marks workouts recorded on a Wear OS watch with Health Services.
+
+CHANGED
+• WorkoutSession (#62): its constructor and the DTO-to-permission helpers are public, so other health libraries can use them.
+
+PREVIOUS RELEASE — v5.1.0: a read refused because the app is in the background is reported, not logged as an error.
 
 NEW
 • Read results carry a typed Error (#58): ReadHealthDataError.BackgroundReadNotPermitted marks a read Health Connect refuses while the app is in the background.
 
 CHANGED
 • Android (#58): a read Health Connect refuses or limits in the background returns BackgroundReadNotPermitted and is logged as information, not as an error.
-
-PREVIOUS RELEASE — v5.0.0: the Health Connect background-read permission can now be requested.
-
-Health Connect rejects reads and aggregates made while the app is not in the foreground unless READ_HEALTH_DATA_IN_BACKGROUND has been granted, and a sync does not have to intend to run in the background to land there: a delayed or resumed one gets there on its own if the user leaves the app first. The permission is tied to no data type, so it could not be expressed through HealthPermissionDto and was previously impossible to ask for.
-
-BREAKING CHANGES
-• RequestPermission and RequestPermissions take a new canRequestBackgroundReadPermission flag BEFORE the CancellationToken. Callers passing the token positionally must name it (cancellationToken: token) or pass the new argument. The compiler catches every case — a CancellationToken will not bind to a bool. Both flags default to false, so behaviour is unchanged unless opted into.
-
-NEW
-• canRequestBackgroundReadPermission adds READ_HEALTH_DATA_IN_BACKGROUND to the Health Connect permission request, so reads and aggregates that land after the app leaves the foreground are no longer rejected. Android only; iOS ignores it, since HealthKit arranges background delivery per query type rather than by a permission.
-• The request is gated on the device feature as well as the flag. On a Health Connect version that does not support background reads the permission is skipped, rather than being added to a request the user could never satisfy — which would leave the system dialog re-opening on every call.
-• The manifest declaration stays with the consuming app: this package ships no AndroidManifest.xml and declares no health permission. Add &lt;uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND"/&gt; yourself, and note that declaring alone is not enough because Health Connect permissions are granted at runtime. See the README's Android setup section.
     </PackageReleaseNotes>
   </PropertyGroup>
 
@@ -71,6 +70,10 @@ NEW
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="UnitsNet" Version="5.75.0" />
 	</ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Types.Health\Types.Health.csproj" />
+  </ItemGroup>
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'net10.0-android'">
 	  <PackageReference Include="Xamarin.AndroidX.Health.Connect.ConnectClient" Version="1.1.0.2" />

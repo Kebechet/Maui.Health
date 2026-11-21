@@ -1,5 +1,5 @@
-using Maui.Health.Extensions;
-using Maui.Health.Models;
+using Kebechet.Types.Health.Extensions;
+using Kebechet.Types.Health.Models;
 using Xunit;
 
 namespace Maui.Health.Tests;
@@ -27,6 +27,40 @@ public class DateRangeExtensionsTests
             Assert.Equal(original[i].Start, result[i].Start);
             Assert.Equal(original[i].End, result[i].End);
         }
+    }
+
+    [Fact]
+    public void ToJson_Ranges_WritesTheFormatStoredByEarlierVersions()
+    {
+        // Arrange
+        var ranges = new List<DateRange>
+        {
+            new(DateTimeOffset.FromUnixTimeMilliseconds(1000), DateTimeOffset.FromUnixTimeMilliseconds(2000)),
+            new(DateTimeOffset.FromUnixTimeMilliseconds(3000)),
+        };
+
+        // Act
+        var json = ranges.ToJson();
+
+        // Assert
+        Assert.Equal("""[{"Start":1000,"End":2000},{"Start":3000,"End":null}]""", json);
+    }
+
+    [Fact]
+    public void ToDateRanges_FormatStoredByEarlierVersions_ReadsEveryRange()
+    {
+        // Arrange
+        var json = """[{"Start":1000,"End":2000},{"Start":3000,"End":null}]""";
+
+        // Act
+        var ranges = json.ToDateRanges();
+
+        // Assert
+        Assert.Equal(2, ranges.Count);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(1000), ranges[0].Start);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(2000), ranges[0].End);
+        Assert.Equal(DateTimeOffset.FromUnixTimeMilliseconds(3000), ranges[1].Start);
+        Assert.Null(ranges[1].End);
     }
 
     [Fact]

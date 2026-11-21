@@ -13,6 +13,10 @@ env:
 
   PROJECT_PATH: src/Maui.Health/Maui.Health.csproj
   PACKAGE_NAME: Kebechet.Maui.Health
+  # Ships with Maui.Health under the same version, which Maui.Health depends on.
+  TYPES_PROJECT_PATH: src/Types.Health/Types.Health.csproj
+  TYPES_PACKAGE_NAME: Kebechet.Types.Health
+  VERSION_PROPS_PATH: src/Directory.Build.props
 
   ARTIFACT_FOLDER: D:\a\artifacts
 
@@ -65,22 +69,31 @@ jobs:
           --no-build
           --no-restore
 
+      - name: Pack Types.Health NuGet Package
+        run: >
+          dotnet pack ${{ env.TYPES_PROJECT_PATH }}
+          -c ${{ env.BUILD_CONFIGURATION }}
+          -o ${{env.ARTIFACT_FOLDER}}
+          --no-build
+          --no-restore
+
       - uses: actions/upload-artifact@v4
         with:
           name: nuget-package
           path: ${{env.ARTIFACT_FOLDER}}/*.nupkg
 
-      - name: Extract version from csproj
+      - name: Extract version and release notes
         id: get_version
         shell: pwsh
         run: |
-          [xml]$csproj = Get-Content "${{ env.PROJECT_PATH }}"
-          $versionGroup = $csproj.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1
+          [xml]$versionProps = Get-Content "${{ env.VERSION_PROPS_PATH }}"
+          $versionGroup = $versionProps.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1
           if ($null -eq $versionGroup) {
-            throw "No Version element found in ${{ env.PROJECT_PATH }}"
+            throw "No Version element found in ${{ env.VERSION_PROPS_PATH }}"
           }
           $version = $versionGroup.Version.Trim()
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          [xml]$csproj = Get-Content "${{ env.PROJECT_PATH }}"
           $releaseNotesGroup = $csproj.Project.PropertyGroup | Where-Object { $_.PackageReleaseNotes } | Select-Object -First 1
           $releaseNotes = if ($releaseNotesGroup) { $releaseNotesGroup.PackageReleaseNotes } else { "" }
           "RELEASE_NOTES<<EOF" >> $env:GITHUB_OUTPUT
@@ -97,9 +110,18 @@ jobs:
         with:
           user: ${{ env.NUGET_USER }}
 
-      - name: Publish to NuGet
+      # Types.Health first, in its own step: Maui.Health depends on it, so a failed Types.Health push must stop the
+      # job before Maui.Health reaches nuget.org.
+      - name: Publish Types.Health to NuGet
         run: >
-          dotnet nuget push ${{env.ARTIFACT_FOLDER}}\*.nupkg
+          dotnet nuget push ${{env.ARTIFACT_FOLDER}}\${{ env.TYPES_PACKAGE_NAME }}.${{ steps.get_version.outputs.VERSION }}.nupkg
+          --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+      - name: Publish Maui.Health to NuGet
+        run: >
+          dotnet nuget push ${{env.ARTIFACT_FOLDER}}\${{ env.PACKAGE_NAME }}.${{ steps.get_version.outputs.VERSION }}.nupkg
           --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
           --source https://api.nuget.org/v3/index.json
           --skip-duplicate
@@ -128,6 +150,7 @@ jobs:
 
             ### Links
             - [NuGet Package](https://www.nuget.org/packages/${{ env.PACKAGE_NAME }}/${{ steps.get_version.outputs.VERSION }})
+            - [NuGet Package: ${{ env.TYPES_PACKAGE_NAME }}](https://www.nuget.org/packages/${{ env.TYPES_PACKAGE_NAME }}/${{ steps.get_version.outputs.VERSION }}), the health data types without MAUI
             - [GitHub Repository](https://github.com/Kebechet/Maui.Health)
           files: ${{env.ARTIFACT_FOLDER}}/*.nupkg
           draft: false

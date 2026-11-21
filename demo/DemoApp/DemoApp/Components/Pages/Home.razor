@@ -490,8 +490,8 @@ else if (_activeTab == 2)
                         {
                             var statusClass = ps.Status switch
                             {
-                                Maui.Health.Enums.HealthPermissionStatus.Granted => "upsert",
-                                Maui.Health.Enums.HealthPermissionStatus.Denied => "deletion",
+                                Kebechet.Types.Health.Enums.HealthPermissionStatus.Granted => "upsert",
+                                Kebechet.Types.Health.Enums.HealthPermissionStatus.Denied => "deletion",
                                 _ => "workout-meta"
                             };
                             <tr>
@@ -537,7 +537,7 @@ else if (_activeTab == 2)
                         @foreach (var change in _changesResult.Changes)
                         {
                             <li>
-                                <span class="change-type @(change.Type == Maui.Health.Enums.HealthChangeType.Upsert ? "upsert" : "deletion")">
+                                <span class="change-type @(change.Type == Kebechet.Types.Health.Enums.HealthChangeType.Upsert ? "upsert" : "deletion")">
                                     @change.Type
                                 </span>
                                 <code>@change.RecordId</code>

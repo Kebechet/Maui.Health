@@ -8,4 +8,5 @@
     <Project Path="../tests/Maui.Health.Tests/Maui.Health.Tests.csproj" />
   </Folder>
   <Project Path="Maui.Health/Maui.Health.csproj" />
+  <Project Path="Types.Health/Types.Health.csproj" />
 </Solution>

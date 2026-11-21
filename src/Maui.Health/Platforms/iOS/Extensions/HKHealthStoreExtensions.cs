@@ -1,6 +1,6 @@
 using Foundation;
 using HealthKit;
-using Maui.Health.Models.Metrics;
+using Kebechet.Types.Health.Models.Metrics;
 
 namespace Maui.Health.Platforms.iOS.Extensions;
 

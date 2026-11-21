@@ -1,5 +1,5 @@
-using Maui.Health.Enums.Errors;
-using Maui.Health.Models;
+using Kebechet.Types.Health.Enums.Errors;
+using Kebechet.Types.Health.Models;
 using Xunit;
 
 namespace Maui.Health.Tests;

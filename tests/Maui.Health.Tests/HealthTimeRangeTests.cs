@@ -1,4 +1,4 @@
-using Maui.Health.Models.Metrics;
+using Kebechet.Types.Health.Models.Metrics;
 using Xunit;
 
 namespace Maui.Health.Tests;

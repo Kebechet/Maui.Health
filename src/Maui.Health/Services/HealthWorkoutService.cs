@@ -1,8 +1,8 @@
+using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Extensions;
+using Kebechet.Types.Health.Models;
+using Kebechet.Types.Health.Models.Metrics;
 using Maui.Health.Constants;
-using Maui.Health.Enums;
-using Maui.Health.Extensions;
-using Maui.Health.Models;
-using Maui.Health.Models.Metrics;
 
 namespace Maui.Health.Services;
 
@@ -195,7 +195,7 @@ public partial class HealthWorkoutService : IHealthWorkoutService
     /// <summary>
     /// Saves the active workout session object to preferences (for app restart persistence)
     /// </summary>
-    protected void SaveWorkoutSessionToPreferences(Models.WorkoutSession session)
+    protected void SaveWorkoutSessionToPreferences(WorkoutSession session)
     {
         Preferences.Default.Set(ActiveSessionStorage.ActiveSessionId, session.Id);
         Preferences.Default.Set(ActiveSessionStorage.ActivityType, session.ActivityType.ToString());

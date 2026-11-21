@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using Maui.Health.Enums;
-using Maui.Health.Models;
-using Maui.Health.Models.Metrics;
+using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Models;
+using Kebechet.Types.Health.Models.Metrics;
 
 namespace Maui.Health.Services;
 
@@ -49,7 +49,7 @@ public interface IHealthService
     /// <summary>
     /// Get the current authorization status of the specified health permissions without triggering the permission UI.
     /// On Android: accurately reports both read and write permission status.
-    /// On iOS: accurately reports write permission status. Read permissions always return <see cref="Enums.HealthPermissionStatus.NotDetermined"/>
+    /// On iOS: accurately reports write permission status. Read permissions always return <see cref="Kebechet.Types.Health.Enums.HealthPermissionStatus.NotDetermined"/>
     /// because Apple does not expose read authorization status.
     /// </summary>
     /// <param name="permissions">The permissions to check status for</param>
@@ -111,12 +111,12 @@ public interface IHealthService
     /// <see cref="WriteHealthDataResult.RecordIds"/> is 1:1 with <paramref name="items"/> — that
     /// is, <c>RecordIds[i]</c> is the native ID assigned to <c>items[i]</c>.</para>
     /// <para>On failure, <see cref="WriteHealthDataResult.RecordIds"/> is empty and the typed
-    /// <see cref="Models.Result{TError}.Error"/> identifies the failure mode (SDK unavailable,
+    /// <see cref="Kebechet.Types.Health.Models.Result{TError}.Error"/> identifies the failure mode (SDK unavailable,
     /// permission denied, DTO conversion failure, platform-write failure, or an unexpected
-    /// exception available on <see cref="Models.Result{TError}.ErrorException"/>). Callers that
-    /// only care about success/failure can check <see cref="Models.Result{TError}.IsSuccess"/>.</para>
+    /// exception available on <see cref="Kebechet.Types.Health.Models.Result{TError}.ErrorException"/>). Callers that
+    /// only care about success/failure can check <see cref="Kebechet.Types.Health.Models.Result{TError}.IsSuccess"/>.</para>
     /// <para>Windows and macOS Catalyst stubs always return
-    /// <see cref="Enums.Errors.WriteHealthDataError.NotSupported"/>.</para>
+    /// <see cref="Kebechet.Types.Health.Enums.Errors.WriteHealthDataError.NotSupported"/>.</para>
     /// </remarks>
     /// <typeparam name="TDto">The type of health metric DTO to write</typeparam>
     /// <param name="items">The health data records to write</param>
@@ -144,20 +144,20 @@ public interface IHealthService
     /// the new ID and the caller must re-link their local record to it.</description></item>
     /// </list>
     /// <para><b>iOS-only constraints</b> (both surface as typed
-    /// <see cref="Enums.Errors.UpdateHealthDataError"/> values, leaving the original record untouched):</para>
+    /// <see cref="Kebechet.Types.Health.Enums.Errors.UpdateHealthDataError"/> values, leaving the original record untouched):</para>
     /// <list type="bullet">
-    /// <item><description><see cref="Enums.Errors.UpdateHealthDataError.LegacyRecordNotUpdatable"/> —
+    /// <item><description><see cref="Kebechet.Types.Health.Enums.Errors.UpdateHealthDataError.LegacyRecordNotUpdatable"/> —
     /// the existing sample was written without a sync identifier (by an older SDK version or by a
     /// third-party app that doesn't stamp). Callers that own the record can fall back to
     /// <see cref="DeleteHealthData{TDto}(string, bool, System.Threading.CancellationToken)"/> +
     /// <see cref="WriteHealthData{TDto}(TDto, bool, System.Threading.CancellationToken)"/>.</description></item>
-    /// <item><description><see cref="Enums.Errors.UpdateHealthDataError.CrossSourceNotSupported"/> —
+    /// <item><description><see cref="Kebechet.Types.Health.Enums.Errors.UpdateHealthDataError.CrossSourceNotSupported"/> —
     /// the existing sample was authored by a different app. HealthKit scopes sync-identifier replacement
     /// per source bundle, so there is no supported way to update cross-source records.</description></item>
     /// </list>
     /// <para>All failure modes leave the original record untouched.</para>
     /// <para>Windows and macOS Catalyst stubs always return
-    /// <see cref="Enums.Errors.UpdateHealthDataError.NotSupported"/>.</para>
+    /// <see cref="Kebechet.Types.Health.Enums.Errors.UpdateHealthDataError.NotSupported"/>.</para>
     /// </remarks>
     /// <typeparam name="TDto">The type of health metric DTO to write in place of the existing record</typeparam>
     /// <param name="recordId">Native ID of the record to update (from a previous
@@ -302,7 +302,7 @@ public interface IHealthService
     /// <summary>
     /// Opens the platform store to update the health provider app.
     /// Call this after showing your custom UI when RequestPermissions returns
-    /// <see cref="Enums.Errors.RequestPermissionError.SdkUnavailableProviderUpdateRequired"/>.
+    /// <see cref="Kebechet.Types.Health.Enums.Errors.RequestPermissionError.SdkUnavailableProviderUpdateRequired"/>.
     /// On Android: Opens Play Store to update Health Connect.
     /// On iOS: No-op (HealthKit is built into the OS).
     /// </summary>

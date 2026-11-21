@@ -1,4 +1,4 @@
-using Maui.Health.Extensions;
+using Kebechet.Types.Health.Extensions;
 using Xunit;
 
 namespace Maui.Health.Tests;

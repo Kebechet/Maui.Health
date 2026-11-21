@@ -1,8 +1,8 @@
-using Maui.Health.Constants;
-using Maui.Health.Enums;
-using Maui.Health.Extensions;
-using Maui.Health.Models;
-using Maui.Health.Models.Metrics;
+using Kebechet.Types.Health.Constants;
+using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Extensions;
+using Kebechet.Types.Health.Models;
+using Kebechet.Types.Health.Models.Metrics;
 using Xunit;
 
 namespace Maui.Health.Tests;

@@ -1,5 +1,5 @@
-﻿using Maui.Health.Enums;
-using Maui.Health.Models;
+﻿using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Models;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
