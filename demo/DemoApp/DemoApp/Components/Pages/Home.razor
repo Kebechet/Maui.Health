@@ -470,7 +470,7 @@ else if (_activeTab == 2)
     <!-- Permission Statuses -->
     <div class="api-section">
         <div class="api-section-title">Permission Statuses</div>
-        <p class="section-description">Query current authorization status of health permissions without triggering the permission UI. On iOS, read permissions always return NotDetermined (Apple limitation).</p>
+        <p class="section-description">Query current authorization status of health permissions without triggering the permission UI. On iOS, read permissions always return Undisclosed (Apple limitation).</p>
         <button class="action-btn primary" @onclick="LoadPermissionStatusesAsync" disabled="@_isPermissionStatusLoading">
             @(_isPermissionStatusLoading ? "Checking..." : "Check Permission Statuses")
         </button>

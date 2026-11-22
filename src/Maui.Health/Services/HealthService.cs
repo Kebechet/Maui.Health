@@ -1,4 +1,5 @@
 ﻿using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Enums.Errors;
 using Kebechet.Types.Health.Models;
 using Kebechet.Types.Health.Models.Metrics;
 using Microsoft.Extensions.Logging;
@@ -30,8 +31,28 @@ public partial class HealthService : IHealthService
         return RequestPermissions([healthPermission], canRequestFullHistoryPermission, canRequestBackgroundReadPermission, cancellationToken);
     }
 
+    /// <summary>
+    /// Serializes permission requests across every instance. Parallel requests on Android each launched their own
+    /// request: one screen showed and the rest stayed on top of the app as invisible activities that swallowed every
+    /// tap. Queued, a later request asks only for what the earlier one left missing.
+    /// </summary>
+    private static readonly SemaphoreSlim _permissionRequestGate = new(1, 1);
+
     /// <inheritdoc/>
-    public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, bool canRequestBackgroundReadPermission = false, CancellationToken cancellationToken = default);
+    public async Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, bool canRequestBackgroundReadPermission = false, CancellationToken cancellationToken = default)
+    {
+        await _permissionRequestGate.WaitAsync(cancellationToken);
+        try
+        {
+            return await RequestPermissionsInternal(healthPermissions, canRequestFullHistoryPermission, canRequestBackgroundReadPermission, cancellationToken);
+        }
+        finally
+        {
+            _permissionRequestGate.Release();
+        }
+    }
+
+    private partial Task<RequestPermissionResult> RequestPermissionsInternal(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, bool canRequestBackgroundReadPermission, CancellationToken cancellationToken);
 
     /// <inheritdoc/>
     public partial Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken = default);
@@ -64,15 +85,15 @@ public partial class HealthService : IHealthService
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken = default)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, CancellationToken cancellationToken = default)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
@@ -83,6 +104,9 @@ public partial class HealthService : IHealthService
 
     /// <inheritdoc/>
     public partial void OpenStorePageOfHealthProvider();
+
+    /// <inheritdoc/>
+    public partial Result<OpenPermissionSettingsError> OpenPermissionSettings();
 
     /// <inheritdoc/>
     public partial Task<DateTime> GetEarliestAccessibleDateTime(CancellationToken cancellationToken = default);

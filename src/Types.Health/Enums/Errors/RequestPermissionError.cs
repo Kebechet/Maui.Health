@@ -25,7 +25,12 @@ public enum RequestPermissionError
     /// </summary>
     ProblemWhileGrantingPermissions,
     /// <summary>
-    /// The user did not grant all of the requested permissions.
+    /// The user did not grant all of the requested data-type permissions; <c>DeniedPermissions</c> lists them.
+    /// Refused full-history or background access alone does not raise it.
     /// </summary>
     MissingPermissions,
+    /// <summary>
+    /// The request threw; the exception is on <see cref="Models.Result.ErrorException"/>.
+    /// </summary>
+    UnexpectedException,
 }

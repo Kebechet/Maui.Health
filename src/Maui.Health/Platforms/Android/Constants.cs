@@ -103,6 +103,25 @@ public static class AndroidConstant
     public const string IntentExtraCaller = "callerId";
 
     /// <summary>
+    /// Activity action: launch UI to manage (e.g. grant/revoke) health permissions. Takes the app's package name in
+    /// <c>Intent.EXTRA_PACKAGE_NAME</c> to open that app's permissions directly. Android 14+, where Health Connect is
+    /// part of the system.
+    /// https://developer.android.com/reference/android/health/connect/HealthConnectManager#ACTION_MANAGE_HEALTH_PERMISSIONS
+    /// </summary>
+    public const string ManageHealthPermissionsAction = "android.health.connect.action.MANAGE_HEALTH_PERMISSIONS";
+
+    /// <summary>
+    /// Intent action to open Health Connect settings; the Health Connect app answers it on Android 13 and lower.
+    /// https://developer.android.com/reference/kotlin/androidx/health/connect/client/HealthConnectClient#ACTION_HEALTH_CONNECT_SETTINGS()
+    /// </summary>
+    public const string HealthConnectSettingsAction = "androidx.health.ACTION_HEALTH_CONNECT_SETTINGS";
+
+    /// <summary>
+    /// First Android version with Health Connect built into the system (Android 14, API 34).
+    /// </summary>
+    public const int HealthConnectInSystemApiVersion = 34;
+
+    /// <summary>
     /// JNI handle field name for reflection.
     /// </summary>
     public const string JniHandleFieldName = "handle";

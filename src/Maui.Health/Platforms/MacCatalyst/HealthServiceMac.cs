@@ -9,7 +9,7 @@ public partial class HealthService : IHealthService
 {
     public partial bool IsSupported => false;
 
-    public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, bool canRequestBackgroundReadPermission, CancellationToken cancellationToken)
+    private partial Task<RequestPermissionResult> RequestPermissionsInternal(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, bool canRequestBackgroundReadPermission, CancellationToken cancellationToken)
     {
         return Task.FromResult(new RequestPermissionResult());
     }
@@ -20,7 +20,7 @@ public partial class HealthService : IHealthService
             .Select(p => new HealthPermissionStatusResult
             {
                 Permission = p,
-                Status = HealthPermissionStatus.NotDetermined
+                Status = HealthPermissionStatus.Unavailable
             })
             .ToList();
 
@@ -63,7 +63,7 @@ public partial class HealthService : IHealthService
         return Task.FromResult(false);
     }
 
-    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult(new AggregatedReadResult
@@ -72,7 +72,7 @@ public partial class HealthService : IHealthService
         });
     }
 
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult(new AggregatedIntervalReadResult
@@ -81,7 +81,7 @@ public partial class HealthService : IHealthService
         });
     }
 
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult(new AggregatedIntervalReadResult
@@ -107,6 +107,11 @@ public partial class HealthService : IHealthService
     }
 
     public partial void OpenStorePageOfHealthProvider() { }
+
+    public partial Result<OpenPermissionSettingsError> OpenPermissionSettings()
+    {
+        return new Result<OpenPermissionSettingsError> { Error = OpenPermissionSettingsError.NotSupported };
+    }
 
     public partial Task<DateTime> GetEarliestAccessibleDateTime(CancellationToken cancellationToken)
     {

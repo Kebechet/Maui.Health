@@ -25,7 +25,7 @@ public partial class HealthService : IHealthService
     /// HealthKit reads need no separate background grant (canRequestBackgroundReadPermission is
     /// ignored) - background delivery is arranged per query type, not by a permission.
     /// </remarks>
-    public async partial Task<RequestPermissionResult> RequestPermissions(
+    private async partial Task<RequestPermissionResult> RequestPermissionsInternal(
         IList<HealthPermissionDto> healthPermissions,
         bool canRequestFullHistoryPermission,
         bool canRequestBackgroundReadPermission,
@@ -44,18 +44,7 @@ public partial class HealthService : IHealthService
 
         foreach (var permission in healthPermissions)
         {
-            HKObjectType? type = null;
-
-            // Special handling for workout/exercise session
-            if (permission.HealthDataType == HealthDataType.ExerciseSession)
-            {
-                type = HKWorkoutType.WorkoutType;
-            }
-            else
-            {
-                type = HKQuantityType.Create(permission.HealthDataType.ToHKQuantityTypeIdentifier());
-            }
-
+            var type = ToHKObjectType(permission.HealthDataType);
             if (type != null)
             {
                 if (permission.PermissionType.HasFlag(PermissionType.Read))
@@ -76,6 +65,11 @@ public partial class HealthService : IHealthService
         {
             using var healthStore = new HKHealthStore();
 
+            // HealthKit shows its sheet only for types it has not asked about yet; asked before the request, this
+            // tells whether the sheet is about to appear.
+            //https://developer.apple.com/documentation/healthkit/hkhealthstore/getrequeststatusforauthorization(toshare:read:completion:)
+            var isPermissionScreenShown = await GetRequestStatusForAuthorization(healthStore, nsTypesToWrite, nsTypesToRead) == HKAuthorizationRequestStatus.ShouldRequest;
+
             //https://developer.apple.com/documentation/healthkit/hkhealthstore/1614152-requestauthorization
             var (isSuccess, error) = await healthStore.RequestAuthorizationToShareAsync(nsTypesToWrite, nsTypesToRead);
             if (!isSuccess)
@@ -92,49 +86,67 @@ public partial class HealthService : IHealthService
             //is no data of the requested type in the HealthKit store.If your app is given share permission but not read
             //permission, you see only the data that your app has written to the store.Data from other sources remains
             //hidden.
+            var permissionStatuses = GetPermissionStatuses(healthStore, healthPermissions);
+            var deniedPermissions = permissionStatuses
+                .Where(x => x.Status is HealthPermissionStatus.Denied or HealthPermissionStatus.NotDetermined)
+                .Select(x => x.Permission)
+                .ToList();
 
-            if (writeTypes.Any())
+            return new RequestPermissionResult()
             {
-                foreach (var typeToWrite in writeTypes)
-                {
-                    var status = healthStore.GetAuthorizationStatus(typeToWrite);
-                    if (status != HKAuthorizationStatus.SharingAuthorized)
-                    {
-                        return new RequestPermissionResult()
-                        {
-                            Error = RequestPermissionError.MissingPermissions
-                        };
-                    }
-                }
-            }
+                Error = deniedPermissions.Any()
+                    ? RequestPermissionError.MissingPermissions
+                    : null,
+                PermissionStatuses = permissionStatuses,
+                DeniedPermissions = deniedPermissions,
+                IsPermissionScreenShown = isPermissionScreenShown,
+            };
         }
         catch (Exception ex)
         {
             return new RequestPermissionResult()
             {
-                Error = RequestPermissionError.ProblemWhileGrantingPermissions,
+                Error = RequestPermissionError.UnexpectedException,
                 ErrorException = ex
             };
         }
-        return new();
+    }
+
+    private static Task<HKAuthorizationRequestStatus> GetRequestStatusForAuthorization(HKHealthStore healthStore, NSSet<HKObjectType> typesToWrite, NSSet<HKObjectType> typesToRead)
+    {
+        var requestStatusSource = new TaskCompletionSource<HKAuthorizationRequestStatus>();
+        healthStore.GetRequestStatusForAuthorizationToShare(
+            new NSSet<HKSampleType>(typesToWrite.ToArray().OfType<HKSampleType>().ToArray()),
+            typesToRead,
+            (requestStatus, error) => requestStatusSource.TrySetResult(error is null
+                ? requestStatus
+                : HKAuthorizationRequestStatus.Unknown));
+
+        return requestStatusSource.Task;
     }
 
     public partial Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken)
     {
         if (!IsSupported)
         {
-            IList<HealthPermissionStatusResult> unsupportedResults = permissions
-                .Select(p => new HealthPermissionStatusResult
-                {
-                    Permission = p,
-                    Status = HealthPermissionStatus.NotDetermined
-                })
-                .ToList();
-
-            return Task.FromResult(unsupportedResults);
+            return Task.FromResult(ToUnavailableStatuses(permissions));
         }
 
-        using var healthStore = new HKHealthStore();
+        try
+        {
+            using var healthStore = new HKHealthStore();
+            IList<HealthPermissionStatusResult> permissionStatuses = GetPermissionStatuses(healthStore, permissions);
+            return Task.FromResult(permissionStatuses);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "{OperationName} could not read the permission statuses", nameof(GetPermissionStatuses));
+            return Task.FromResult(ToUnavailableStatuses(permissions));
+        }
+    }
+
+    private static List<HealthPermissionStatusResult> GetPermissionStatuses(HKHealthStore healthStore, IList<HealthPermissionDto> permissions)
+    {
         var results = new List<HealthPermissionStatusResult>();
 
         foreach (var permission in permissions)
@@ -146,28 +158,18 @@ public partial class HealthService : IHealthService
                 results.Add(new HealthPermissionStatusResult
                 {
                     Permission = permission,
-                    Status = HealthPermissionStatus.NotDetermined
+                    Status = HealthPermissionStatus.Undisclosed
                 });
                 continue;
             }
 
-            HKObjectType? type = null;
-
-            if (permission.HealthDataType == HealthDataType.ExerciseSession)
-            {
-                type = HKWorkoutType.WorkoutType;
-            }
-            else
-            {
-                type = HKQuantityType.Create(permission.HealthDataType.ToHKQuantityTypeIdentifier());
-            }
-
+            var type = ToHKObjectType(permission.HealthDataType);
             if (type is null)
             {
                 results.Add(new HealthPermissionStatusResult
                 {
                     Permission = permission,
-                    Status = HealthPermissionStatus.NotDetermined
+                    Status = HealthPermissionStatus.Unavailable
                 });
                 continue;
             }
@@ -187,8 +189,29 @@ public partial class HealthService : IHealthService
             });
         }
 
-        IList<HealthPermissionStatusResult> resultList = results;
-        return Task.FromResult(resultList);
+        return results;
+    }
+
+    private static IList<HealthPermissionStatusResult> ToUnavailableStatuses(IList<HealthPermissionDto> permissions)
+    {
+        return permissions
+            .Select(p => new HealthPermissionStatusResult
+            {
+                Permission = p,
+                Status = HealthPermissionStatus.Unavailable
+            })
+            .ToList();
+    }
+
+    private static HKObjectType? ToHKObjectType(HealthDataType healthDataType)
+    {
+        // Special handling for workout/exercise session
+        if (healthDataType == HealthDataType.ExerciseSession)
+        {
+            return HKWorkoutType.WorkoutType;
+        }
+
+        return HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier());
     }
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
@@ -656,7 +679,7 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return GetAggregatedHealthDataInternal<TDto>(timeRange, cancellationToken);
@@ -782,7 +805,7 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return GetAggregatedHealthDataByIntervalInternal<TDto>(timeRange, interval, timeZone, cancellationToken);
@@ -811,7 +834,7 @@ public partial class HealthService : IHealthService
         return RunStatisticsCollectionQuery<TDto>(timeRange, intervalComponents, timeZone, cancellationToken);
     }
 
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (count <= 0)
@@ -1255,6 +1278,14 @@ public partial class HealthService : IHealthService
     }
 
     public partial void OpenStorePageOfHealthProvider() { }
+
+    /// <remarks>
+    /// No URL opens the Health permissions of an app; the user manages them in Settings > Health > Data Access &amp; Devices.
+    /// </remarks>
+    public partial Result<OpenPermissionSettingsError> OpenPermissionSettings()
+    {
+        return new Result<OpenPermissionSettingsError> { Error = OpenPermissionSettingsError.NotSupported };
+    }
 
     private async Task<HealthDataReadResult<TDto>> GetCumulativeHealthDataAsync<TDto>(
         HKQuantityType quantityType,

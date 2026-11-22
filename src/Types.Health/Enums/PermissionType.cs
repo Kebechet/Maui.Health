@@ -9,9 +9,9 @@ public enum PermissionType
     /// <summary>
     /// Permission to read health data.
     /// </summary>
-    Read,
+    Read = 1,
     /// <summary>
     /// Permission to write health data.
     /// </summary>
-    Write
+    Write = 2,
 }

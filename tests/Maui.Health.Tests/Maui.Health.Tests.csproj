@@ -22,6 +22,10 @@
 		<!-- Android-only folder, but these two files touch no Android API: the refusal is recognised from message text alone. -->
 		<Compile Include="..\..\src\Maui.Health\Platforms\Android\Constants.cs" Link="Android\Constants.cs" />
 		<Compile Include="..\..\src\Maui.Health\Platforms\Android\Extensions\ExceptionExtensions.cs" Link="Android\ExceptionExtensions.cs" />
+		<!-- How granted Health Connect permission strings become statuses and a request result; no Android API. -->
+		<Compile Include="..\..\src\Maui.Health\Platforms\Android\Helpers\HealthConnectPermissions.cs" Link="Android\HealthConnectPermissions.cs" />
+		<Compile Include="..\..\src\Maui.Health\Platforms\Android\Extensions\HealthPermissionExtensions.cs" Link="Android\HealthPermissionExtensions.cs" />
+		<Compile Include="..\..\src\Maui.Health\Platforms\Android\Extensions\StringExtensions.cs" Link="Android\StringExtensions.cs" />
 	</ItemGroup>
 
 </Project>

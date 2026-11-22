@@ -10,13 +10,23 @@ public enum HealthPermissionStatus
     /// </summary>
     Granted,
     /// <summary>
-    /// The permission has been denied by the user.
+    /// The permission is not granted. On Android this also covers a permission the user was never asked for:
+    /// Health Connect only reports which permissions are granted.
     /// </summary>
     Denied,
     /// <summary>
-    /// The permission status cannot be determined.
-    /// On iOS, read permissions always return this value because Apple does not expose read authorization status.
-    /// On unsupported platforms (Windows, MacCatalyst), all permissions return this value.
+    /// iOS only: the user has not been asked for this write permission yet.
     /// </summary>
-    NotDetermined
+    NotDetermined,
+    /// <summary>
+    /// iOS only: HealthKit never discloses whether a read permission was granted. A read the user refused returns
+    /// no data instead of failing, so reading is safe.
+    /// https://developer.apple.com/documentation/healthkit/hkhealthstore/authorizationstatus(for:)
+    /// </summary>
+    Undisclosed,
+    /// <summary>
+    /// The status could not be read: the health platform is unavailable or unsupported on this device, or querying
+    /// it failed. Says nothing about what the user chose.
+    /// </summary>
+    Unavailable,
 }

@@ -216,6 +216,11 @@ public async Task ShowTodaysSummary()
 
 > **Note:** This API is marked `[Experimental("MH003")]`. Suppress the warning with `#pragma warning disable MH003`.
 
+By default an aggregated read first requests its read permission, which opens the permission screen when it is
+missing. A read nobody asked for, such as an automatic sync, passes `shouldCheckPermissions: false`: a missing
+permission then fails the read instead of showing UI. The same parameter exists on
+`GetAggregatedHealthDataByInterval` and `GetAggregatedHealthDataByCalendarPeriod`.
+
 ### 7. Aggregated Health Data by Interval
 
 Get aggregated data bucketed by time intervals - ideal for charts and day-by-day views. Uses Android's `aggregateGroupByDuration()` and iOS's `HKStatisticsCollectionQuery`:
@@ -313,6 +318,32 @@ public async Task RequestPermissions()
     }
 }
 ```
+
+The result reports every requested permission once the user has answered, so no second call is needed to see what
+was granted:
+
+- `PermissionStatuses`: the status of each requested read and write. On iOS every read is `Undisclosed`: Apple never
+  tells whether read access was granted, and a refused read returns no data.
+- `DeniedPermissions`: the requested data-type permissions that are still not granted. Only these fail the request.
+- `FullHistoryReadStatus` / `BackgroundReadStatus` (Android): Health Connect asks for past-data and background access
+  on a screen of its own. Refusing them does not fail the request; they are reported here instead.
+- `IsPermissionScreenShown`: false when the platform declined to ask. Android shows the screen for a permission at
+  most twice and iOS asks for each type once, so a permission still denied after such a request can only be granted
+  in the platform's settings:
+
+```csharp
+var result = await _healthService.RequestPermissions(permissions);
+if (result.DeniedPermissions.Any() && !result.IsPermissionScreenShown)
+{
+    // Explain why, then open Health Connect's permission screen for this app (Android).
+    _healthService.OpenPermissionSettings();
+}
+```
+
+`GetPermissionStatuses` reads the same statuses without showing anything and never throws: when the platform cannot
+answer (Health Connect unavailable, no current activity, a platform error) every permission comes back `Unavailable`.
+
+Permission requests run one after another, so two parts of an app asking at the same time get one screen, not two.
 
 #### Handling Health Connect Updates (Android)
 
@@ -478,6 +509,25 @@ public async Task DetectDuplicateWorkouts()
     }
 }
 ```
+
+## Migrating to 7.0
+
+- `GetAggregatedHealthData`, `GetAggregatedHealthDataByInterval` and `GetAggregatedHealthDataByCalendarPeriod` take
+  `bool shouldCheckPermissions = true` before the `CancellationToken`. A token passed by position now goes as
+  `cancellationToken: token`.
+- `RequestPermissionResult.DeniedPermissions` is a list of `HealthPermissionDto` (data type and read or write) instead
+  of platform permission strings.
+- A refused full-history or background permission no longer fails `RequestPermissions` on Android: check
+  `FullHistoryReadStatus` and `BackgroundReadStatus` if you depend on them.
+- `HealthPermissionStatus`: iOS reads are `Undisclosed` instead of `NotDetermined`, and a status that cannot be read
+  (unsupported platform, Health Connect unavailable, a platform error) is `Unavailable` instead of `NotDetermined`.
+  `NotDetermined` now means only an iOS write the user has not been asked for.
+- `RequestPermissions` reports an exception as `RequestPermissionError.UnexpectedException` (iOS reported
+  `ProblemWhileGrantingPermissions`, Android no error value).
+- `IHealthService` implementations add `OpenPermissionSettings()`.
+- `PermissionType.Read` is `1` and `Write` is `2` (they were `0` and `1`, so `Read` was no flag at all and every
+  write-only permission asked for read access too). Code that stored the numbers, or relied on a write also asking for
+  the read, has to change.
 
 ## Testing Tips
 

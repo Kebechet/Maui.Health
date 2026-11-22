@@ -1,3 +1,4 @@
+using Kebechet.Types.Health.Enums;
 using Kebechet.Types.Health.Enums.Errors;
 using Kebechet.Types.Health.Models;
 using Xunit;
@@ -61,7 +62,10 @@ public class ResultTests
         // Arrange & Act
         var result = new RequestPermissionResult
         {
-            DeniedPermissions = ["com.health.steps"]
+            DeniedPermissions =
+            [
+                new HealthPermissionDto { HealthDataType = HealthDataType.Steps, PermissionType = PermissionType.Read },
+            ]
         };
 
         // Assert

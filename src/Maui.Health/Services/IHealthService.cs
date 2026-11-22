@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Enums.Errors;
 using Kebechet.Types.Health.Models;
 using Kebechet.Types.Health.Models.Metrics;
 
@@ -34,10 +35,12 @@ public interface IHealthService
     Task<RequestPermissionResult> RequestPermission(HealthPermissionDto healthPermission, bool canRequestFullHistoryPermission = false, bool canRequestBackgroundReadPermission = false, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Request multiple health permissions.
+    /// Request multiple health permissions. The result carries the status of every requested permission once the user
+    /// has answered, so no <see cref="GetPermissionStatuses"/> call is needed after it.
     /// On iOS: the result only reflects write permission grants. Read permission denials are not detectable
     /// due to Apple's privacy design — see <see cref="RequestPermissionResult"/> for details.
-    /// For a per-permission breakdown, use <see cref="GetPermissionStatuses"/> after this call.
+    /// Concurrent calls run one after another: a second request starts only after the user has answered the first,
+    /// and asks only for what is still missing.
     /// </summary>
     /// <param name="canRequestBackgroundReadPermission">
     /// Android only, ignored elsewhere. Adds the background-read permission to the request when the
@@ -48,9 +51,11 @@ public interface IHealthService
 
     /// <summary>
     /// Get the current authorization status of the specified health permissions without triggering the permission UI.
-    /// On Android: accurately reports both read and write permission status.
-    /// On iOS: accurately reports write permission status. Read permissions always return <see cref="Kebechet.Types.Health.Enums.HealthPermissionStatus.NotDetermined"/>
+    /// On Android: accurately reports both read and write permission status, one entry per read and per write.
+    /// On iOS: accurately reports write permission status. Read permissions always return <see cref="Kebechet.Types.Health.Enums.HealthPermissionStatus.Undisclosed"/>
     /// because Apple does not expose read authorization status.
+    /// Never throws: when the status cannot be read (platform unavailable or unsupported, no current activity, a
+    /// platform error) every permission is reported as <see cref="Kebechet.Types.Health.Enums.HealthPermissionStatus.Unavailable"/>.
     /// </summary>
     /// <param name="permissions">The permissions to check status for</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -197,9 +202,14 @@ public interface IHealthService
     /// <see cref="Result.ErrorException"/>.
     /// </remarks>
     /// <param name="timeRange">The time range to aggregate over</param>
+    /// <param name="shouldCheckPermissions">
+    /// When true, requests the read permission first, which opens the platform's permission screen when it is
+    /// missing. Pass false for reads nobody asked for (an automatic sync): a missing permission then fails the read
+    /// instead of showing UI. Android only; iOS aggregation never requests permissions.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token</param>
     [Experimental("MH003")]
-    Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+    Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <summary>
@@ -235,9 +245,14 @@ public interface IHealthService
     /// buckets follow at <paramref name="interval"/> steps. Without alignment, buckets would start
     /// at whatever moment <c>timeRange.StartTime</c> happens to be, drifting across calendar days.
     /// </param>
+    /// <param name="shouldCheckPermissions">
+    /// When true, requests the read permission first, which opens the platform's permission screen when it is
+    /// missing. Pass false for reads nobody asked for (an automatic sync): a missing permission then fails the read
+    /// instead of showing UI. Android only; iOS aggregation never requests permissions.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token</param>
     [Experimental("MH004")]
-    Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken = default)
+    Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <summary>
@@ -266,9 +281,14 @@ public interface IHealthService
     /// Time zone whose calendar boundaries the buckets align to. See the equivalent parameter
     /// on <see cref="GetAggregatedHealthDataByInterval{TDto}"/> for the rationale.
     /// </param>
+    /// <param name="shouldCheckPermissions">
+    /// When true, requests the read permission first, which opens the platform's permission screen when it is
+    /// missing. Pass false for reads nobody asked for (an automatic sync): a missing permission then fails the read
+    /// instead of showing UI. Android only; iOS aggregation never requests permissions.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token</param>
     [Experimental("MH004")]
-    Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, CancellationToken cancellationToken = default)
+    Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <summary>
@@ -307,6 +327,15 @@ public interface IHealthService
     /// On iOS: No-op (HealthKit is built into the OS).
     /// </summary>
     void OpenStorePageOfHealthProvider();
+
+    /// <summary>
+    /// Opens the platform screen where the user manages this app's health permissions. Use it when a permission is
+    /// still denied after a request that did not show the permission screen (<see cref="RequestPermissionResult.IsPermissionScreenShown"/>
+    /// is false): the platform will not ask again, so only its settings can grant it.
+    /// On Android: Health Connect's permission screen for this app (Android 14+), otherwise Health Connect's settings.
+    /// On iOS: not supported, no URL opens the Health permissions; the user manages them in Settings > Health.
+    /// </summary>
+    Result<OpenPermissionSettingsError> OpenPermissionSettings();
 
     /// <summary>
     /// Returns the earliest UTC <see cref="DateTime"/> from which this device currently allows

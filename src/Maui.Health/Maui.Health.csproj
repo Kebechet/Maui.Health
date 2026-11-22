@@ -44,7 +44,27 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
     <PackageReleaseNotes>
-v6.0.0 — the health data types move to Kebechet.Types.Health, a package without MAUI, under its own namespaces.
+v7.0.0 — permission requests report every permission, and aggregated reads can skip the permission screen.
+
+BREAKING CHANGES
+• Aggregated reads: GetAggregatedHealthData, ByInterval and ByCalendarPeriod take shouldCheckPermissions before the CancellationToken; pass a token by name.
+• RequestPermissionResult.DeniedPermissions lists HealthPermissionDto instead of platform permission strings.
+• HealthPermissionStatus: iOS reads are Undisclosed and unreadable statuses are Unavailable; NotDetermined now means an unasked iOS write only.
+• Android: refused full-history or background access no longer fails RequestPermissions; see FullHistoryReadStatus and BackgroundReadStatus.
+• RequestPermissions reports an exception as RequestPermissionError.UnexpectedException.
+• PermissionType.Read is 1 and Write 2, so the flags combine: a write-only permission no longer asks for read access too.
+
+NEW
+• shouldCheckPermissions: false on aggregated reads fails a read with a missing permission instead of opening the permission screen.
+• RequestPermissionResult reports PermissionStatuses for every requested permission, so no GetPermissionStatuses call is needed after a request.
+• RequestPermissionResult.IsPermissionScreenShown tells a refusal apart from a platform that declined to ask again.
+• OpenPermissionSettings opens Health Connect's permission screen for the app (Android).
+
+FIXED
+• Android: parallel permission requests run one after another instead of leaving invisible activities that swallow every tap.
+• GetPermissionStatuses never throws; without a current activity or Health Connect it reports Unavailable.
+
+PREVIOUS RELEASE — v6.0.0: the health data types move to Kebechet.Types.Health, a package without MAUI, under its own namespaces.
 
 BREAKING CHANGES
 • Namespaces (#62): DTOs, enums, results and their helpers are now in Kebechet.Types.Health.* — replace using Maui.Health.Models with using Kebechet.Types.Health.Models (same for .Enums, .Extensions, .Constants).
@@ -55,14 +75,6 @@ NEW
 
 CHANGED
 • WorkoutSession (#62): its constructor and the DTO-to-permission helpers are public, so other health libraries can use them.
-
-PREVIOUS RELEASE — v5.1.0: a read refused because the app is in the background is reported, not logged as an error.
-
-NEW
-• Read results carry a typed Error (#58): ReadHealthDataError.BackgroundReadNotPermitted marks a read Health Connect refuses while the app is in the background.
-
-CHANGED
-• Android (#58): a read Health Connect refuses or limits in the background returns BackgroundReadNotPermitted and is logged as information, not as an error.
     </PackageReleaseNotes>
   </PropertyGroup>
 

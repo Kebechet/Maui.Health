@@ -61,4 +61,22 @@ internal static class ContextExtensions
 
         context.StartActivity(intent);
     }
+
+    /// <summary>
+    /// Opens the screen where the user manages this app's Health Connect permissions: the app's own page on Android 14+,
+    /// Health Connect's settings on older versions, which have no direct link to an app.
+    /// </summary>
+    /// <param name="context">The Android context</param>
+    internal static void OpenHealthConnectPermissionSettings(this Context context)
+    {
+        if (OperatingSystem.IsAndroidVersionAtLeast(HealthConnectInSystemApiVersion))
+        {
+            var managePermissionsIntent = new Intent(ManageHealthPermissionsAction);
+            managePermissionsIntent.PutExtra(Intent.ExtraPackageName, context.PackageName);
+            context.StartActivity(managePermissionsIntent);
+            return;
+        }
+
+        context.StartActivity(new Intent(HealthConnectSettingsAction));
+    }
 }
