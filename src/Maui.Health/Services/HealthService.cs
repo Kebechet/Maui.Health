@@ -32,27 +32,24 @@ public partial class HealthService : IHealthService
     }
 
     /// <summary>
-    /// Serializes permission requests across every instance. Parallel requests on Android each launched their own
-    /// request: one screen showed and the rest stayed on top of the app as invisible activities that swallowed every
-    /// tap. Queued, a later request asks only for what the earlier one left missing.
+    /// Shared by every instance: two services asking at once would otherwise stack two permission screens.
     /// </summary>
-    private static readonly SemaphoreSlim _permissionRequestGate = new(1, 1);
+    private static readonly PermissionRequestGate _permissionRequestGate = new();
 
     /// <inheritdoc/>
-    public async Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, bool canRequestBackgroundReadPermission = false, CancellationToken cancellationToken = default)
+    public Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, bool canRequestBackgroundReadPermission = false, CancellationToken cancellationToken = default)
     {
-        await _permissionRequestGate.WaitAsync(cancellationToken);
-        try
-        {
-            return await RequestPermissionsInternal(healthPermissions, canRequestFullHistoryPermission, canRequestBackgroundReadPermission, cancellationToken);
-        }
-        finally
-        {
-            _permissionRequestGate.Release();
-        }
+        return _permissionRequestGate.Run(
+            () => RequestPermissionsInternal(healthPermissions, canRequestFullHistoryPermission, canRequestBackgroundReadPermission),
+            () => new RequestPermissionResult { Error = RequestPermissionError.Cancelled },
+            cancellationToken);
     }
 
-    private partial Task<RequestPermissionResult> RequestPermissionsInternal(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, bool canRequestBackgroundReadPermission, CancellationToken cancellationToken);
+    /// <summary>
+    /// Takes no cancellation token on purpose: a permission screen cannot be withdrawn, so the request always runs
+    /// until the user has answered, and <see cref="PermissionRequestGate"/> holds the next one back until then.
+    /// </summary>
+    private partial Task<RequestPermissionResult> RequestPermissionsInternal(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, bool canRequestBackgroundReadPermission);
 
     /// <inheritdoc/>
     public partial Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken = default);

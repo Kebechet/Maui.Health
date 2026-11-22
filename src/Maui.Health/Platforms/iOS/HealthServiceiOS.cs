@@ -9,6 +9,7 @@ using Kebechet.Types.Health.Models;
 using Kebechet.Types.Health.Models.Metrics;
 using Maui.Health.Constants;
 using Maui.Health.Platforms.iOS.Extensions;
+using Maui.Health.Platforms.iOS.Helpers;
 using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Platform;
 
@@ -28,8 +29,7 @@ public partial class HealthService : IHealthService
     private async partial Task<RequestPermissionResult> RequestPermissionsInternal(
         IList<HealthPermissionDto> healthPermissions,
         bool canRequestFullHistoryPermission,
-        bool canRequestBackgroundReadPermission,
-        CancellationToken cancellationToken)
+        bool canRequestBackgroundReadPermission)
     {
         if (!IsSupported)
         {
@@ -86,21 +86,10 @@ public partial class HealthService : IHealthService
             //is no data of the requested type in the HealthKit store.If your app is given share permission but not read
             //permission, you see only the data that your app has written to the store.Data from other sources remains
             //hidden.
-            var permissionStatuses = GetPermissionStatuses(healthStore, healthPermissions);
-            var deniedPermissions = permissionStatuses
-                .Where(x => x.Status is HealthPermissionStatus.Denied or HealthPermissionStatus.NotDetermined)
-                .Select(x => x.Permission)
-                .ToList();
-
-            return new RequestPermissionResult()
-            {
-                Error = deniedPermissions.Any()
-                    ? RequestPermissionError.MissingPermissions
-                    : null,
-                PermissionStatuses = permissionStatuses,
-                DeniedPermissions = deniedPermissions,
-                IsPermissionScreenShown = isPermissionScreenShown,
-            };
+            return HealthKitPermissions.ToRequestResult(
+                healthPermissions,
+                healthDataType => GetWriteStatus(healthStore, healthDataType),
+                isPermissionScreenShown);
         }
         catch (Exception ex)
         {
@@ -127,80 +116,41 @@ public partial class HealthService : IHealthService
 
     public partial Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken)
     {
+        IList<HealthPermissionStatusResult> permissionStatuses;
         if (!IsSupported)
         {
-            return Task.FromResult(ToUnavailableStatuses(permissions));
+            permissionStatuses = PermissionStatuses.ToUnavailable(permissions);
+            return Task.FromResult(permissionStatuses);
         }
 
         try
         {
             using var healthStore = new HKHealthStore();
-            IList<HealthPermissionStatusResult> permissionStatuses = GetPermissionStatuses(healthStore, permissions);
-            return Task.FromResult(permissionStatuses);
+            permissionStatuses = HealthKitPermissions.ToStatuses(permissions, healthDataType => GetWriteStatus(healthStore, healthDataType));
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "{OperationName} could not read the permission statuses", nameof(GetPermissionStatuses));
-            return Task.FromResult(ToUnavailableStatuses(permissions));
+            permissionStatuses = PermissionStatuses.ToUnavailable(permissions);
         }
+
+        return Task.FromResult(permissionStatuses);
     }
 
-    private static List<HealthPermissionStatusResult> GetPermissionStatuses(HKHealthStore healthStore, IList<HealthPermissionDto> permissions)
+    private static HealthPermissionStatus GetWriteStatus(HKHealthStore healthStore, HealthDataType healthDataType)
     {
-        var results = new List<HealthPermissionStatusResult>();
-
-        foreach (var permission in permissions)
+        var type = ToHKObjectType(healthDataType);
+        if (type is null)
         {
-            //https://developer.apple.com/documentation/healthkit/hkhealthstore/1614154-authorizationstatus#discussion
-            //Apple does not expose read authorization status to prevent leaking sensitive health information.
-            if (!permission.PermissionType.HasFlag(PermissionType.Write))
-            {
-                results.Add(new HealthPermissionStatusResult
-                {
-                    Permission = permission,
-                    Status = HealthPermissionStatus.Undisclosed
-                });
-                continue;
-            }
-
-            var type = ToHKObjectType(permission.HealthDataType);
-            if (type is null)
-            {
-                results.Add(new HealthPermissionStatusResult
-                {
-                    Permission = permission,
-                    Status = HealthPermissionStatus.Unavailable
-                });
-                continue;
-            }
-
-            var authStatus = healthStore.GetAuthorizationStatus(type);
-            var status = authStatus switch
-            {
-                HKAuthorizationStatus.SharingAuthorized => HealthPermissionStatus.Granted,
-                HKAuthorizationStatus.SharingDenied => HealthPermissionStatus.Denied,
-                _ => HealthPermissionStatus.NotDetermined
-            };
-
-            results.Add(new HealthPermissionStatusResult
-            {
-                Permission = permission,
-                Status = status
-            });
+            return HealthPermissionStatus.Unavailable;
         }
 
-        return results;
-    }
-
-    private static IList<HealthPermissionStatusResult> ToUnavailableStatuses(IList<HealthPermissionDto> permissions)
-    {
-        return permissions
-            .Select(p => new HealthPermissionStatusResult
-            {
-                Permission = p,
-                Status = HealthPermissionStatus.Unavailable
-            })
-            .ToList();
+        return healthStore.GetAuthorizationStatus(type) switch
+        {
+            HKAuthorizationStatus.SharingAuthorized => HealthPermissionStatus.Granted,
+            HKAuthorizationStatus.SharingDenied => HealthPermissionStatus.Denied,
+            _ => HealthPermissionStatus.NotDetermined
+        };
     }
 
     private static HKObjectType? ToHKObjectType(HealthDataType healthDataType)
@@ -682,10 +632,10 @@ public partial class HealthService : IHealthService
     public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return GetAggregatedHealthDataInternal<TDto>(timeRange, cancellationToken);
+        return GetAggregatedHealthDataInternal<TDto>(timeRange, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<AggregatedReadResult> GetAggregatedHealthDataInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    private async Task<AggregatedReadResult> GetAggregatedHealthDataInternal<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (!IsSupported)
@@ -698,15 +648,18 @@ public partial class HealthService : IHealthService
 
         try
         {
-            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
-            if (!permissionResult.IsSuccess)
+            if (shouldCheckPermissions)
             {
-                return new AggregatedReadResult
+                var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
+                if (!permissionResult.IsSuccess)
                 {
-                    ErrorException = permissionResult.ErrorException
-                        ?? new InvalidOperationException($"Permission request failed: {permissionResult.Error}"),
-                };
+                    return new AggregatedReadResult
+                    {
+                        ErrorException = permissionResult.ErrorException
+                            ?? new InvalidOperationException($"Permission request failed: {permissionResult.Error}"),
+                    };
+                }
             }
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
@@ -808,10 +761,10 @@ public partial class HealthService : IHealthService
     public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return GetAggregatedHealthDataByIntervalInternal<TDto>(timeRange, interval, timeZone, cancellationToken);
+        return GetAggregatedHealthDataByIntervalInternal<TDto>(timeRange, interval, timeZone, shouldCheckPermissions, cancellationToken);
     }
 
-    private Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    private Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (interval <= TimeSpan.Zero)
@@ -831,7 +784,7 @@ public partial class HealthService : IHealthService
             Nanosecond = (nint)UnitsNet.Duration.FromMilliseconds(interval.Milliseconds).Nanoseconds,
         };
 
-        return RunStatisticsCollectionQuery<TDto>(timeRange, intervalComponents, timeZone, cancellationToken);
+        return RunStatisticsCollectionQuery<TDto>(timeRange, intervalComponents, timeZone, shouldCheckPermissions, cancellationToken);
     }
 
     public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, bool shouldCheckPermissions, CancellationToken cancellationToken)
@@ -859,10 +812,10 @@ public partial class HealthService : IHealthService
             _ => throw new NotImplementedException($"{nameof(GetAggregatedHealthDataByCalendarPeriod)} has no handler for {nameof(CalendarUnit)}.{unit}."),
         };
 
-        return RunStatisticsCollectionQuery<TDto>(timeRange, intervalComponents, timeZone, cancellationToken);
+        return RunStatisticsCollectionQuery<TDto>(timeRange, intervalComponents, timeZone, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<AggregatedIntervalReadResult> RunStatisticsCollectionQuery<TDto>(HealthTimeRange timeRange, NSDateComponents intervalComponents, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    private async Task<AggregatedIntervalReadResult> RunStatisticsCollectionQuery<TDto>(HealthTimeRange timeRange, NSDateComponents intervalComponents, TimeZoneInfo timeZone, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (!IsSupported)
@@ -875,15 +828,18 @@ public partial class HealthService : IHealthService
 
         try
         {
-            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
-            if (!permissionResult.IsSuccess)
+            if (shouldCheckPermissions)
             {
-                return new AggregatedIntervalReadResult
+                var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
+                if (!permissionResult.IsSuccess)
                 {
-                    ErrorException = permissionResult.ErrorException
-                        ?? new InvalidOperationException($"Permission request failed: {permissionResult.Error}"),
-                };
+                    return new AggregatedIntervalReadResult
+                    {
+                        ErrorException = permissionResult.ErrorException
+                            ?? new InvalidOperationException($"Permission request failed: {permissionResult.Error}"),
+                    };
+                }
             }
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();

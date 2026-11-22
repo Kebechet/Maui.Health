@@ -327,15 +327,16 @@ was granted:
 - `DeniedPermissions`: the requested data-type permissions that are still not granted. Only these fail the request.
 - `FullHistoryReadStatus` / `BackgroundReadStatus` (Android): Health Connect asks for past-data and background access
   on a screen of its own. Refusing them does not fail the request; they are reported here instead.
-- `IsPermissionScreenShown`: false when the platform declined to ask. Android shows the screen for a permission at
-  most twice and iOS asks for each type once, so a permission still denied after such a request can only be granted
-  in the platform's settings:
+- `IsPermissionScreenShown`: whether the platform showed its permission screen at all. Android shows the screen for a
+  permission at most twice and iOS asks for each type once. Neither says which permissions its screen skipped, so a
+  permission still denied may have been refused just now or may no longer be asked for. When the user wanted it,
+  offer the platform's settings either way:
 
 ```csharp
 var result = await _healthService.RequestPermissions(permissions);
-if (result.DeniedPermissions.Any() && !result.IsPermissionScreenShown)
+if (result.DeniedPermissions.Any())
 {
-    // Explain why, then open Health Connect's permission screen for this app (Android).
+    // Explain why, then open Health Connect's settings, where the user opens "App permissions" (Android).
     _healthService.OpenPermissionSettings();
 }
 ```
@@ -344,6 +345,8 @@ if (result.DeniedPermissions.Any() && !result.IsPermissionScreenShown)
 answer (Health Connect unavailable, no current activity, a platform error) every permission comes back `Unavailable`.
 
 Permission requests run one after another, so two parts of an app asking at the same time get one screen, not two.
+The cancellation token stops the waiting and returns `RequestPermissionError.Cancelled`; a screen already showing
+cannot be withdrawn, so it stays until the user answers, and the next request waits for that.
 
 #### Handling Health Connect Updates (Android)
 
@@ -527,7 +530,14 @@ public async Task DetectDuplicateWorkouts()
 - `IHealthService` implementations add `OpenPermissionSettings()`.
 - `PermissionType.Read` is `1` and `Write` is `2` (they were `0` and `1`, so `Read` was no flag at all and every
   write-only permission asked for read access too). Code that stored the numbers, or relied on a write also asking for
-  the read, has to change.
+  the read, has to change. A `HealthPermissionDto` whose `PermissionType` has neither flag set now throws.
+- A cancelled `RequestPermissions` returns `RequestPermissionError.Cancelled` instead of throwing
+  `OperationCanceledException`, also while it waits for an earlier request.
+- `RequestPermissionResult`'s properties are init-only (`DeniedPermissions` was settable).
+- `GetPermissionStatuses` returns one entry per read and per write on every platform, also for `Unavailable`
+  statuses, so a read-and-write permission comes back as two entries.
+- On Windows and Mac Catalyst `RequestPermissions` returns `RequestPermissionError.SdkUnavailable` instead of success.
+- An Android read refused for a missing permission returns `ReadHealthDataError.PermissionDenied`.
 
 ## Testing Tips
 

@@ -33,4 +33,9 @@ public enum RequestPermissionError
     /// The request threw; the exception is on <see cref="Models.Result.ErrorException"/>.
     /// </summary>
     UnexpectedException,
+    /// <summary>
+    /// The caller's cancellation token fired before the user answered. A permission screen already showing cannot be
+    /// withdrawn: it stays until the user answers, and the next request waits for it.
+    /// </summary>
+    Cancelled,
 }

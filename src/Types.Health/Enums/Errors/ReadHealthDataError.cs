@@ -16,4 +16,10 @@ public enum ReadHealthDataError
     /// https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#background-reads
     /// </summary>
     BackgroundReadNotPermitted,
+
+    /// <summary>
+    /// The read permission is not granted: the user refused it, or a read made with <c>shouldCheckPermissions: false</c>
+    /// reached a type nobody asked for. Android only; HealthKit returns no data for a refused read instead.
+    /// </summary>
+    PermissionDenied,
 }

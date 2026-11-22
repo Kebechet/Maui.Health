@@ -2,6 +2,7 @@ using Kebechet.Types.Health.Enums;
 using Kebechet.Types.Health.Enums.Errors;
 using Kebechet.Types.Health.Models;
 using Maui.Health.Platforms.Android.Extensions;
+using Maui.Health.Services;
 
 namespace Maui.Health.Platforms.Android.Helpers;
 
@@ -11,10 +12,8 @@ namespace Maui.Health.Platforms.Android.Helpers;
 /// </summary>
 internal static class HealthConnectPermissions
 {
-    private const string ReadPermissionInfix = ".READ_";
-
     /// <summary>
-    /// One status per Health Connect permission string: a permission requested as read and write is reported as two.
+    /// One status per read and per write: a permission requested as read and write is reported as two.
     /// Health Connect only tells which permissions are granted, so anything else is <see cref="HealthPermissionStatus.Denied"/>.
     /// </summary>
     internal static List<HealthPermissionStatusResult> ToStatuses(
@@ -22,29 +21,11 @@ internal static class HealthConnectPermissions
         IReadOnlySet<string> grantedPermissions)
     {
         return permissions
-            .SelectMany(permission => permission
-                .ToStrings()
-                .Select(androidPermission => new HealthPermissionStatusResult
-                {
-                    Permission = new HealthPermissionDto
-                    {
-                        HealthDataType = permission.HealthDataType,
-                        PermissionType = androidPermission.Contains(ReadPermissionInfix, StringComparison.Ordinal)
-                            ? PermissionType.Read
-                            : PermissionType.Write,
-                    },
-                    Status = ToStatus(grantedPermissions, androidPermission),
-                }))
-            .ToList();
-    }
-
-    internal static List<HealthPermissionStatusResult> ToUnavailableStatuses(IEnumerable<HealthPermissionDto> permissions)
-    {
-        return permissions
+            .SelectMany(permission => permission.ToSingleAccessPermissions())
             .Select(permission => new HealthPermissionStatusResult
             {
                 Permission = permission,
-                Status = HealthPermissionStatus.Unavailable,
+                Status = ToStatus(grantedPermissions, permission.ToStrings().Single()),
             })
             .ToList();
     }
@@ -62,10 +43,7 @@ internal static class HealthConnectPermissions
         bool isPermissionScreenShown)
     {
         var permissionStatuses = ToStatuses(requestedPermissions, grantedPermissions);
-        var deniedPermissions = permissionStatuses
-            .Where(x => x.Status != HealthPermissionStatus.Granted)
-            .Select(x => x.Permission)
-            .ToList();
+        var deniedPermissions = PermissionStatuses.ToDenied(permissionStatuses);
 
         return new RequestPermissionResult
         {

@@ -3,6 +3,7 @@ using Kebechet.Types.Health.Enums.Errors;
 using Kebechet.Types.Health.Models;
 using Maui.Health.Platforms.Android;
 using Maui.Health.Platforms.Android.Helpers;
+using Maui.Health.Services;
 using Xunit;
 
 namespace Maui.Health.Tests;
@@ -176,13 +177,13 @@ public class HealthConnectPermissionsTests
     }
 
     [Fact]
-    public void ToUnavailableStatuses_Always_ReportsEveryPermissionUnavailable()
+    public void ToUnavailable_Always_ReportsEveryReadAndWriteUnavailable()
     {
         // Arrange & Act
-        var statuses = HealthConnectPermissions.ToUnavailableStatuses([_readSteps, _readWriteWeight]);
+        var statuses = PermissionStatuses.ToUnavailable([_readSteps, _readWriteWeight]);
 
         // Assert
-        Assert.Equal(2, statuses.Count);
+        Assert.Equal(3, statuses.Count);
         Assert.All(statuses, x => Assert.Equal(HealthPermissionStatus.Unavailable, x.Status));
     }
 }

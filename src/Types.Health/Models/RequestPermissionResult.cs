@@ -48,10 +48,12 @@ public class RequestPermissionResult : Result<RequestPermissionError>
     public HealthPermissionStatus? BackgroundReadStatus { get; init; }
 
     /// <summary>
-    /// Whether the platform showed its permission screen during this request. False when everything requested was
-    /// already granted, and also when the platform declined to ask again: Android shows the screen for a permission
-    /// at most twice, iOS asks for each type only once. A permission still denied while this is false can only be
-    /// granted in the platform's settings.
+    /// Whether the platform showed its permission screen during this request, for any of the requested permissions.
+    /// False when everything requested was already granted, and also when the platform declined to ask again: Android
+    /// shows the screen for a permission at most twice, iOS asks for each type only once. One flag for the whole
+    /// request, because neither platform tells which permissions its screen skipped: when a permission is still
+    /// denied, the user may have refused it on the screen or it may no longer be asked for, so offer the platform's
+    /// settings either way.
     /// </summary>
     public bool IsPermissionScreenShown { get; init; }
 }

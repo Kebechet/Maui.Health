@@ -63,20 +63,17 @@ internal static class ContextExtensions
     }
 
     /// <summary>
-    /// Opens the screen where the user manages this app's Health Connect permissions: the app's own page on Android 14+,
-    /// Health Connect's settings on older versions, which have no direct link to an app.
+    /// Opens Health Connect's settings, where the user manages this app's permissions under "App permissions". An app
+    /// may not open its own permission page directly, see <see cref="HealthHomeSettingsAction"/>.
+    /// https://developer.android.com/reference/kotlin/androidx/health/connect/client/HealthConnectClient#getHealthConnectSettingsAction()
     /// </summary>
     /// <param name="context">The Android context</param>
     internal static void OpenHealthConnectPermissionSettings(this Context context)
     {
-        if (OperatingSystem.IsAndroidVersionAtLeast(HealthConnectInSystemApiVersion))
-        {
-            var managePermissionsIntent = new Intent(ManageHealthPermissionsAction);
-            managePermissionsIntent.PutExtra(Intent.ExtraPackageName, context.PackageName);
-            context.StartActivity(managePermissionsIntent);
-            return;
-        }
+        var settingsAction = OperatingSystem.IsAndroidVersionAtLeast(HealthConnectInSystemApiVersion)
+            ? HealthHomeSettingsAction
+            : HealthConnectSettingsAction;
 
-        context.StartActivity(new Intent(HealthConnectSettingsAction));
+        context.StartActivity(new Intent(settingsAction));
     }
 }

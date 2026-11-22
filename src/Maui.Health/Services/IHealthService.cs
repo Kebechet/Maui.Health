@@ -42,10 +42,19 @@ public interface IHealthService
     /// Concurrent calls run one after another: a second request starts only after the user has answered the first,
     /// and asks only for what is still missing.
     /// </summary>
+    /// <param name="canRequestFullHistoryPermission">
+    /// Android only, ignored elsewhere. Adds access to data older than 30 days to the request when the device
+    /// supports it.
+    /// </param>
     /// <param name="canRequestBackgroundReadPermission">
     /// Android only, ignored elsewhere. Adds the background-read permission to the request when the
     /// device supports it, so reads made while the app is not in the foreground are not rejected.
     /// The consuming app must declare it in its own manifest; this library ships no manifest.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// Stops waiting: the call returns <see cref="Kebechet.Types.Health.Enums.Errors.RequestPermissionError.Cancelled"/>
+    /// and never throws for it. A permission screen already showing cannot be withdrawn; it stays until the user
+    /// answers, and the next request waits for that.
     /// </param>
     Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, bool canRequestBackgroundReadPermission = false, CancellationToken cancellationToken = default);
 
@@ -205,7 +214,8 @@ public interface IHealthService
     /// <param name="shouldCheckPermissions">
     /// When true, requests the read permission first, which opens the platform's permission screen when it is
     /// missing. Pass false for reads nobody asked for (an automatic sync): a missing permission then fails the read
-    /// instead of showing UI. Android only; iOS aggregation never requests permissions.
+    /// with ReadHealthDataError.PermissionDenied on Android instead of showing UI. On iOS a refused read returns no
+    /// data either way; false only keeps the HealthKit sheet from showing.
     /// </param>
     /// <param name="cancellationToken">Cancellation token</param>
     [Experimental("MH003")]
@@ -248,7 +258,8 @@ public interface IHealthService
     /// <param name="shouldCheckPermissions">
     /// When true, requests the read permission first, which opens the platform's permission screen when it is
     /// missing. Pass false for reads nobody asked for (an automatic sync): a missing permission then fails the read
-    /// instead of showing UI. Android only; iOS aggregation never requests permissions.
+    /// with ReadHealthDataError.PermissionDenied on Android instead of showing UI. On iOS a refused read returns no
+    /// data either way; false only keeps the HealthKit sheet from showing.
     /// </param>
     /// <param name="cancellationToken">Cancellation token</param>
     [Experimental("MH004")]
@@ -284,7 +295,8 @@ public interface IHealthService
     /// <param name="shouldCheckPermissions">
     /// When true, requests the read permission first, which opens the platform's permission screen when it is
     /// missing. Pass false for reads nobody asked for (an automatic sync): a missing permission then fails the read
-    /// instead of showing UI. Android only; iOS aggregation never requests permissions.
+    /// with ReadHealthDataError.PermissionDenied on Android instead of showing UI. On iOS a refused read returns no
+    /// data either way; false only keeps the HealthKit sheet from showing.
     /// </param>
     /// <param name="cancellationToken">Cancellation token</param>
     [Experimental("MH004")]
@@ -329,10 +341,11 @@ public interface IHealthService
     void OpenStorePageOfHealthProvider();
 
     /// <summary>
-    /// Opens the platform screen where the user manages this app's health permissions. Use it when a permission is
-    /// still denied after a request that did not show the permission screen (<see cref="RequestPermissionResult.IsPermissionScreenShown"/>
-    /// is false): the platform will not ask again, so only its settings can grant it.
-    /// On Android: Health Connect's permission screen for this app (Android 14+), otherwise Health Connect's settings.
+    /// Opens the platform screen where the user manages this app's health permissions. Offer it when a permission the
+    /// user wanted is still denied after a request: the platform stops asking for a permission refused twice, and it
+    /// does not say which permissions it skipped. <see cref="RequestPermissionResult.IsPermissionScreenShown"/> false
+    /// only tells that nothing was shown at all.
+    /// On Android: Health Connect's settings, where the user opens "App permissions"; an app may not open its own page.
     /// On iOS: not supported, no URL opens the Health permissions; the user manages them in Settings > Health.
     /// </summary>
     Result<OpenPermissionSettingsError> OpenPermissionSettings();

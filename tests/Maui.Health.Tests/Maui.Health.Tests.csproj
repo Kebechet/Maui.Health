@@ -26,6 +26,12 @@
 		<Compile Include="..\..\src\Maui.Health\Platforms\Android\Helpers\HealthConnectPermissions.cs" Link="Android\HealthConnectPermissions.cs" />
 		<Compile Include="..\..\src\Maui.Health\Platforms\Android\Extensions\HealthPermissionExtensions.cs" Link="Android\HealthPermissionExtensions.cs" />
 		<Compile Include="..\..\src\Maui.Health\Platforms\Android\Extensions\StringExtensions.cs" Link="Android\StringExtensions.cs" />
+		<Compile Include="..\..\src\Maui.Health\Platforms\Android\Helpers\PermissionScreenWait.cs" Link="Android\PermissionScreenWait.cs" />
+		<!-- iOS-only folder, but the caller passes HealthKit's statuses in, so this file touches no HealthKit API. -->
+		<Compile Include="..\..\src\Maui.Health\Platforms\iOS\Helpers\HealthKitPermissions.cs" Link="iOS\HealthKitPermissions.cs" />
+		<!-- Shared by every platform and free of platform APIs. -->
+		<Compile Include="..\..\src\Maui.Health\Services\PermissionRequestGate.cs" Link="Services\PermissionRequestGate.cs" />
+		<Compile Include="..\..\src\Maui.Health\Services\PermissionStatuses.cs" Link="Services\PermissionStatuses.cs" />
 	</ItemGroup>
 
 </Project>

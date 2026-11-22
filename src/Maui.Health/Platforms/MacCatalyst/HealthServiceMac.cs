@@ -9,21 +9,14 @@ public partial class HealthService : IHealthService
 {
     public partial bool IsSupported => false;
 
-    private partial Task<RequestPermissionResult> RequestPermissionsInternal(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, bool canRequestBackgroundReadPermission, CancellationToken cancellationToken)
+    private partial Task<RequestPermissionResult> RequestPermissionsInternal(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, bool canRequestBackgroundReadPermission)
     {
-        return Task.FromResult(new RequestPermissionResult());
+        return Task.FromResult(new RequestPermissionResult { Error = RequestPermissionError.SdkUnavailable });
     }
 
     public partial Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken)
     {
-        IList<HealthPermissionStatusResult> results = permissions
-            .Select(p => new HealthPermissionStatusResult
-            {
-                Permission = p,
-                Status = HealthPermissionStatus.Unavailable
-            })
-            .ToList();
-
+        IList<HealthPermissionStatusResult> results = PermissionStatuses.ToUnavailable(permissions);
         return Task.FromResult(results);
     }
 

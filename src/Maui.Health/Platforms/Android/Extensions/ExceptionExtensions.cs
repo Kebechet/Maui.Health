@@ -32,6 +32,15 @@ internal static class ExceptionExtensions
         return isSelfReadRestriction && isInBackgroundWithoutPermission();
     }
 
+    /// <summary>
+    /// True when Health Connect refused a read because the app holds no read permission for the type. Check
+    /// <see cref="IsBackgroundReadRefusal"/> first: a background refusal is a SecurityException too.
+    /// </summary>
+    internal static bool IsReadPermissionRefusal(this Exception exception)
+    {
+        return exception.HasMessageContaining(HealthConnectMessage.ReadPermissionMissing);
+    }
+
     private static bool HasMessageContaining(this Exception exception, string text)
     {
         for (Exception? current = exception; current is not null; current = current.InnerException)

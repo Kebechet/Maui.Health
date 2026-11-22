@@ -52,17 +52,26 @@ BREAKING CHANGES
 • HealthPermissionStatus (#63): iOS reads are Undisclosed and unreadable statuses are Unavailable; NotDetermined now means an unasked iOS write only.
 • Android (#63): refused full-history or background access no longer fails RequestPermissions; see FullHistoryReadStatus and BackgroundReadStatus.
 • RequestPermissions (#63): an exception is reported as RequestPermissionError.UnexpectedException.
-• PermissionType (#63): Read is 1 and Write 2, so the flags combine; a write-only permission no longer asks for read access too.
+• Cancellation (#63): a cancelled RequestPermissions returns RequestPermissionError.Cancelled instead of throwing; a screen already showing stays until answered.
+• PermissionType (#63): Read is 1 and Write 2, so the flags combine; stored numbers change, and a write-only permission no longer asks for read access too.
+• HealthPermissionDto (#63): a PermissionType with neither Read nor Write set throws instead of requesting nothing.
+• Statuses (#63): every platform reports one status per read and per write, also when Unavailable.
+• RequestPermissionResult (#63): its properties are init-only; DeniedPermissions was settable.
+• Windows and Mac Catalyst (#63): RequestPermissions returns SdkUnavailable instead of success.
 
 NEW
-• shouldCheckPermissions (#63): false on aggregated reads fails a read with a missing permission instead of opening the permission screen.
+• shouldCheckPermissions (#63): false on aggregated reads fails a read with a missing permission instead of opening the permission screen, on iOS too.
+• ReadHealthDataError.PermissionDenied (#63): Android reads report a missing read permission as a typed error.
 • PermissionStatuses (#63): RequestPermissionResult reports every requested permission, so no GetPermissionStatuses call is needed after a request.
-• IsPermissionScreenShown (#63): tells a refusal apart from a platform that declined to ask again.
-• OpenPermissionSettings (#63): opens Health Connect's permission screen for the app (Android).
+• IsPermissionScreenShown (#63): tells whether the platform showed its permission screen at all.
+• OpenPermissionSettings (#63): opens Health Connect's settings, where the user manages the app's permissions (Android).
 
 FIXED
 • Android (#63): parallel permission requests run one after another instead of leaving invisible activities that swallow every tap.
+• Android (#63): a permission request no longer hangs when the app's activity is recreated under the permission screen.
+• Android (#63): full-history access is requested only where Health Connect supports it.
 • GetPermissionStatuses (#63): never throws; without a current activity or Health Connect it reports Unavailable.
+• Android workouts (#63): reads and writes no longer need a current activity.
 
 PREVIOUS RELEASE — v6.0.0: the health data types move to Kebechet.Types.Health, a package without MAUI, under its own namespaces.
 

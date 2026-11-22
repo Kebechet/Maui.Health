@@ -62,6 +62,14 @@ public static class AndroidConstant
         /// https://android.googlesource.com/platform/frameworks/support/+/refs/heads/androidx-main/health/connect/connect-client/src/main/java/androidx/health/connect/client/impl/HealthConnectClientUpsideDownImpl.kt
         /// </summary>
         internal const string NoRecords = "No records";
+
+        /// <summary>
+        /// Raised for a read the app holds no read permission for, as when a read made with
+        /// <c>shouldCheckPermissions: false</c> reaches a type the user refused: "Caller doesn't have
+        /// android.permission.health.READ_STEPS to read to record type…".
+        /// https://android.googlesource.com/platform/packages/modules/HealthFitness/+/refs/heads/main/service/java/com/android/server/healthconnect/HealthConnectServiceImpl.java
+        /// </summary>
+        internal const string ReadPermissionMissing = "Caller doesn't have android.permission.health.READ_";
     }
 
     /// <summary>
@@ -103,12 +111,12 @@ public static class AndroidConstant
     public const string IntentExtraCaller = "callerId";
 
     /// <summary>
-    /// Activity action: launch UI to manage (e.g. grant/revoke) health permissions. Takes the app's package name in
-    /// <c>Intent.EXTRA_PACKAGE_NAME</c> to open that app's permissions directly. Android 14+, where Health Connect is
-    /// part of the system.
-    /// https://developer.android.com/reference/android/health/connect/HealthConnectManager#ACTION_MANAGE_HEALTH_PERMISSIONS
+    /// Activity action: open Health Connect's settings, where the user manages every app's permissions. Android 14+,
+    /// where Health Connect is part of the system. <c>ACTION_MANAGE_HEALTH_PERMISSIONS</c>, which opens one app's
+    /// permissions, needs <c>GRANT_RUNTIME_PERMISSIONS</c> and throws a SecurityException for a normal app.
+    /// https://developer.android.com/reference/android/health/connect/HealthConnectManager#ACTION_HEALTH_HOME_SETTINGS
     /// </summary>
-    public const string ManageHealthPermissionsAction = "android.health.connect.action.MANAGE_HEALTH_PERMISSIONS";
+    public const string HealthHomeSettingsAction = "android.health.connect.action.HEALTH_HOME_SETTINGS";
 
     /// <summary>
     /// Intent action to open Health Connect settings; the Health Connect app answers it on Android 13 and lower.
