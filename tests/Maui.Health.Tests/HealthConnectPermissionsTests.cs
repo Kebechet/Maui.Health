@@ -115,6 +115,56 @@ public class HealthConnectPermissionsTests
         Assert.Equal(PermissionType.Write, deniedPermission.PermissionType);
     }
 
+    /// <summary>
+    /// A request holding an extra the user refused twice showed no screen at all, not even for a data type, so the
+    /// extras are asked for apart.
+    /// </summary>
+    [Fact]
+    public void SplitByScreen_DataTypesAndExtras_SeparatesTheExtras()
+    {
+        // Arrange
+        List<string> missingPermissions =
+        [
+            ReadSteps,
+            AndroidConstant.FullHistoryReadPermission,
+            WriteWeight,
+            AndroidConstant.BackgroundReadPermission,
+        ];
+
+        // Act
+        var (dataTypePermissions, extraPermissions) = HealthConnectPermissions.SplitByScreen(missingPermissions);
+
+        // Assert
+        Assert.Equal([ReadSteps, WriteWeight], dataTypePermissions);
+        Assert.Equal([AndroidConstant.FullHistoryReadPermission, AndroidConstant.BackgroundReadPermission], extraPermissions);
+    }
+
+    [Fact]
+    public void HasAnyDataTypePermission_OnlyExtrasGranted_ReturnsFalse()
+    {
+        // Arrange
+        var grantedPermissions = new HashSet<string> { AndroidConstant.FullHistoryReadPermission, AndroidConstant.BackgroundReadPermission };
+
+        // Act
+        var hasAnyDataTypePermission = HealthConnectPermissions.HasAnyDataTypePermission(grantedPermissions);
+
+        // Assert
+        Assert.False(hasAnyDataTypePermission);
+    }
+
+    [Fact]
+    public void HasAnyDataTypePermission_DataTypeGranted_ReturnsTrue()
+    {
+        // Arrange
+        var grantedPermissions = new HashSet<string> { AndroidConstant.BackgroundReadPermission, ReadSteps };
+
+        // Act
+        var hasAnyDataTypePermission = HealthConnectPermissions.HasAnyDataTypePermission(grantedPermissions);
+
+        // Assert
+        Assert.True(hasAnyDataTypePermission);
+    }
+
     [Fact]
     public void ToStatuses_WriteOnlyPermission_ReportsOnlyTheWrite()
     {

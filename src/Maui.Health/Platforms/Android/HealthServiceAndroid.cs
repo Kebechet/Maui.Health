@@ -99,25 +99,39 @@ public partial class HealthService : IHealthService
                 .Where(permission => !grantedPermissions.Contains(permission))
                 .ToList();
 
+            // The data types go first and the extras in a launch of their own. On a Samsung A53 (Android 16) a request
+            // holding an extra the user had refused twice showed nothing at all, not even the screen for a data type
+            // that was never refused; asked apart, the data types still get their screen.
+            var (missingDataTypePermissions, missingExtraPermissions) = HealthConnectPermissions.SplitByScreen(missingPermissions);
+            var newlyGrantedPermissions = new HashSet<string>();
             var isPermissionScreenShown = false;
-            if (missingPermissions.Any())
+            if (missingDataTypePermissions.Any())
             {
-                var (newlyGrantedPermissions, wasPermissionScreenShown) = await LaunchPermissionRequest(missingPermissions);
+                var (grantedDataTypePermissions, wasPermissionScreenShown) = await LaunchPermissionRequest(missingDataTypePermissions);
+                newlyGrantedPermissions.UnionWith(grantedDataTypePermissions);
+                grantedPermissions.UnionWith(grantedDataTypePermissions);
                 isPermissionScreenShown = wasPermissionScreenShown;
+            }
 
-                // If we transitioned from "no health permission" to "at least one granted",
-                // record the first-grant anchor. The platform doesn't expose this value and
-                // it drives the 30-day historical read window for all subsequent reads.
-                // The platform's anchor is set by any successful grant, even if our caller
-                // didn't get everything asked.
-                // Spec: https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#read-data-older-than-30-days
-                if (!hadAnyHealthPermissionBefore
-                    && newlyGrantedPermissions.Any(p => p.StartsWith(AndroidConstant.HealthPermissionPrefix, StringComparison.Ordinal)))
-                {
-                    Preferences.Default.Set(AndroidConstant.FirstPermissionGrantAtKey, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-                }
+            // Health Connect grants the extras only to an app holding a data-type permission.
+            if (missingExtraPermissions.Any() && HealthConnectPermissions.HasAnyDataTypePermission(grantedPermissions))
+            {
+                var (grantedExtraPermissions, wasPermissionScreenShown) = await LaunchPermissionRequest(missingExtraPermissions);
+                newlyGrantedPermissions.UnionWith(grantedExtraPermissions);
+                grantedPermissions.UnionWith(grantedExtraPermissions);
+                isPermissionScreenShown |= wasPermissionScreenShown;
+            }
 
-                grantedPermissions.UnionWith(newlyGrantedPermissions);
+            // If we transitioned from "no health permission" to "at least one granted",
+            // record the first-grant anchor. The platform doesn't expose this value and
+            // it drives the 30-day historical read window for all subsequent reads.
+            // The platform's anchor is set by any successful grant, even if our caller
+            // didn't get everything asked.
+            // Spec: https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#read-data-older-than-30-days
+            if (!hadAnyHealthPermissionBefore
+                && newlyGrantedPermissions.Any(p => p.StartsWith(AndroidConstant.HealthPermissionPrefix, StringComparison.Ordinal)))
+            {
+                Preferences.Default.Set(AndroidConstant.FirstPermissionGrantAtKey, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
             }
 
             return HealthConnectPermissions.ToRequestResult(

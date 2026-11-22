@@ -70,6 +70,7 @@ FIXED
 • Android (#63): parallel permission requests run one after another instead of leaving invisible activities that swallow every tap.
 • Android (#63): a permission request no longer hangs when the app's activity is recreated under the permission screen.
 • Android (#63): full-history access is requested only where Health Connect supports it.
+• Android (#63): data types and the extra access are requested apart, so an extra refused twice no longer hides the data-type screen.
 • GetPermissionStatuses (#63): never throws; without a current activity or Health Connect it reports Unavailable.
 • Android workouts (#63): reads and writes no longer need a current activity.
 

@@ -62,6 +62,37 @@ internal static class HealthConnectPermissions
         };
     }
 
+    /// <summary>
+    /// Splits missing permissions into the data types and the extras (full history, background read), which Health
+    /// Connect asks for on a screen of their own and which are therefore requested apart.
+    /// </summary>
+    internal static (List<string> DataTypePermissions, List<string> ExtraPermissions) SplitByScreen(IEnumerable<string> missingPermissions)
+    {
+        var missingPermissionList = missingPermissions.ToList();
+
+        return (
+            missingPermissionList
+                .Where(x => !IsExtraPermission(x))
+                .ToList(),
+            missingPermissionList
+                .Where(IsExtraPermission)
+                .ToList());
+    }
+
+    /// <summary>
+    /// Whether the app holds a permission for any data type; full-history and background access do not count.
+    /// </summary>
+    internal static bool HasAnyDataTypePermission(IEnumerable<string> grantedPermissions)
+    {
+        return grantedPermissions.Any(x => x.StartsWith(AndroidConstant.HealthPermissionPrefix, StringComparison.Ordinal) &&
+            !IsExtraPermission(x));
+    }
+
+    private static bool IsExtraPermission(string androidPermission)
+    {
+        return androidPermission is AndroidConstant.FullHistoryReadPermission or AndroidConstant.BackgroundReadPermission;
+    }
+
     private static HealthPermissionStatus ToStatus(IReadOnlySet<string> grantedPermissions, string androidPermission)
     {
         return grantedPermissions.Contains(androidPermission)
