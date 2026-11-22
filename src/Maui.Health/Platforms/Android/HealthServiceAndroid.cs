@@ -158,15 +158,14 @@ public partial class HealthService : IHealthService
 
             var newlyGrantedPermissions = await PermissionScreenWait.WaitForAnswer(callback.Task, screenTracker);
 
-            // Without an answer (the activity was destroyed under the screen, or the answer was lost), Health Connect
-            // itself tells what the user granted.
-            var grantedPermissionNames = newlyGrantedPermissions is null
-                ? await GetGrantedPermissions() ?? []
-                : newlyGrantedPermissions
-                    .ToList()
-                    .Select(p => p?.ToString())
-                    .OfType<string>()
-                    .ToHashSet();
+            // Health Connect itself tells what is granted now. The answer is missing when the activity was destroyed
+            // under the screen or the answer was lost, so it is used only when Health Connect cannot be asked.
+            var answeredPermissionNames = newlyGrantedPermissions?
+                .ToList()
+                .Select(p => p?.ToString())
+                .OfType<string>()
+                .ToHashSet() ?? [];
+            var grantedPermissionNames = await GetGrantedPermissions() ?? answeredPermissionNames;
 
             return (grantedPermissionNames, screenTracker.IsPermissionScreenShown);
         }

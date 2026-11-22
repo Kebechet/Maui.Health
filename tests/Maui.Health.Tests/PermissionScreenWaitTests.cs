@@ -18,6 +18,7 @@ public class PermissionScreenWaitTests
 
         // Act
         var waitTask = PermissionScreenWait.WaitForAnswer(answerSource.Task, screenTracker);
+        screenTracker.OnRequestingActivityPaused();
         screenTracker.OnRequestingActivityStopped();
         answerSource.SetResult("granted");
         screenTracker.OnActivityResumed(isRequestingActivity: true);
@@ -41,6 +42,7 @@ public class PermissionScreenWaitTests
 
         // Act
         var waitTask = PermissionScreenWait.WaitForAnswer(answerSource.Task, screenTracker);
+        screenTracker.OnRequestingActivityPaused();
         screenTracker.OnRequestingActivityStopped();
         screenTracker.OnRequestingActivityDestroyed();
         await Task.Delay(_shortWait);
@@ -66,6 +68,7 @@ public class PermissionScreenWaitTests
 
         // Act
         var waitTask = PermissionScreenWait.WaitForAnswer(answerSource.Task, screenTracker);
+        screenTracker.OnRequestingActivityPaused();
         screenTracker.OnRequestingActivityStopped();
         await Task.Delay(_shortWait);
         var isCompletedWhileTheScreenIsUp = waitTask.IsCompleted;
@@ -77,6 +80,33 @@ public class PermissionScreenWaitTests
         Assert.Null(answer);
     }
 
+    /// <summary>
+    /// A second launch made right after the first screen closed sees the resume that closing caused, before its own
+    /// screen pauses the activity. That resume is no return from the new screen, which is still up: on a Samsung A53
+    /// the wait ended under the extras screen and reported the extras the user then granted as denied.
+    /// </summary>
+    [Fact]
+    public async Task WaitForAnswer_ResumeBeforeTheScreenCoveredTheActivity_KeepsWaiting()
+    {
+        // Arrange
+        var answerSource = new TaskCompletionSource<string?>();
+        var screenTracker = new PermissionScreenTracker(_shortGracePeriod);
+
+        // Act
+        var waitTask = PermissionScreenWait.WaitForAnswer(answerSource.Task, screenTracker);
+        screenTracker.OnActivityResumed(isRequestingActivity: true);
+        screenTracker.OnRequestingActivityPaused();
+        screenTracker.OnRequestingActivityStopped();
+        await Task.Delay(_shortWait);
+        var isCompletedWhileTheScreenIsUp = waitTask.IsCompleted;
+        answerSource.SetResult("granted");
+        var answer = await waitTask.WaitAsync(_testTimeout);
+
+        // Assert
+        Assert.False(isCompletedWhileTheScreenIsUp);
+        Assert.Equal("granted", answer);
+    }
+
     [Fact]
     public async Task WaitForAnswer_AnswerArrivesWithinTheGracePeriod_ReturnsTheAnswer()
     {
@@ -86,6 +116,7 @@ public class PermissionScreenWaitTests
 
         // Act
         var waitTask = PermissionScreenWait.WaitForAnswer(answerSource.Task, screenTracker);
+        screenTracker.OnRequestingActivityPaused();
         screenTracker.OnActivityResumed(isRequestingActivity: true);
         answerSource.SetResult("granted");
         var answer = await waitTask.WaitAsync(_testTimeout);

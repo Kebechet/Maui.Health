@@ -15,6 +15,7 @@ internal sealed class PermissionScreenTracker
 
     private readonly TaskCompletionSource _returnedWithoutAnswerSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TimeSpan _answerGracePeriod;
+    private bool _hasRequestingActivityLeft;
     private bool _isRequestingActivityDestroyed;
 
     internal PermissionScreenTracker(TimeSpan answerGracePeriod)
@@ -35,8 +36,19 @@ internal sealed class PermissionScreenTracker
     /// </summary>
     internal Task ReturnedWithoutAnswerTask => _returnedWithoutAnswerSource.Task;
 
+    /// <summary>
+    /// Any screen Android puts on top pauses the requesting activity, the transparent one included. Only a resume
+    /// after this is a return from the screen: a launch made right after an earlier screen closed still sees the
+    /// resume that closing caused, while its own screen is about to come up.
+    /// </summary>
+    internal void OnRequestingActivityPaused()
+    {
+        _hasRequestingActivityLeft = true;
+    }
+
     internal void OnRequestingActivityStopped()
     {
+        _hasRequestingActivityLeft = true;
         IsPermissionScreenShown = true;
     }
 
@@ -57,7 +69,7 @@ internal sealed class PermissionScreenTracker
             return;
         }
 
-        if (isRequestingActivity)
+        if (isRequestingActivity && _hasRequestingActivityLeft)
         {
             _ = CompleteAfterGracePeriod();
         }
