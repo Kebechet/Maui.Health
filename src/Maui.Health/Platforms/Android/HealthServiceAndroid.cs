@@ -99,28 +99,10 @@ public partial class HealthService : IHealthService
                 .Where(permission => !grantedPermissions.Contains(permission))
                 .ToList();
 
-            // The data types go first and the extras in a launch of their own. On a Samsung A53 (Android 16) a request
-            // holding an extra the user had refused twice showed nothing at all, not even the screen for a data type
-            // that was never refused; asked apart, the data types still get their screen.
-            var (missingDataTypePermissions, missingExtraPermissions) = HealthConnectPermissions.SplitByScreen(missingPermissions);
-            var newlyGrantedPermissions = new HashSet<string>();
-            var isPermissionScreenShown = false;
-            if (missingDataTypePermissions.Any())
-            {
-                var (grantedDataTypePermissions, wasPermissionScreenShown) = await LaunchPermissionRequest(missingDataTypePermissions);
-                newlyGrantedPermissions.UnionWith(grantedDataTypePermissions);
-                grantedPermissions.UnionWith(grantedDataTypePermissions);
-                isPermissionScreenShown = wasPermissionScreenShown;
-            }
-
-            // Health Connect grants the extras only to an app holding a data-type permission.
-            if (missingExtraPermissions.Any() && HealthConnectPermissions.HasAnyDataTypePermission(grantedPermissions))
-            {
-                var (grantedExtraPermissions, wasPermissionScreenShown) = await LaunchPermissionRequest(missingExtraPermissions);
-                newlyGrantedPermissions.UnionWith(grantedExtraPermissions);
-                grantedPermissions.UnionWith(grantedExtraPermissions);
-                isPermissionScreenShown |= wasPermissionScreenShown;
-            }
+            var (newlyGrantedPermissions, isPermissionScreenShown) = await PermissionRequestSequence.Run(
+                missingPermissions,
+                grantedPermissions,
+                LaunchPermissionRequest);
 
             // If we transitioned from "no health permission" to "at least one granted",
             // record the first-grant anchor. The platform doesn't expose this value and
@@ -154,16 +136,18 @@ public partial class HealthService : IHealthService
     /// <summary>
     /// Shows Health Connect's permission screen for <paramref name="missingPermissions"/> and returns what the user
     /// granted, and whether the screen was shown at all: Android declines to ask again for a permission the user
-    /// refused twice and answers at once with nothing granted.
+    /// refused twice and answers at once with nothing granted. The current activity is read at every launch, because
+    /// the one that launched an earlier screen may have been destroyed and replaced under it.
     /// </summary>
-    private async Task<(HashSet<string> NewlyGrantedPermissions, bool IsPermissionScreenShown)> LaunchPermissionRequest(List<string> missingPermissions)
+    private async Task<(HashSet<string> GrantedPermissions, bool IsPermissionScreenShown)> LaunchPermissionRequest(List<string> missingPermissions)
     {
         var activity = (ComponentActivity)_activityContext;
         var key = Guid.NewGuid().ToString();
         var requestPermissionActivityContract = PermissionController.CreateRequestPermissionResultContract();
         // No cancellation: the screen cannot be withdrawn, so the request waits for the user's answer.
         var callback = new AndroidActivityResultCallback<ISet?>(CancellationToken.None);
-        var permissionScreenObserver = new PermissionScreenObserver(activity);
+        var screenTracker = new PermissionScreenTracker(PermissionScreenTracker.AnswerGracePeriod);
+        var permissionScreenObserver = new PermissionScreenObserver(activity, screenTracker);
 
         ActivityResultLauncher? launcher = null;
         activity.Application?.RegisterActivityLifecycleCallbacks(permissionScreenObserver);
@@ -172,14 +156,11 @@ public partial class HealthService : IHealthService
             launcher = activity.ActivityResultRegistry.Register(key, requestPermissionActivityContract, callback);
             launcher.Launch(new HashSet(missingPermissions));
 
-            var newlyGrantedPermissions = await PermissionScreenWait.WaitForAnswer(
-                callback.Task,
-                permissionScreenObserver.RequestingActivityDestroyedTask,
-                PermissionScreenWait.Timeout);
+            var newlyGrantedPermissions = await PermissionScreenWait.WaitForAnswer(callback.Task, screenTracker);
 
-            // Without an answer (the activity was destroyed or the wait timed out), Health Connect itself tells what
-            // the user granted.
-            var newlyGrantedPermissionNames = newlyGrantedPermissions is null
+            // Without an answer (the activity was destroyed under the screen, or the answer was lost), Health Connect
+            // itself tells what the user granted.
+            var grantedPermissionNames = newlyGrantedPermissions is null
                 ? await GetGrantedPermissions() ?? []
                 : newlyGrantedPermissions
                     .ToList()
@@ -187,7 +168,7 @@ public partial class HealthService : IHealthService
                     .OfType<string>()
                     .ToHashSet();
 
-            return (newlyGrantedPermissionNames, permissionScreenObserver.IsPermissionScreenShown);
+            return (grantedPermissionNames, screenTracker.IsPermissionScreenShown);
         }
         finally
         {
@@ -264,14 +245,7 @@ public partial class HealthService : IHealthService
                 var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
-                    return new HealthDataReadResult<TDto>
-                    {
-                        Error = requestPermissionResult.Error == RequestPermissionError.MissingPermissions
-                            ? ReadHealthDataError.PermissionDenied
-                            : null,
-                        ErrorException = requestPermissionResult.ErrorException
-                            ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
-                    };
+                    return PermissionRequestErrors.ToReadResult<HealthDataReadResult<TDto>>(requestPermissionResult);
                 }
             }
 
@@ -344,7 +318,7 @@ public partial class HealthService : IHealthService
                 {
                     return new WriteHealthDataResult
                     {
-                        Error = WriteHealthDataError.PermissionDenied,
+                        Error = PermissionRequestErrors.ToWriteError(requestPermissionResult.Error),
                         ErrorException = requestPermissionResult.ErrorException,
                     };
                 }
@@ -410,7 +384,7 @@ public partial class HealthService : IHealthService
                 {
                     return new UpdateHealthDataResult
                     {
-                        Error = UpdateHealthDataError.PermissionDenied,
+                        Error = PermissionRequestErrors.ToUpdateError(requestPermissionResult.Error),
                         ErrorException = requestPermissionResult.ErrorException,
                     };
                 }
@@ -476,11 +450,7 @@ public partial class HealthService : IHealthService
                 var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
-                    return new HealthRecordReadResult<TDto>
-                    {
-                        ErrorException = requestPermissionResult.ErrorException
-                            ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
-                    };
+                    return PermissionRequestErrors.ToReadResult<HealthRecordReadResult<TDto>>(requestPermissionResult);
                 }
             }
 
@@ -495,6 +465,15 @@ public partial class HealthService : IHealthService
         catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
         {
             return BackgroundRead.ToRefusedResult<HealthRecordReadResult<TDto>>(_logger, operationName, ex);
+        }
+        catch (Exception ex) when (ex.IsReadPermissionRefusal())
+        {
+            _logger.LogInformation(ex, "{Operation} returned {Error}", operationName, ReadHealthDataError.PermissionDenied);
+            return new HealthRecordReadResult<TDto>
+            {
+                Error = ReadHealthDataError.PermissionDenied,
+                ErrorException = ex,
+            };
         }
         catch (Exception ex)
         {
@@ -587,14 +566,7 @@ public partial class HealthService : IHealthService
                 var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
-                    return new AggregatedReadResult
-                    {
-                        Error = requestPermissionResult.Error == RequestPermissionError.MissingPermissions
-                            ? ReadHealthDataError.PermissionDenied
-                            : null,
-                        ErrorException = requestPermissionResult.ErrorException
-                            ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
-                    };
+                    return PermissionRequestErrors.ToReadResult<AggregatedReadResult>(requestPermissionResult);
                 }
             }
 
@@ -727,14 +699,7 @@ public partial class HealthService : IHealthService
                 var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
-                    return new AggregatedIntervalReadResult
-                    {
-                        Error = requestPermissionResult.Error == RequestPermissionError.MissingPermissions
-                            ? ReadHealthDataError.PermissionDenied
-                            : null,
-                        ErrorException = requestPermissionResult.ErrorException
-                            ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
-                    };
+                    return PermissionRequestErrors.ToReadResult<AggregatedIntervalReadResult>(requestPermissionResult);
                 }
             }
 
@@ -844,14 +809,7 @@ public partial class HealthService : IHealthService
                 var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
-                    return new AggregatedIntervalReadResult
-                    {
-                        Error = requestPermissionResult.Error == RequestPermissionError.MissingPermissions
-                            ? ReadHealthDataError.PermissionDenied
-                            : null,
-                        ErrorException = requestPermissionResult.ErrorException
-                            ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
-                    };
+                    return PermissionRequestErrors.ToReadResult<AggregatedIntervalReadResult>(requestPermissionResult);
                 }
             }
 

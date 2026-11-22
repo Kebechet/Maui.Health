@@ -194,11 +194,7 @@ public partial class HealthService : IHealthService
                 var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (!permissionResult.IsSuccess)
                 {
-                    return new HealthDataReadResult<TDto>
-                    {
-                        ErrorException = permissionResult.ErrorException
-                            ?? new InvalidOperationException($"Permission request failed: {permissionResult.Error}"),
-                    };
+                    return PermissionRequestErrors.ToReadResult<HealthDataReadResult<TDto>>(permissionResult);
                 }
             }
 
@@ -309,7 +305,7 @@ public partial class HealthService : IHealthService
                     _logger.LogWarning("iOS Write: Permission denied for {DtoName}", typeof(TDto).Name);
                     return new WriteHealthDataResult
                     {
-                        Error = WriteHealthDataError.PermissionDenied,
+                        Error = PermissionRequestErrors.ToWriteError(permissionResult.Error),
                         ErrorException = permissionResult.ErrorException,
                     };
                 }
@@ -384,7 +380,7 @@ public partial class HealthService : IHealthService
                     _logger.LogWarning("iOS Update: Permission denied for {DtoName}", typeof(TDto).Name);
                     return new UpdateHealthDataResult
                     {
-                        Error = UpdateHealthDataError.PermissionDenied,
+                        Error = PermissionRequestErrors.ToUpdateError(permissionResult.Error),
                         ErrorException = permissionResult.ErrorException,
                     };
                 }
@@ -493,11 +489,7 @@ public partial class HealthService : IHealthService
                 var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (!permissionResult.IsSuccess)
                 {
-                    return new HealthRecordReadResult<TDto>
-                    {
-                        ErrorException = permissionResult.ErrorException
-                            ?? new InvalidOperationException($"Permission request failed: {permissionResult.Error}"),
-                    };
+                    return PermissionRequestErrors.ToReadResult<HealthRecordReadResult<TDto>>(permissionResult);
                 }
             }
 
@@ -654,11 +646,7 @@ public partial class HealthService : IHealthService
                 var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (!permissionResult.IsSuccess)
                 {
-                    return new AggregatedReadResult
-                    {
-                        ErrorException = permissionResult.ErrorException
-                            ?? new InvalidOperationException($"Permission request failed: {permissionResult.Error}"),
-                    };
+                    return PermissionRequestErrors.ToReadResult<AggregatedReadResult>(permissionResult);
                 }
             }
 
@@ -834,11 +822,7 @@ public partial class HealthService : IHealthService
                 var permissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (!permissionResult.IsSuccess)
                 {
-                    return new AggregatedIntervalReadResult
-                    {
-                        ErrorException = permissionResult.ErrorException
-                            ?? new InvalidOperationException($"Permission request failed: {permissionResult.Error}"),
-                    };
+                    return PermissionRequestErrors.ToReadResult<AggregatedIntervalReadResult>(permissionResult);
                 }
             }
 

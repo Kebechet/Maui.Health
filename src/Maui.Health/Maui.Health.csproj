@@ -53,6 +53,7 @@ BREAKING CHANGES
 • Android (#63): refused full-history or background access no longer fails RequestPermissions; see FullHistoryReadStatus and BackgroundReadStatus.
 • RequestPermissions (#63): an exception is reported as RequestPermissionError.UnexpectedException.
 • Cancellation (#63): a cancelled RequestPermissions returns RequestPermissionError.Cancelled instead of throwing; a screen already showing stays until answered.
+• Reads and writes (#63): one cancelled while waiting for its permission request reports Cancelled; writes and updates report PermissionDenied only for a refusal.
 • PermissionType (#63): Read is 1 and Write 2, so the flags combine; stored numbers change, and a write-only permission no longer asks for read access too.
 • HealthPermissionDto (#63): a PermissionType with neither Read nor Write set throws instead of requesting nothing.
 • Statuses (#63): every platform reports one status per read and per write, also when Unavailable.
@@ -68,7 +69,7 @@ NEW
 
 FIXED
 • Android (#63): parallel permission requests run one after another instead of leaving invisible activities that swallow every tap.
-• Android (#63): a permission request no longer hangs when the app's activity is recreated under the permission screen.
+• Android (#63): a permission request whose activity is recreated under the permission screen waits for the user, then reads the grants back.
 • Android (#63): full-history access is requested only where Health Connect supports it.
 • Android (#63): data types and the extra access are requested apart, so an extra refused twice no longer hides the data-type screen.
 • GetPermissionStatuses (#63): never throws; without a current activity or Health Connect it reports Unavailable.

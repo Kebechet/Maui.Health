@@ -22,4 +22,9 @@ public enum ReadHealthDataError
     /// reached a type nobody asked for. Android only; HealthKit returns no data for a refused read instead.
     /// </summary>
     PermissionDenied,
+
+    /// <summary>
+    /// The caller's cancellation token fired while the operation waited for its permission request.
+    /// </summary>
+    Cancelled,
 }

@@ -111,25 +111,6 @@ public static class AndroidConstant
     public const string IntentExtraCaller = "callerId";
 
     /// <summary>
-    /// Activity action: open Health Connect's settings, where the user manages every app's permissions. Android 14+,
-    /// where Health Connect is part of the system. <c>ACTION_MANAGE_HEALTH_PERMISSIONS</c>, which opens one app's
-    /// permissions, needs <c>GRANT_RUNTIME_PERMISSIONS</c> and throws a SecurityException for a normal app.
-    /// https://developer.android.com/reference/android/health/connect/HealthConnectManager#ACTION_HEALTH_HOME_SETTINGS
-    /// </summary>
-    public const string HealthHomeSettingsAction = "android.health.connect.action.HEALTH_HOME_SETTINGS";
-
-    /// <summary>
-    /// Intent action to open Health Connect settings; the Health Connect app answers it on Android 13 and lower.
-    /// https://developer.android.com/reference/kotlin/androidx/health/connect/client/HealthConnectClient#ACTION_HEALTH_CONNECT_SETTINGS()
-    /// </summary>
-    public const string HealthConnectSettingsAction = "androidx.health.ACTION_HEALTH_CONNECT_SETTINGS";
-
-    /// <summary>
-    /// First Android version with Health Connect built into the system (Android 14, API 34).
-    /// </summary>
-    public const int HealthConnectInSystemApiVersion = 34;
-
-    /// <summary>
     /// JNI handle field name for reflection.
     /// </summary>
     public const string JniHandleFieldName = "handle";

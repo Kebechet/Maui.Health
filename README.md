@@ -532,7 +532,13 @@ public async Task DetectDuplicateWorkouts()
   write-only permission asked for read access too). Code that stored the numbers, or relied on a write also asking for
   the read, has to change. A `HealthPermissionDto` whose `PermissionType` has neither flag set now throws.
 - A cancelled `RequestPermissions` returns `RequestPermissionError.Cancelled` instead of throwing
-  `OperationCanceledException`, also while it waits for an earlier request.
+  `OperationCanceledException`, also while it waits for an earlier request. A read, write or update whose permission
+  request was cancelled that way reports `ReadHealthDataError.Cancelled`, `WriteHealthDataError.Cancelled` or
+  `UpdateHealthDataError.Cancelled`.
+- Writes and updates report `PermissionDenied` only when the user refused the permission; a permission request that
+  failed otherwise is `SdkUnavailable` or `UnexpectedException`.
+- On Android, full-history and background access are requested only once a data-type read is granted, in a launch of
+  their own after the data types.
 - `RequestPermissionResult`'s properties are init-only (`DeniedPermissions` was settable).
 - `GetPermissionStatuses` returns one entry per read and per write on every platform, also for `Unavailable`
   statuses, so a read-and-write permission comes back as two entries.

@@ -140,29 +140,45 @@ public class HealthConnectPermissionsTests
     }
 
     [Fact]
-    public void HasAnyDataTypePermission_OnlyExtrasGranted_ReturnsFalse()
+    public void HasAnyDataTypeReadPermission_OnlyExtrasGranted_ReturnsFalse()
     {
         // Arrange
         var grantedPermissions = new HashSet<string> { AndroidConstant.FullHistoryReadPermission, AndroidConstant.BackgroundReadPermission };
 
         // Act
-        var hasAnyDataTypePermission = HealthConnectPermissions.HasAnyDataTypePermission(grantedPermissions);
+        var hasAnyDataTypeReadPermission = HealthConnectPermissions.HasAnyDataTypeReadPermission(grantedPermissions);
 
         // Assert
-        Assert.False(hasAnyDataTypePermission);
+        Assert.False(hasAnyDataTypeReadPermission);
+    }
+
+    /// <summary>
+    /// Full history and background access widen what the app can read; with write access alone they grant nothing.
+    /// </summary>
+    [Fact]
+    public void HasAnyDataTypeReadPermission_OnlyAWriteGranted_ReturnsFalse()
+    {
+        // Arrange
+        var grantedPermissions = new HashSet<string> { WriteWeight };
+
+        // Act
+        var hasAnyDataTypeReadPermission = HealthConnectPermissions.HasAnyDataTypeReadPermission(grantedPermissions);
+
+        // Assert
+        Assert.False(hasAnyDataTypeReadPermission);
     }
 
     [Fact]
-    public void HasAnyDataTypePermission_DataTypeGranted_ReturnsTrue()
+    public void HasAnyDataTypeReadPermission_DataTypeReadGranted_ReturnsTrue()
     {
         // Arrange
         var grantedPermissions = new HashSet<string> { AndroidConstant.BackgroundReadPermission, ReadSteps };
 
         // Act
-        var hasAnyDataTypePermission = HealthConnectPermissions.HasAnyDataTypePermission(grantedPermissions);
+        var hasAnyDataTypeReadPermission = HealthConnectPermissions.HasAnyDataTypeReadPermission(grantedPermissions);
 
         // Assert
-        Assert.True(hasAnyDataTypePermission);
+        Assert.True(hasAnyDataTypeReadPermission);
     }
 
     [Fact]

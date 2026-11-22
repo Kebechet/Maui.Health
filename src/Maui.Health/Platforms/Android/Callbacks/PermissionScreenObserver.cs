@@ -1,39 +1,29 @@
 using Android.App;
 using Android.OS;
+using Maui.Health.Platforms.Android.Helpers;
 
 namespace Maui.Health.Platforms.Android.Callbacks;
 
 /// <summary>
-/// Watches the activity that launched a permission request while the request runs.
+/// Feeds the app's activity lifecycle to a <see cref="PermissionScreenTracker"/> while a permission request runs.
+/// Registered on the application, so it sees only this app's activities.
 /// </summary>
 internal sealed class PermissionScreenObserver : Java.Lang.Object, global::Android.App.Application.IActivityLifecycleCallbacks
 {
     private readonly Activity _requestingActivity;
-    private readonly TaskCompletionSource _requestingActivityDestroyedSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly PermissionScreenTracker _screenTracker;
 
-    public PermissionScreenObserver(Activity requestingActivity)
+    public PermissionScreenObserver(Activity requestingActivity, PermissionScreenTracker screenTracker)
     {
         _requestingActivity = requestingActivity;
+        _screenTracker = screenTracker;
     }
-
-    /// <summary>
-    /// Whether the requesting activity was stopped. Health Connect's permission screen is a full-screen activity, so
-    /// showing it stops the app's activity. When Android declines to ask again (a permission the user refused twice),
-    /// it only passes through a transparent activity that finishes at once and stops nothing.
-    /// </summary>
-    public bool IsPermissionScreenShown { get; private set; }
-
-    /// <summary>
-    /// Completes when the requesting activity is destroyed. Its request then gets no answer: Android delivers it to
-    /// the activity recreated in its place, which knows nothing of the request.
-    /// </summary>
-    public Task RequestingActivityDestroyedTask => _requestingActivityDestroyedSource.Task;
 
     public void OnActivityStopped(Activity activity)
     {
         if (ReferenceEquals(activity, _requestingActivity))
         {
-            IsPermissionScreenShown = true;
+            _screenTracker.OnRequestingActivityStopped();
         }
     }
 
@@ -41,8 +31,13 @@ internal sealed class PermissionScreenObserver : Java.Lang.Object, global::Andro
     {
         if (ReferenceEquals(activity, _requestingActivity))
         {
-            _requestingActivityDestroyedSource.TrySetResult();
+            _screenTracker.OnRequestingActivityDestroyed();
         }
+    }
+
+    public void OnActivityResumed(Activity activity)
+    {
+        _screenTracker.OnActivityResumed(ReferenceEquals(activity, _requestingActivity));
     }
 
     public void OnActivityCreated(Activity activity, Bundle? savedInstanceState)
@@ -50,10 +45,6 @@ internal sealed class PermissionScreenObserver : Java.Lang.Object, global::Andro
     }
 
     public void OnActivityPaused(Activity activity)
-    {
-    }
-
-    public void OnActivityResumed(Activity activity)
     {
     }
 

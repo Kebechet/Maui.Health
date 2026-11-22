@@ -12,6 +12,8 @@ namespace Maui.Health.Platforms.Android.Helpers;
 /// </summary>
 internal static class HealthConnectPermissions
 {
+    private const string ReadPermissionPrefix = $"{AndroidConstant.HealthPermissionPrefix}READ_";
+
     /// <summary>
     /// One status per read and per write: a permission requested as read and write is reported as two.
     /// Health Connect only tells which permissions are granted, so anything else is <see cref="HealthPermissionStatus.Denied"/>.
@@ -80,11 +82,13 @@ internal static class HealthConnectPermissions
     }
 
     /// <summary>
-    /// Whether the app holds a permission for any data type; full-history and background access do not count.
+    /// Whether the app may read any data type; full-history and background access do not count. Both widen what the
+    /// app can read, so an app holding only write access gains nothing from them.
+    /// https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#background-reads
     /// </summary>
-    internal static bool HasAnyDataTypePermission(IEnumerable<string> grantedPermissions)
+    internal static bool HasAnyDataTypeReadPermission(IEnumerable<string> grantedPermissions)
     {
-        return grantedPermissions.Any(x => x.StartsWith(AndroidConstant.HealthPermissionPrefix, StringComparison.Ordinal) &&
+        return grantedPermissions.Any(x => x.StartsWith(ReadPermissionPrefix, StringComparison.Ordinal) &&
             !IsExtraPermission(x));
     }
 
