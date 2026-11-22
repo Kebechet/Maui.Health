@@ -47,22 +47,22 @@
 v7.0.0 — permission requests report every permission, and aggregated reads can skip the permission screen.
 
 BREAKING CHANGES
-• Aggregated reads: GetAggregatedHealthData, ByInterval and ByCalendarPeriod take shouldCheckPermissions before the CancellationToken; pass a token by name.
-• RequestPermissionResult.DeniedPermissions lists HealthPermissionDto instead of platform permission strings.
-• HealthPermissionStatus: iOS reads are Undisclosed and unreadable statuses are Unavailable; NotDetermined now means an unasked iOS write only.
-• Android: refused full-history or background access no longer fails RequestPermissions; see FullHistoryReadStatus and BackgroundReadStatus.
-• RequestPermissions reports an exception as RequestPermissionError.UnexpectedException.
-• PermissionType.Read is 1 and Write 2, so the flags combine: a write-only permission no longer asks for read access too.
+• Aggregated reads (#63): GetAggregatedHealthData, ByInterval and ByCalendarPeriod take shouldCheckPermissions before the CancellationToken; pass a token by name.
+• DeniedPermissions (#63): RequestPermissionResult lists HealthPermissionDto instead of platform permission strings.
+• HealthPermissionStatus (#63): iOS reads are Undisclosed and unreadable statuses are Unavailable; NotDetermined now means an unasked iOS write only.
+• Android (#63): refused full-history or background access no longer fails RequestPermissions; see FullHistoryReadStatus and BackgroundReadStatus.
+• RequestPermissions (#63): an exception is reported as RequestPermissionError.UnexpectedException.
+• PermissionType (#63): Read is 1 and Write 2, so the flags combine; a write-only permission no longer asks for read access too.
 
 NEW
-• shouldCheckPermissions: false on aggregated reads fails a read with a missing permission instead of opening the permission screen.
-• RequestPermissionResult reports PermissionStatuses for every requested permission, so no GetPermissionStatuses call is needed after a request.
-• RequestPermissionResult.IsPermissionScreenShown tells a refusal apart from a platform that declined to ask again.
-• OpenPermissionSettings opens Health Connect's permission screen for the app (Android).
+• shouldCheckPermissions (#63): false on aggregated reads fails a read with a missing permission instead of opening the permission screen.
+• PermissionStatuses (#63): RequestPermissionResult reports every requested permission, so no GetPermissionStatuses call is needed after a request.
+• IsPermissionScreenShown (#63): tells a refusal apart from a platform that declined to ask again.
+• OpenPermissionSettings (#63): opens Health Connect's permission screen for the app (Android).
 
 FIXED
-• Android: parallel permission requests run one after another instead of leaving invisible activities that swallow every tap.
-• GetPermissionStatuses never throws; without a current activity or Health Connect it reports Unavailable.
+• Android (#63): parallel permission requests run one after another instead of leaving invisible activities that swallow every tap.
+• GetPermissionStatuses (#63): never throws; without a current activity or Health Connect it reports Unavailable.
 
 PREVIOUS RELEASE — v6.0.0: the health data types move to Kebechet.Types.Health, a package without MAUI, under its own namespaces.
 
