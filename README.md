@@ -513,40 +513,11 @@ public async Task DetectDuplicateWorkouts()
 }
 ```
 
-## Migrating to 7.0
+## Migrations
 
-- `GetAggregatedHealthData`, `GetAggregatedHealthDataByInterval` and `GetAggregatedHealthDataByCalendarPeriod` take
-  `bool shouldCheckPermissions = true` before the `CancellationToken`. A token passed by position now goes as
-  `cancellationToken: token`.
-- `RequestPermissionResult.DeniedPermissions` is a list of `HealthPermissionDto` (data type and read or write) instead
-  of platform permission strings.
-- A refused full-history or background permission no longer fails `RequestPermissions` on Android: check
-  `FullHistoryReadStatus` and `BackgroundReadStatus` if you depend on them.
-- `HealthPermissionStatus`: iOS reads are `Undisclosed` instead of `NotDetermined`, and a status that cannot be read
-  (unsupported platform, Health Connect unavailable, a platform error) is `Unavailable` instead of `NotDetermined`.
-  `NotDetermined` now means only an iOS write the user has not been asked for.
-- `RequestPermissions` reports an exception as `RequestPermissionError.UnexpectedException` (iOS reported
-  `ProblemWhileGrantingPermissions`, Android no error value).
-- `IHealthService` implementations add `OpenPermissionSettings()`.
-- `PermissionType.Read` is `1` and `Write` is `2` (they were `0` and `1`, so `Read` was no flag at all and every
-  write-only permission asked for read access too). Code that stored the numbers, or relied on a write also asking for
-  the read, has to change. A `HealthPermissionDto` whose `PermissionType` has neither flag set now throws.
-- A cancelled `RequestPermissions` returns `RequestPermissionError.Cancelled` instead of throwing
-  `OperationCanceledException`, also while it waits for an earlier request. A read, write or update whose permission
-  request was cancelled that way reports `ReadHealthDataError.Cancelled`, `WriteHealthDataError.Cancelled` or
-  `UpdateHealthDataError.Cancelled`.
-- Writes and updates report `PermissionDenied` only when the user refused the permission; a permission request that
-  failed otherwise is `SdkUnavailable` or `UnexpectedException`.
-- On Android, full-history and background access are requested only once a data-type read is granted, in a launch of
-  their own after the data types.
-- `RequestPermissionResult`'s properties are init-only (`DeniedPermissions` was settable).
-- `GetPermissionStatuses` returns one entry per read and per write on every platform, also for `Unavailable`
-  statuses, so a read-and-write permission comes back as two entries.
-- On Windows and Mac Catalyst `RequestPermissions` returns `RequestPermissionError.SdkUnavailable` instead of success.
-- An Android read refused for a missing permission returns `ReadHealthDataError.PermissionDenied`.
-- A read, record read or aggregate on a device without the health platform (Health Connect missing or outdated,
-  HealthKit unavailable, Windows, Mac Catalyst) returns `ReadHealthDataError.SdkUnavailable`; before, it carried an
-  exception only. The exception is still on `ErrorException`.
+Upgrading to a new major version? Every migration has a guide of its own:
+
+- [6.x to 7.0](migrations/6-to-7.md)
 
 ## Testing Tips
 
