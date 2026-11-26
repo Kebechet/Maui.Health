@@ -58,6 +58,17 @@ public partial class HealthService : IHealthService
             }
         }
 
+        // HealthKit raises NSInvalidArgumentException ("Must request authorization for at least one data type", seen on
+        // iOS 26.5) for a request that names no type: one made only of types it does not have, or one made of nothing.
+        if (!readTypes.Any() && !writeTypes.Any())
+        {
+            return HealthKitPermissions.ToRequestResult(
+                healthPermissions,
+                HasHealthKitType,
+                _ => HealthPermissionStatus.Unavailable,
+                isPermissionScreenShown: false);
+        }
+
         var nsTypesToRead = new NSSet<HKObjectType>(readTypes.ToArray());
         var nsTypesToWrite = new NSSet<HKObjectType>(writeTypes.ToArray());
 
@@ -88,6 +99,7 @@ public partial class HealthService : IHealthService
             //hidden.
             return HealthKitPermissions.ToRequestResult(
                 healthPermissions,
+                HasHealthKitType,
                 healthDataType => GetWriteStatus(healthStore, healthDataType),
                 isPermissionScreenShown);
         }
@@ -126,7 +138,7 @@ public partial class HealthService : IHealthService
         try
         {
             using var healthStore = new HKHealthStore();
-            permissionStatuses = HealthKitPermissions.ToStatuses(permissions, healthDataType => GetWriteStatus(healthStore, healthDataType));
+            permissionStatuses = HealthKitPermissions.ToStatuses(permissions, HasHealthKitType, healthDataType => GetWriteStatus(healthStore, healthDataType));
         }
         catch (Exception ex)
         {
@@ -153,6 +165,12 @@ public partial class HealthService : IHealthService
         };
     }
 
+    private static bool HasHealthKitType(HealthDataType healthDataType)
+    {
+        return ToHKObjectType(healthDataType) is not null;
+    }
+
+    /// <returns>The HealthKit type, or null for a data type HealthKit has no counterpart for.</returns>
     private static HKObjectType? ToHKObjectType(HealthDataType healthDataType)
     {
         // Special handling for workout/exercise session
@@ -161,7 +179,13 @@ public partial class HealthService : IHealthService
             return HKWorkoutType.WorkoutType;
         }
 
-        return HKQuantityType.Create(healthDataType.ToHKQuantityTypeIdentifier());
+        var quantityTypeIdentifier = healthDataType.ToHKQuantityTypeIdentifierOrNull();
+        if (quantityTypeIdentifier is null)
+        {
+            return null;
+        }
+
+        return HKQuantityType.Create(quantityTypeIdentifier.Value);
     }
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files

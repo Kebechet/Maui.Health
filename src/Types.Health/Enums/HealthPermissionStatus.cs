@@ -25,7 +25,8 @@ public enum HealthPermissionStatus
     /// </summary>
     Undisclosed,
     /// <summary>
-    /// The status could not be read: the health platform is unavailable or unsupported on this device, or querying
+    /// The status could not be read: the health platform is unavailable or unsupported on this device, it has no
+    /// counterpart for the data type (HealthKit has none for BloodPressure), or querying
     /// it failed. Says nothing about what the user chose.
     /// </summary>
     Unavailable,

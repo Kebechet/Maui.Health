@@ -5,9 +5,26 @@ namespace Maui.Health.Platforms.iOS.Extensions;
 
 internal static class HealthDataTypeExtensions
 {
+    /// <summary>
+    /// For the call sites that read or write a type they know HealthKit has. Throws for a data type HealthKit has no
+    /// counterpart for; use <see cref="ToHKQuantityTypeIdentifierOrNull"/> where such a type can arrive, as in a
+    /// permission request.
+    /// </summary>
     internal static HKQuantityTypeIdentifier ToHKQuantityTypeIdentifier(this HealthDataType healthDataType)
     {
-        var typeIdentifier = healthDataType switch
+        var typeIdentifier = healthDataType.ToHKQuantityTypeIdentifierOrNull();
+        if (typeIdentifier is null)
+        {
+            throw new ArgumentOutOfRangeException(nameof(healthDataType), healthDataType, null);
+        }
+
+        return typeIdentifier.Value;
+    }
+
+    /// <returns>The HealthKit identifier, or null for a data type HealthKit has no counterpart for.</returns>
+    internal static HKQuantityTypeIdentifier? ToHKQuantityTypeIdentifierOrNull(this HealthDataType healthDataType)
+    {
+        HKQuantityTypeIdentifier? typeIdentifier = healthDataType switch
         {
             HealthDataType.ActiveCaloriesBurned => HKQuantityTypeIdentifier.ActiveEnergyBurned,
             HealthDataType.BasalBodyTemperature => HKQuantityTypeIdentifier.BasalBodyTemperature,
@@ -49,7 +66,7 @@ internal static class HealthDataTypeExtensions
             HealthDataType.Vo2Max => HKQuantityTypeIdentifier.VO2Max,
             HealthDataType.Weight => HKQuantityTypeIdentifier.BodyMass,
             //HealthDataType.WheelchairPushes => HKQuantityTypeIdentifier.Dis,//not on iOS
-            _ => throw new ArgumentOutOfRangeException(nameof(healthDataType), healthDataType, null)
+            _ => null
         };
 
         return typeIdentifier;

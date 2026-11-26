@@ -14,10 +14,13 @@ internal static class HealthKitPermissions
     /// <summary>
     /// One status per read and per write. HealthKit never discloses a read, so every read is
     /// <see cref="HealthPermissionStatus.Undisclosed"/>; a write gets the status <paramref name="getWriteStatus"/> reads.
+    /// A data type <paramref name="isSupported"/> rejects has no HealthKit counterpart: its read and its write are
+    /// <see cref="HealthPermissionStatus.Unavailable"/> and the other permissions are not affected.
     /// https://developer.apple.com/documentation/healthkit/hkhealthstore/authorizationstatus(for:)
     /// </summary>
     internal static List<HealthPermissionStatusResult> ToStatuses(
         IEnumerable<HealthPermissionDto> permissions,
+        Func<HealthDataType, bool> isSupported,
         Func<HealthDataType, HealthPermissionStatus> getWriteStatus)
     {
         return permissions
@@ -25,9 +28,7 @@ internal static class HealthKitPermissions
             .Select(permission => new HealthPermissionStatusResult
             {
                 Permission = permission,
-                Status = permission.PermissionType == PermissionType.Read
-                    ? HealthPermissionStatus.Undisclosed
-                    : getWriteStatus(permission.HealthDataType),
+                Status = ToStatus(permission, isSupported, getWriteStatus),
             })
             .ToList();
     }
@@ -37,10 +38,11 @@ internal static class HealthKitPermissions
     /// </summary>
     internal static RequestPermissionResult ToRequestResult(
         IList<HealthPermissionDto> requestedPermissions,
+        Func<HealthDataType, bool> isSupported,
         Func<HealthDataType, HealthPermissionStatus> getWriteStatus,
         bool isPermissionScreenShown)
     {
-        var permissionStatuses = ToStatuses(requestedPermissions, getWriteStatus);
+        var permissionStatuses = ToStatuses(requestedPermissions, isSupported, getWriteStatus);
         var deniedPermissions = PermissionStatuses.ToDenied(permissionStatuses);
 
         return new RequestPermissionResult
@@ -52,5 +54,20 @@ internal static class HealthKitPermissions
             DeniedPermissions = deniedPermissions,
             IsPermissionScreenShown = isPermissionScreenShown,
         };
+    }
+
+    private static HealthPermissionStatus ToStatus(
+        HealthPermissionDto singleAccessPermission,
+        Func<HealthDataType, bool> isSupported,
+        Func<HealthDataType, HealthPermissionStatus> getWriteStatus)
+    {
+        if (!isSupported(singleAccessPermission.HealthDataType))
+        {
+            return HealthPermissionStatus.Unavailable;
+        }
+
+        return singleAccessPermission.PermissionType == PermissionType.Read
+            ? HealthPermissionStatus.Undisclosed
+            : getWriteStatus(singleAccessPermission.HealthDataType);
     }
 }
