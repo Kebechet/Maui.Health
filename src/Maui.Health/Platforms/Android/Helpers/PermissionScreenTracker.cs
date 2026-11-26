@@ -13,10 +13,17 @@ internal sealed class PermissionScreenTracker
     /// </summary>
     internal static readonly TimeSpan AnswerGracePeriod = TimeSpan.FromSeconds(2);
 
+    /// <summary>
+    /// How long a launch may leave the requesting activity untouched before it counts as never shown. Android pauses the
+    /// activity as soon as it starts a screen on top of it, long before that screen is drawn, so the pause does not
+    /// wait for Health Connect to start.
+    /// </summary>
+    internal static readonly TimeSpan LaunchWindow = TimeSpan.FromSeconds(5);
+
     private readonly TaskCompletionSource _returnedWithoutAnswerSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TimeSpan _answerGracePeriod;
-    private bool _hasRequestingActivityLeft;
-    private bool _isRequestingActivityDestroyed;
+    private volatile bool _hasRequestingActivityLeft;
+    private volatile bool _isRequestingActivityDestroyed;
 
     internal PermissionScreenTracker(TimeSpan answerGracePeriod)
     {
@@ -31,10 +38,23 @@ internal sealed class PermissionScreenTracker
     internal bool IsPermissionScreenShown { get; private set; }
 
     /// <summary>
-    /// Completes once the app is back on screen and the answer can no longer arrive. Never while the permission screen
-    /// is up: the user may take as long as they like, and the next request must not start under it.
+    /// Completes once the app is back on screen and the answer can no longer arrive, or when the launch never put a
+    /// screen on top of the app (see <see cref="OnLaunched"/>). Never while the permission screen is up: the user may
+    /// take as long as they like, and the next request must not start under it.
     /// </summary>
     internal Task ReturnedWithoutAnswerTask => _returnedWithoutAnswerSource.Task;
+
+    /// <summary>
+    /// Call right after the screen was launched. Android drops a launch from an app that is in the background: nothing
+    /// is shown and nothing is answered, so without this the wait would never end and the permission gate would stay
+    /// held for every later request. A launch that touched the requesting activity within <paramref name="launchWindow"/>
+    /// is left to the user. HealthService launches nothing from an activity that is not started, so this covers a
+    /// launch Android still drops, such as one made in the moments after the user left the app.
+    /// </summary>
+    internal void OnLaunched(TimeSpan launchWindow)
+    {
+        _ = CompleteIfNothingCoveredTheActivity(launchWindow);
+    }
 
     /// <summary>
     /// Any screen Android puts on top pauses the requesting activity, the transparent one included. Only a resume
@@ -79,5 +99,14 @@ internal sealed class PermissionScreenTracker
     {
         await Task.Delay(_answerGracePeriod);
         _returnedWithoutAnswerSource.TrySetResult();
+    }
+
+    private async Task CompleteIfNothingCoveredTheActivity(TimeSpan launchWindow)
+    {
+        await Task.Delay(launchWindow);
+        if (!_hasRequestingActivityLeft && !_isRequestingActivityDestroyed)
+        {
+            _returnedWithoutAnswerSource.TrySetResult();
+        }
     }
 }

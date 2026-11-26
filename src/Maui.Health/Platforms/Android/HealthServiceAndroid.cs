@@ -2,6 +2,7 @@
 using AndroidX.Activity;
 using AndroidX.Activity.Result;
 using AndroidX.Health.Connect.Client;
+using AndroidX.Lifecycle;
 using Java.Time;
 using Java.Util;
 using Kebechet.Types.Health.Constants;
@@ -136,12 +137,25 @@ public partial class HealthService : IHealthService
     /// <summary>
     /// Shows Health Connect's permission screen for <paramref name="missingPermissions"/> and returns what the user
     /// granted, and whether the screen was shown at all: Android declines to ask again for a permission the user
-    /// refused twice and answers at once with nothing granted. The current activity is read at every launch, because
+    /// refused twice and answers at once with nothing granted, and when the app is not on screen, where nothing is
+    /// launched. The current activity is read at every launch, because
     /// the one that launched an earlier screen may have been destroyed and replaced under it.
     /// </summary>
     private async Task<(HashSet<string> GrantedPermissions, bool IsPermissionScreenShown)> LaunchPermissionRequest(List<string> missingPermissions)
     {
         var activity = (ComponentActivity)_activityContext;
+
+        // Android blocks a screen launched from an app that is not on screen, yet leaves the blocked screen in the
+        // app's task: it comes up over the app on the next Back, and until it is answered every launch from this
+        // activity returns at once without a screen. So nothing is launched from an activity that is not started.
+        // https://developer.android.com/guide/components/activities/background-starts
+        if (!activity.Lifecycle.CurrentState.IsAtLeast(Lifecycle.State.Started))
+        {
+            var grantedPermissionsWhileNotOnScreen = await GetGrantedPermissions() ?? [];
+
+            return (grantedPermissionsWhileNotOnScreen, false);
+        }
+
         var key = Guid.NewGuid().ToString();
         var requestPermissionActivityContract = PermissionController.CreateRequestPermissionResultContract();
         // No cancellation: the screen cannot be withdrawn, so the request waits for the user's answer.
@@ -155,6 +169,7 @@ public partial class HealthService : IHealthService
         {
             launcher = activity.ActivityResultRegistry.Register(key, requestPermissionActivityContract, callback);
             launcher.Launch(new HashSet(missingPermissions));
+            screenTracker.OnLaunched(PermissionScreenTracker.LaunchWindow);
 
             var newlyGrantedPermissions = await PermissionScreenWait.WaitForAnswer(callback.Task, screenTracker);
 

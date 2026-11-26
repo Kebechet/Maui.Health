@@ -50,7 +50,9 @@ public class RequestPermissionResult : Result<RequestPermissionError>
     /// <summary>
     /// Whether the platform showed its permission screen during this request, for any of the requested permissions.
     /// False when everything requested was already granted, and also when the platform declined to ask again: Android
-    /// shows the screen for a permission at most twice, iOS asks for each type only once. One flag for the whole
+    /// shows the screen for a permission at most twice, iOS asks for each type only once. Also false on Android when
+    /// the app is not on screen: nothing is launched then, because Android would block the screen and leave it behind
+    /// to appear later over the app. One flag for the whole
     /// request, because neither platform tells which permissions its screen skipped: when a permission is still
     /// denied, the user may have refused it on the screen or it may no longer be asked for, so offer the platform's
     /// settings either way.
