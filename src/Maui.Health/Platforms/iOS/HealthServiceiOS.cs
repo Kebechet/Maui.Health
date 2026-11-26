@@ -76,6 +76,8 @@ public partial class HealthService : IHealthService
         {
             using var healthStore = new HKHealthStore();
 
+            await WaitForPreviousSheetToSettle();
+
             // HealthKit shows its sheet only for types it has not asked about yet; asked before the request, this
             // tells whether the sheet is about to appear.
             //https://developer.apple.com/documentation/healthkit/hkhealthstore/getrequeststatusforauthorization(toshare:read:completion:)
@@ -83,6 +85,11 @@ public partial class HealthService : IHealthService
 
             //https://developer.apple.com/documentation/healthkit/hkhealthstore/1614152-requestauthorization
             var (isSuccess, error) = await healthStore.RequestAuthorizationToShareAsync(nsTypesToWrite, nsTypesToRead);
+            if (isPermissionScreenShown)
+            {
+                Interlocked.Exchange(ref _lastSheetCompletedAtMilliseconds, Environment.TickCount64);
+            }
+
             if (!isSuccess)
             {
                 return new RequestPermissionResult()
@@ -163,6 +170,44 @@ public partial class HealthService : IHealthService
             HKAuthorizationStatus.SharingDenied => HealthPermissionStatus.Denied,
             _ => HealthPermissionStatus.NotDetermined
         };
+    }
+
+    /// <summary>
+    /// HealthKit answers a statistics query over a window without a single sample with an error instead of empty
+    /// statistics. That is an empty result for the caller, as the same case is on Android, not a failure; a refused
+    /// read looks the same, because HealthKit never discloses it.
+    /// https://developer.apple.com/documentation/healthkit/hkerrorcode/nodata
+    /// </summary>
+    private static bool IsNoDataError(NSError error)
+    {
+        return error.Code == (nint)HKErrorCode.NoData && error.Domain.Contains("healthkit", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// When the last request that showed HealthKit's sheet completed, in <see cref="Environment.TickCount64"/> milliseconds.
+    /// </summary>
+    private static long _lastSheetCompletedAtMilliseconds;
+
+    /// <summary>
+    /// How long HealthKit needs after a sheet before it takes the next request. On an iPhone 11 (iOS 26.2) a second
+    /// request made 1 ms or 300 ms after the first sheet was never shown and never completed, while one made 800 ms
+    /// later showed its sheet.
+    /// </summary>
+    private static readonly TimeSpan SheetSettleDelay = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// HealthKit completes a request while its sheet is still going away, and ignores a request made before the sheet is
+    /// gone: no sheet, no completion, and the permission gate stays held for every later request. So a request that
+    /// follows a shown sheet closely waits for <see cref="SheetSettleDelay"/> to pass.
+    /// </summary>
+    private static async Task WaitForPreviousSheetToSettle()
+    {
+        var settledAtMilliseconds = Interlocked.Read(ref _lastSheetCompletedAtMilliseconds) + (long)SheetSettleDelay.TotalMilliseconds;
+        var waitMilliseconds = settledAtMilliseconds - Environment.TickCount64;
+        if (waitMilliseconds > 0)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(waitMilliseconds));
+        }
     }
 
     private static bool HasHealthKitType(HealthDataType healthDataType)
@@ -693,6 +738,12 @@ public partial class HealthService : IHealthService
                 statisticsOption,
                 (_, statistics, error) =>
                 {
+                    if (error is not null && IsNoDataError(error))
+                    {
+                        tcs.TrySetResult(new AggregatedReadResult { Aggregate = null });
+                        return;
+                    }
+
                     if (error is not null)
                     {
                         tcs.TrySetResult(new AggregatedReadResult
@@ -879,6 +930,12 @@ public partial class HealthService : IHealthService
 
             query.InitialResultsHandler = (_, results, error) =>
             {
+                if (error is not null && IsNoDataError(error))
+                {
+                    tcs.TrySetResult(new AggregatedIntervalReadResult { Buckets = [] });
+                    return;
+                }
+
                 if (error is not null || results is null)
                 {
                     tcs.TrySetResult(new AggregatedIntervalReadResult
@@ -1267,6 +1324,12 @@ public partial class HealthService : IHealthService
             HKStatisticsOptions.CumulativeSum,
             (statisticsQuery, statistics, error) =>
             {
+                if (error is not null && IsNoDataError(error))
+                {
+                    tcs.TrySetResult(new HealthDataReadResult<TDto> { Records = [] });
+                    return;
+                }
+
                 if (error != null)
                 {
                     tcs.TrySetResult(new HealthDataReadResult<TDto>
