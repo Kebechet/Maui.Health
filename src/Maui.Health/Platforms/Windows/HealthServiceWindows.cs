@@ -25,6 +25,7 @@ public partial class HealthService : IHealthService
     {
         return Task.FromResult(new HealthDataReadResult<TDto>
         {
+            Error = ReadHealthDataError.SdkUnavailable,
             ErrorException = new PlatformNotSupportedException("Health data is not supported on Windows."),
         });
     }
@@ -34,6 +35,7 @@ public partial class HealthService : IHealthService
     {
         return Task.FromResult(new HealthRecordReadResult<TDto>
         {
+            Error = ReadHealthDataError.SdkUnavailable,
             ErrorException = new PlatformNotSupportedException("Health data is not supported on Windows."),
         });
     }
@@ -61,6 +63,7 @@ public partial class HealthService : IHealthService
     {
         return Task.FromResult(new AggregatedReadResult
         {
+            Error = ReadHealthDataError.SdkUnavailable,
             ErrorException = new PlatformNotSupportedException("Health data is not supported on Windows."),
         });
     }
@@ -70,6 +73,7 @@ public partial class HealthService : IHealthService
     {
         return Task.FromResult(new AggregatedIntervalReadResult
         {
+            Error = ReadHealthDataError.SdkUnavailable,
             ErrorException = new PlatformNotSupportedException("Health data is not supported on Windows."),
         });
     }
@@ -79,6 +83,7 @@ public partial class HealthService : IHealthService
     {
         return Task.FromResult(new AggregatedIntervalReadResult
         {
+            Error = ReadHealthDataError.SdkUnavailable,
             ErrorException = new PlatformNotSupportedException("Health data is not supported on Windows."),
         });
     }

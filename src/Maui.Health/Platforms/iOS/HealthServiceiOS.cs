@@ -248,6 +248,7 @@ public partial class HealthService : IHealthService
         {
             return new HealthDataReadResult<TDto>
             {
+                Error = ReadHealthDataError.SdkUnavailable,
                 ErrorException = new InvalidOperationException("HealthKit is not available on this device."),
             };
         }
@@ -546,6 +547,7 @@ public partial class HealthService : IHealthService
         {
             return new HealthRecordReadResult<TDto>
             {
+                Error = ReadHealthDataError.SdkUnavailable,
                 ErrorException = new InvalidOperationException("HealthKit is not available on this device."),
             };
         }
@@ -703,6 +705,7 @@ public partial class HealthService : IHealthService
         {
             return new AggregatedReadResult
             {
+                Error = ReadHealthDataError.SdkUnavailable,
                 ErrorException = new InvalidOperationException("HealthKit is not available on this device."),
             };
         }
@@ -885,6 +888,7 @@ public partial class HealthService : IHealthService
         {
             return new AggregatedIntervalReadResult
             {
+                Error = ReadHealthDataError.SdkUnavailable,
                 ErrorException = new InvalidOperationException("HealthKit is not available on this device."),
             };
         }

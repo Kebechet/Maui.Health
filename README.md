@@ -544,6 +544,9 @@ public async Task DetectDuplicateWorkouts()
   statuses, so a read-and-write permission comes back as two entries.
 - On Windows and Mac Catalyst `RequestPermissions` returns `RequestPermissionError.SdkUnavailable` instead of success.
 - An Android read refused for a missing permission returns `ReadHealthDataError.PermissionDenied`.
+- A read, record read or aggregate on a device without the health platform (Health Connect missing or outdated,
+  HealthKit unavailable, Windows, Mac Catalyst) returns `ReadHealthDataError.SdkUnavailable`; before, it carried an
+  exception only. The exception is still on `ErrorException`.
 
 ## Testing Tips
 

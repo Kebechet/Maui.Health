@@ -263,6 +263,7 @@ public partial class HealthService : IHealthService
             {
                 return new HealthDataReadResult<TDto>
                 {
+                    Error = ReadHealthDataError.SdkUnavailable,
                     ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
                 };
             }
@@ -468,6 +469,7 @@ public partial class HealthService : IHealthService
             {
                 return new HealthRecordReadResult<TDto>
                 {
+                    Error = ReadHealthDataError.SdkUnavailable,
                     ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
                 };
             }
@@ -584,6 +586,7 @@ public partial class HealthService : IHealthService
             {
                 return new AggregatedReadResult
                 {
+                    Error = ReadHealthDataError.SdkUnavailable,
                     ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
                 };
             }
@@ -717,6 +720,7 @@ public partial class HealthService : IHealthService
             {
                 return new AggregatedIntervalReadResult
                 {
+                    Error = ReadHealthDataError.SdkUnavailable,
                     ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
                 };
             }
@@ -827,6 +831,7 @@ public partial class HealthService : IHealthService
             {
                 return new AggregatedIntervalReadResult
                 {
+                    Error = ReadHealthDataError.SdkUnavailable,
                     ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
                 };
             }

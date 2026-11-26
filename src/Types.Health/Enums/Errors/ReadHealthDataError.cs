@@ -27,4 +27,12 @@ public enum ReadHealthDataError
     /// The caller's cancellation token fired while the operation waited for its permission request.
     /// </summary>
     Cancelled,
+
+    /// <summary>
+    /// The health platform is not available: Health Connect is missing or needs an update on Android, HealthKit is not
+    /// available on this device, or the platform has no health store at all (Windows, Mac Catalyst).
+    /// <see cref="Models.Result.ErrorException"/> carries the details. Nothing was read; the same read cannot succeed
+    /// on this device until the platform is available.
+    /// </summary>
+    SdkUnavailable,
 }

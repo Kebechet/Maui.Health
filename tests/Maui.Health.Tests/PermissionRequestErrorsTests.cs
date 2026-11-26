@@ -41,7 +41,7 @@ public class PermissionRequestErrorsTests
     public void ToReadResult_OtherFailure_CarriesAnExceptionAndNoTypedError()
     {
         // Arrange
-        var requestPermissionResult = new RequestPermissionResult { Error = RequestPermissionError.SdkUnavailable };
+        var requestPermissionResult = new RequestPermissionResult { Error = RequestPermissionError.UnexpectedException };
 
         // Act
         var readResult = PermissionRequestErrors.ToReadResult<AggregatedIntervalReadResult>(requestPermissionResult);
@@ -49,6 +49,25 @@ public class PermissionRequestErrorsTests
         // Assert
         Assert.Null(readResult.Error);
         Assert.NotNull(readResult.ErrorException);
+    }
+
+    /// <summary>
+    /// A read that has to ask first on a device with no health platform reports that, as a write does, instead of an
+    /// exception only.
+    /// </summary>
+    [Theory]
+    [InlineData(RequestPermissionError.SdkUnavailable)]
+    [InlineData(RequestPermissionError.SdkUnavailableProviderUpdateRequired)]
+    public void ToReadResult_SdkUnavailable_IsSdkUnavailable(RequestPermissionError requestPermissionError)
+    {
+        // Arrange
+        var requestPermissionResult = new RequestPermissionResult { Error = requestPermissionError };
+
+        // Act
+        var readResult = PermissionRequestErrors.ToReadResult<AggregatedReadResult>(requestPermissionResult);
+
+        // Assert
+        Assert.Equal(ReadHealthDataError.SdkUnavailable, readResult.Error);
     }
 
     [Theory]

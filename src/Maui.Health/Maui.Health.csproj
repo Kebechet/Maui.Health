@@ -54,6 +54,7 @@ BREAKING CHANGES
 • RequestPermissions (#63): an exception is reported as RequestPermissionError.UnexpectedException.
 • Cancellation (#63): a cancelled RequestPermissions returns RequestPermissionError.Cancelled instead of throwing; a screen already showing stays until answered.
 • Reads and writes (#63): one cancelled while waiting for its permission request reports Cancelled; writes and updates report PermissionDenied only for a refusal.
+• Reads (#63): a read or aggregate on a device without the health platform reports ReadHealthDataError.SdkUnavailable, not only an exception.
 • PermissionType (#63): Read is 1 and Write 2, so the flags combine; stored numbers change, and a write-only permission no longer asks for read access too.
 • HealthPermissionDto (#63): a PermissionType with neither Read nor Write set throws instead of requesting nothing.
 • Statuses (#63): every platform reports one status per read and per write, also when Unavailable.

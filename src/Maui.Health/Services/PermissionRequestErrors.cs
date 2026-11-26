@@ -17,6 +17,7 @@ internal static class PermissionRequestErrors
         {
             RequestPermissionError.MissingPermissions => ReadHealthDataError.PermissionDenied,
             RequestPermissionError.Cancelled => ReadHealthDataError.Cancelled,
+            RequestPermissionError.SdkUnavailable or RequestPermissionError.SdkUnavailableProviderUpdateRequired => ReadHealthDataError.SdkUnavailable,
             _ => null,
         };
 
