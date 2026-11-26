@@ -38,7 +38,8 @@ internal static class ExceptionExtensions
     /// </summary>
     internal static bool IsReadPermissionRefusal(this Exception exception)
     {
-        return exception.HasMessageContaining(HealthConnectMessage.ReadPermissionMissing);
+        return exception.HasMessageContaining(HealthConnectMessage.ReadPermissionMissing) ||
+            exception.HasMessageContaining(HealthConnectMessage.ReadPermissionRequired);
     }
 
     private static bool HasMessageContaining(this Exception exception, string text)

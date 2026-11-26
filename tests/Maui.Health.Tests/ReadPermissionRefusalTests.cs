@@ -12,6 +12,13 @@ public class ReadPermissionRefusalTests
     private const string AggregateRefusalMessage =
         "android.health.connect.HealthConnectException: java.lang.SecurityException: Caller doesn't have android.permission.health.READ_STEPS to read to record typeclass android.health.connect.datatypes.StepsRecord";
 
+    /// <summary>
+    /// Health Connect on a Pixel 6 (Android 16), a read of steps made with shouldCheckPermissions: false while
+    /// READ_STEPS was not granted. The wording differs from the Galaxy A53's.
+    /// </summary>
+    private const string PixelReadRefusalMessage =
+        "android.health.connect.HealthConnectException: java.lang.SecurityException: Caller requires android.permission.health.READ_STEPS to read record type class android.health.connect.datatypes.StepsRecord";
+
     private const string RecordReadRefusalMessage =
         "java.lang.SecurityException: Caller doesn't have android.permission.health.READ_STEPS to read record of class StepsRecord";
 
@@ -21,6 +28,7 @@ public class ReadPermissionRefusalTests
     [Theory]
     [InlineData(AggregateRefusalMessage)]
     [InlineData(RecordReadRefusalMessage)]
+    [InlineData(PixelReadRefusalMessage)]
     public void IsReadPermissionRefusal_MissingReadPermission_ReturnsTrue(string message)
     {
         // Arrange
