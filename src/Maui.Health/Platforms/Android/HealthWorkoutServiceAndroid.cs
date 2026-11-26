@@ -19,10 +19,12 @@ public partial class HealthWorkoutService
     private WorkoutSession? _activeWorkoutSession;
     private readonly ILogger<HealthWorkoutService> _logger;
 
-    private Context _activityContext => Platform.CurrentActivity ??
-        throw new Exception("Current activity is null");
+    /// <summary>
+    /// Workout reads and writes need no activity, so they keep working while none is current, as in HealthService.
+    /// </summary>
+    private static Context _applicationContext => Platform.AppContext;
 
-    private IHealthConnectClient _healthConnectClient => HealthConnectClient.GetOrCreate(_activityContext);
+    private IHealthConnectClient _healthConnectClient => HealthConnectClient.GetOrCreate(_applicationContext);
 
     public HealthWorkoutService(ILogger<HealthWorkoutService> logger)
     {
@@ -179,7 +181,7 @@ public partial class HealthWorkoutService
 
             var startTime = DateTimeOffset.UtcNow;
             var id = Guid.NewGuid().ToString();
-            var origin = _activityContext.PackageName;
+            var origin = _applicationContext.PackageName;
             var workoutTitle = title ?? activityType.ToString();
 
             _activeWorkoutSession = new WorkoutSession(

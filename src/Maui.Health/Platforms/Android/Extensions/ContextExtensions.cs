@@ -61,4 +61,17 @@ internal static class ContextExtensions
 
         context.StartActivity(intent);
     }
+
+    /// <summary>
+    /// Opens Health Connect's settings, where the user manages this app's permissions under "App permissions". Jetpack
+    /// picks the action for the Android version. An app may not open its own permission page directly:
+    /// <c>ACTION_MANAGE_HEALTH_PERMISSIONS</c> needs <c>GRANT_RUNTIME_PERMISSIONS</c> and threw a SecurityException
+    /// on a Samsung A53 (Android 16).
+    /// https://developer.android.com/reference/kotlin/androidx/health/connect/client/HealthConnectClient#getHealthConnectSettingsAction()
+    /// </summary>
+    /// <param name="context">The Android context</param>
+    internal static void OpenHealthConnectPermissionSettings(this Context context)
+    {
+        context.StartActivity(new Intent(IHealthConnectClient.HealthConnectSettingsAction));
+    }
 }

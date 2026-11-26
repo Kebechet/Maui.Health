@@ -1,4 +1,5 @@
 ﻿using Kebechet.Types.Health.Enums;
+using Kebechet.Types.Health.Enums.Errors;
 using Kebechet.Types.Health.Models;
 using Kebechet.Types.Health.Models.Metrics;
 using Microsoft.Extensions.Logging;
@@ -30,8 +31,25 @@ public partial class HealthService : IHealthService
         return RequestPermissions([healthPermission], canRequestFullHistoryPermission, canRequestBackgroundReadPermission, cancellationToken);
     }
 
+    /// <summary>
+    /// Shared by every instance: two services asking at once would otherwise stack two permission screens.
+    /// </summary>
+    private static readonly PermissionRequestGate _permissionRequestGate = new();
+
     /// <inheritdoc/>
-    public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, bool canRequestBackgroundReadPermission = false, CancellationToken cancellationToken = default);
+    public Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission = false, bool canRequestBackgroundReadPermission = false, CancellationToken cancellationToken = default)
+    {
+        return _permissionRequestGate.Run(
+            () => RequestPermissionsInternal(healthPermissions, canRequestFullHistoryPermission, canRequestBackgroundReadPermission),
+            () => new RequestPermissionResult { Error = RequestPermissionError.Cancelled },
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Takes no cancellation token on purpose: a permission screen cannot be withdrawn, so the request always runs
+    /// until the user has answered, and <see cref="PermissionRequestGate"/> holds the next one back until then.
+    /// </summary>
+    private partial Task<RequestPermissionResult> RequestPermissionsInternal(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, bool canRequestBackgroundReadPermission);
 
     /// <inheritdoc/>
     public partial Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken = default);
@@ -64,15 +82,15 @@ public partial class HealthService : IHealthService
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken = default)
+    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken = default)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, CancellationToken cancellationToken = default)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, bool shouldCheckPermissions = true, CancellationToken cancellationToken = default)
         where TDto : HealthMetricBase;
 
     /// <inheritdoc/>
@@ -83,6 +101,9 @@ public partial class HealthService : IHealthService
 
     /// <inheritdoc/>
     public partial void OpenStorePageOfHealthProvider();
+
+    /// <inheritdoc/>
+    public partial Result<OpenPermissionSettingsError> OpenPermissionSettings();
 
     /// <inheritdoc/>
     public partial Task<DateTime> GetEarliestAccessibleDateTime(CancellationToken cancellationToken = default);

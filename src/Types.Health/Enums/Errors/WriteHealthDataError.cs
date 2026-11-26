@@ -44,4 +44,9 @@ public enum WriteHealthDataError
     /// available on <see cref="Kebechet.Types.Health.Models.Result.ErrorException"/>.
     /// </summary>
     UnexpectedException = 6,
+
+    /// <summary>
+    /// The caller's cancellation token fired while the operation waited for its permission request.
+    /// </summary>
+    Cancelled = 7,
 }

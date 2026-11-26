@@ -32,6 +32,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - Applies to `PackageReleaseNotes` in `Maui.Health.csproj` and any standalone changelog.
 
+## Migration Guides
+
+- **Every major version has its own guide in `migrations/<from>-to-<to>.md`** (for example `migrations/6-to-7.md`), linked from the README's `Migrations` section. A guide lists what a consumer has to change in their code, one bullet per breaking change; the README itself holds none. Add or extend the guide in the PR that makes the breaking change.
+
 ## Build Commands
 
 ```bash

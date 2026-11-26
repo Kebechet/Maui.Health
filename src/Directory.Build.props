@@ -3,7 +3,7 @@
   <!-- Kebechet.Maui.Health and Kebechet.Types.Health ship together with the same version: Maui.Health depends on the
        Types.Health of its own release. -->
   <PropertyGroup>
-    <Version>6.0.0</Version>
+    <Version>7.0.0</Version>
   </PropertyGroup>
 
 </Project>

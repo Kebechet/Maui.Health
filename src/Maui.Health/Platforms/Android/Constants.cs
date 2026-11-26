@@ -62,6 +62,21 @@ public static class AndroidConstant
         /// https://android.googlesource.com/platform/frameworks/support/+/refs/heads/androidx-main/health/connect/connect-client/src/main/java/androidx/health/connect/client/impl/HealthConnectClientUpsideDownImpl.kt
         /// </summary>
         internal const string NoRecords = "No records";
+
+        /// <summary>
+        /// Raised for a read the app holds no read permission for, as when a read made with
+        /// <c>shouldCheckPermissions: false</c> reaches a type the user refused: "Caller doesn't have
+        /// android.permission.health.READ_STEPS to read to record type…".
+        /// https://android.googlesource.com/platform/packages/modules/HealthFitness/+/refs/heads/main/service/java/com/android/server/healthconnect/HealthConnectServiceImpl.java
+        /// </summary>
+        internal const string ReadPermissionMissing = "Caller doesn't have android.permission.health.READ_";
+
+        /// <summary>
+        /// The same refusal as <see cref="ReadPermissionMissing"/> worded differently by Health Connect on a Pixel 6
+        /// (Android 16): "Caller requires android.permission.health.READ_STEPS to read rec…". A Galaxy A53 (Android 16)
+        /// words it as <see cref="ReadPermissionMissing"/>, so both are matched.
+        /// </summary>
+        internal const string ReadPermissionRequired = "Caller requires android.permission.health.READ_";
     }
 
     /// <summary>

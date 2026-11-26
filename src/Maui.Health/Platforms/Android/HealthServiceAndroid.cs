@@ -2,6 +2,7 @@
 using AndroidX.Activity;
 using AndroidX.Activity.Result;
 using AndroidX.Health.Connect.Client;
+using AndroidX.Lifecycle;
 using Java.Time;
 using Java.Util;
 using Kebechet.Types.Health.Constants;
@@ -22,15 +23,21 @@ namespace Maui.Health.Services;
 
 public partial class HealthService : IHealthService
 {
-    private Result<SdkStatus> _sdkStatus => _activityContext.CheckSdkAvailability();
+    private Result<SdkStatus> _sdkStatus => _applicationContext.CheckSdkAvailability();
     public partial bool IsSupported => _sdkStatus.IsSuccess;
 
     private Context _activityContext => Platform.CurrentActivity ??
         throw new Exception("Current activity is null");
 
-    private IHealthConnectClient _healthConnectClient => HealthConnectClient.GetOrCreate(_activityContext);
+    /// <summary>
+    /// Status queries and reads need no activity, so they keep working while none is current: during start-up, from a
+    /// background task, or between two activities. Only the permission screen has to be launched from an activity.
+    /// </summary>
+    private static Context _applicationContext => Platform.AppContext;
 
-    public async partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, bool canRequestBackgroundReadPermission, CancellationToken cancellationToken)
+    private IHealthConnectClient _healthConnectClient => HealthConnectClient.GetOrCreate(_applicationContext);
+
+    private async partial Task<RequestPermissionResult> RequestPermissionsInternal(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, bool canRequestBackgroundReadPermission)
     {
         try
         {
@@ -55,22 +62,24 @@ public partial class HealthService : IHealthService
                 .SelectMany(healthPermission => healthPermission.ToStrings())
                 .ToList();
 
-            if (canRequestFullHistoryPermission)
+            // Both extras are gated on the device feature rather than requested unconditionally: on a Health
+            // Connect version that does not know a permission, asking for it puts a string into the request the
+            // user can never satisfy, which leaves missingPermissions non-empty forever and re-opens the system
+            // dialog on every call.
+            //https://developer.android.com/health-and-fitness/guides/health-connect/plan/data-types#alpha10
+            var isFullHistoryReadRequested = canRequestFullHistoryPermission && _healthConnectClient.IsHealthDataHistorySupported();
+            if (isFullHistoryReadRequested)
             {
-                //https://developer.android.com/health-and-fitness/guides/health-connect/plan/data-types#alpha10
                 permissionsToGrant.Add(AndroidConstant.FullHistoryReadPermission);
             }
 
-            // Gated on the device feature rather than requested unconditionally: on a Health Connect
-            // version that does not know this permission, asking for it puts a string into the request
-            // the user can never satisfy, which leaves missingPermissions non-empty forever and
-            // re-opens the system dialog on every call.
-            if (canRequestBackgroundReadPermission && _healthConnectClient.IsBackgroundReadSupported())
+            var isBackgroundReadRequested = canRequestBackgroundReadPermission && _healthConnectClient.IsBackgroundReadSupported();
+            if (isBackgroundReadRequested)
             {
                 permissionsToGrant.Add(AndroidConstant.BackgroundReadPermission);
             }
 
-            var grantedPermissions = await KotlinResolver.ProcessList<Java.Lang.String>(_healthConnectClient.PermissionController.GetGrantedPermissions);
+            var grantedPermissions = await GetGrantedPermissions();
             if (grantedPermissions is null)
             {
                 return new()
@@ -85,135 +94,152 @@ public partial class HealthService : IHealthService
             // "30 days prior to when any permission was first granted" rule:
             // https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#read-data-older-than-30-days
             var hadAnyHealthPermissionBefore = grantedPermissions
-                .Any(p => p?.ToString()?.StartsWith(AndroidConstant.HealthPermissionPrefix, StringComparison.Ordinal) == true);
+                .Any(p => p.StartsWith(AndroidConstant.HealthPermissionPrefix, StringComparison.Ordinal));
 
             var missingPermissions = permissionsToGrant
-                .Where(permission => !grantedPermissions.ToList().Contains(permission))
+                .Where(permission => !grantedPermissions.Contains(permission))
                 .ToList();
 
-            if (!missingPermissions.Any())
-            {
-                return new();
-            }
-
-            var key = Guid.NewGuid().ToString();
-            var requestPermissionActivityContract = PermissionController.CreateRequestPermissionResultContract();
-            var callback = new AndroidActivityResultCallback<ISet?>(cancellationToken);
-
-            ActivityResultLauncher? launcher = null;
-            ISet? newlyGrantedPermissions = null;
-            ActivityResultRegistry? activityResultRegistry = null;
-            try
-            {
-                activityResultRegistry = ((ComponentActivity)_activityContext).ActivityResultRegistry;
-                launcher = activityResultRegistry.Register(key, requestPermissionActivityContract, callback);
-                launcher.Launch(new HashSet(missingPermissions));
-
-                newlyGrantedPermissions = await callback.Task;
-            }
-            finally
-            {
-                launcher?.Unregister();
-            }
-
-            var stillMissingPermissions = newlyGrantedPermissions is null
-                ? missingPermissions
-                : missingPermissions
-                    .Where(permission => !newlyGrantedPermissions.ToList().Contains(permission))
-                    .ToList();
+            var (newlyGrantedPermissions, isPermissionScreenShown) = await PermissionRequestSequence.Run(
+                missingPermissions,
+                grantedPermissions,
+                LaunchPermissionRequest);
 
             // If we transitioned from "no health permission" to "at least one granted",
             // record the first-grant anchor. The platform doesn't expose this value and
             // it drives the 30-day historical read window for all subsequent reads.
-            // Runs BEFORE the partial-grant early-return below — the platform's anchor is
-            // set by any successful grant, even if our caller didn't get everything asked.
+            // The platform's anchor is set by any successful grant, even if our caller
+            // didn't get everything asked.
             // Spec: https://developer.android.com/health-and-fitness/guides/health-connect/develop/read-data#read-data-older-than-30-days
             if (!hadAnyHealthPermissionBefore
-                && newlyGrantedPermissions?
-                    .ToList()
-                    .Any(p => p?.ToString()?.StartsWith(AndroidConstant.HealthPermissionPrefix, StringComparison.Ordinal) == true) == true)
+                && newlyGrantedPermissions.Any(p => p.StartsWith(AndroidConstant.HealthPermissionPrefix, StringComparison.Ordinal)))
             {
                 Preferences.Default.Set(AndroidConstant.FirstPermissionGrantAtKey, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
             }
 
-            if (stillMissingPermissions.Any())
-            {
-                return new()
-                {
-                    Error = RequestPermissionError.MissingPermissions,
-                    DeniedPermissions = stillMissingPermissions
-                };
-            }
-
-            return new();
+            return HealthConnectPermissions.ToRequestResult(
+                healthPermissions,
+                grantedPermissions,
+                isFullHistoryReadRequested,
+                isBackgroundReadRequested,
+                isPermissionScreenShown);
         }
         catch (Exception ex)
         {
             return new()
             {
+                Error = RequestPermissionError.UnexpectedException,
                 ErrorException = ex
             };
         }
     }
 
-    public async partial Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken)
+    /// <summary>
+    /// Shows Health Connect's permission screen for <paramref name="missingPermissions"/> and returns what the user
+    /// granted, and whether the screen was shown at all: Android declines to ask again for a permission the user
+    /// refused twice and answers at once with nothing granted, and when the app is not on screen, where nothing is
+    /// launched. The current activity is read at every launch, because
+    /// the one that launched an earlier screen may have been destroyed and replaced under it.
+    /// </summary>
+    private async Task<(HashSet<string> GrantedPermissions, bool IsPermissionScreenShown)> LaunchPermissionRequest(List<string> missingPermissions)
     {
-        if (!IsSupported)
+        var activity = (ComponentActivity)_activityContext;
+
+        // Android blocks a screen launched from an app that is not on screen, yet leaves the blocked screen in the
+        // app's task: it comes up over the app on the next Back, and until it is answered every launch from this
+        // activity returns at once without a screen. So nothing is launched from an activity that is not started.
+        // https://developer.android.com/guide/components/activities/background-starts
+        if (!activity.Lifecycle.CurrentState.IsAtLeast(Lifecycle.State.Started))
         {
-            return permissions
-                .Select(p => new HealthPermissionStatusResult
-                {
-                    Permission = p,
-                    Status = HealthPermissionStatus.NotDetermined
-                })
-                .ToList();
+            var grantedPermissionsWhileNotOnScreen = await GetGrantedPermissions() ?? [];
+
+            return (grantedPermissionsWhileNotOnScreen, false);
         }
 
+        var key = Guid.NewGuid().ToString();
+        var requestPermissionActivityContract = PermissionController.CreateRequestPermissionResultContract();
+        // No cancellation: the screen cannot be withdrawn, so the request waits for the user's answer.
+        var callback = new AndroidActivityResultCallback<ISet?>(CancellationToken.None);
+        var screenTracker = new PermissionScreenTracker(PermissionScreenTracker.AnswerGracePeriod);
+        var permissionScreenObserver = new PermissionScreenObserver(activity, screenTracker);
+
+        ActivityResultLauncher? launcher = null;
+        activity.Application?.RegisterActivityLifecycleCallbacks(permissionScreenObserver);
+        try
+        {
+            launcher = activity.ActivityResultRegistry.Register(key, requestPermissionActivityContract, callback);
+            launcher.Launch(new HashSet(missingPermissions));
+            screenTracker.OnLaunched(PermissionScreenTracker.LaunchWindow);
+
+            // The screen may only pause the activity, never stop it, so the task's top activity is watched as well.
+            using var stopWatchingTopActivity = new CancellationTokenSource();
+            var taskId = activity.TaskId;
+            var topActivityWatch = Task.Run(() => PermissionScreenTopActivityWatcher.Watch(screenTracker, taskId, stopWatchingTopActivity.Token));
+            ISet? newlyGrantedPermissions;
+            try
+            {
+                newlyGrantedPermissions = await PermissionScreenWait.WaitForAnswer(callback.Task, screenTracker);
+            }
+            finally
+            {
+                stopWatchingTopActivity.Cancel();
+            }
+
+            await topActivityWatch;
+
+            // Health Connect itself tells what is granted now. The answer is missing when the activity was destroyed
+            // under the screen or the answer was lost, so it is used only when Health Connect cannot be asked.
+            var answeredPermissionNames = newlyGrantedPermissions?
+                .ToList()
+                .Select(p => p?.ToString())
+                .OfType<string>()
+                .ToHashSet() ?? [];
+            var grantedPermissionNames = await GetGrantedPermissions() ?? answeredPermissionNames;
+
+            return (grantedPermissionNames, screenTracker.IsPermissionScreenShown);
+        }
+        finally
+        {
+            launcher?.Unregister();
+            activity.Application?.UnregisterActivityLifecycleCallbacks(permissionScreenObserver);
+        }
+    }
+
+    /// <summary>
+    /// Every permission Health Connect reports as granted to this app, or null when it could not answer.
+    /// </summary>
+    private async Task<HashSet<string>?> GetGrantedPermissions()
+    {
         var grantedPermissions = await KotlinResolver.ProcessList<Java.Lang.String>(_healthConnectClient.PermissionController.GetGrantedPermissions);
 
-        if (grantedPermissions is null)
-        {
-            return permissions
-                .Select(p => new HealthPermissionStatusResult
-                {
-                    Permission = p,
-                    Status = HealthPermissionStatus.NotDetermined
-                })
-                .ToList();
-        }
-
-        var grantedSet = grantedPermissions
+        return grantedPermissions?
             .Select(p => p?.ToString())
-            .Where(p => p is not null)
+            .OfType<string>()
             .ToHashSet();
+    }
 
-        var results = new List<HealthPermissionStatusResult>();
-
-        foreach (var permission in permissions)
+    public async partial Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken)
+    {
+        try
         {
-            var androidStrings = permission.ToStrings();
-
-            foreach (var androidPermission in androidStrings)
+            if (!IsSupported)
             {
-                var status = grantedSet.Contains(androidPermission)
-                    ? HealthPermissionStatus.Granted
-                    : HealthPermissionStatus.Denied;
-
-                var individualPermission = new HealthPermissionDto
-                {
-                    HealthDataType = permission.HealthDataType,
-                    PermissionType = androidPermission.Contains("READ_") ? PermissionType.Read : PermissionType.Write
-                };
-
-                results.Add(new HealthPermissionStatusResult
-                {
-                    Permission = individualPermission,
-                    Status = status
-                });
+                return PermissionStatuses.ToUnavailable(permissions);
             }
-        }
 
-        return results;
+            var grantedPermissions = await GetGrantedPermissions();
+            if (grantedPermissions is null)
+            {
+                return PermissionStatuses.ToUnavailable(permissions);
+            }
+
+            return HealthConnectPermissions.ToStatuses(permissions, grantedPermissions);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "{OperationName} could not read the permission statuses", nameof(GetPermissionStatuses));
+            return PermissionStatuses.ToUnavailable(permissions);
+        }
     }
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
@@ -237,6 +263,7 @@ public partial class HealthService : IHealthService
             {
                 return new HealthDataReadResult<TDto>
                 {
+                    Error = ReadHealthDataError.SdkUnavailable,
                     ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
                 };
             }
@@ -247,11 +274,7 @@ public partial class HealthService : IHealthService
                 var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
-                    return new HealthDataReadResult<TDto>
-                    {
-                        ErrorException = requestPermissionResult.ErrorException
-                            ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
-                    };
+                    return PermissionRequestErrors.ToReadResult<HealthDataReadResult<TDto>>(requestPermissionResult);
                 }
             }
 
@@ -281,6 +304,15 @@ public partial class HealthService : IHealthService
         catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
         {
             return BackgroundRead.ToRefusedResult<HealthDataReadResult<TDto>>(_logger, operationName, ex);
+        }
+        catch (Exception ex) when (ex.IsReadPermissionRefusal())
+        {
+            _logger.LogInformation(ex, "{Operation} returned {Error}", operationName, ReadHealthDataError.PermissionDenied);
+            return new HealthDataReadResult<TDto>
+            {
+                Error = ReadHealthDataError.PermissionDenied,
+                ErrorException = ex,
+            };
         }
         catch (Exception ex)
         {
@@ -315,7 +347,7 @@ public partial class HealthService : IHealthService
                 {
                     return new WriteHealthDataResult
                     {
-                        Error = WriteHealthDataError.PermissionDenied,
+                        Error = PermissionRequestErrors.ToWriteError(requestPermissionResult.Error),
                         ErrorException = requestPermissionResult.ErrorException,
                     };
                 }
@@ -381,7 +413,7 @@ public partial class HealthService : IHealthService
                 {
                     return new UpdateHealthDataResult
                     {
-                        Error = UpdateHealthDataError.PermissionDenied,
+                        Error = PermissionRequestErrors.ToUpdateError(requestPermissionResult.Error),
                         ErrorException = requestPermissionResult.ErrorException,
                     };
                 }
@@ -437,6 +469,7 @@ public partial class HealthService : IHealthService
             {
                 return new HealthRecordReadResult<TDto>
                 {
+                    Error = ReadHealthDataError.SdkUnavailable,
                     ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
                 };
             }
@@ -447,11 +480,7 @@ public partial class HealthService : IHealthService
                 var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
                 if (requestPermissionResult.IsError)
                 {
-                    return new HealthRecordReadResult<TDto>
-                    {
-                        ErrorException = requestPermissionResult.ErrorException
-                            ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
-                    };
+                    return PermissionRequestErrors.ToReadResult<HealthRecordReadResult<TDto>>(requestPermissionResult);
                 }
             }
 
@@ -466,6 +495,15 @@ public partial class HealthService : IHealthService
         catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
         {
             return BackgroundRead.ToRefusedResult<HealthRecordReadResult<TDto>>(_logger, operationName, ex);
+        }
+        catch (Exception ex) when (ex.IsReadPermissionRefusal())
+        {
+            _logger.LogInformation(ex, "{Operation} returned {Error}", operationName, ReadHealthDataError.PermissionDenied);
+            return new HealthRecordReadResult<TDto>
+            {
+                Error = ReadHealthDataError.PermissionDenied,
+                ErrorException = ex,
+            };
         }
         catch (Exception ex)
         {
@@ -532,13 +570,13 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return GetAggregatedHealthDataInternal<TDto>(timeRange, cancellationToken);
+        return GetAggregatedHealthDataInternal<TDto>(timeRange, shouldCheckPermissions, cancellationToken);
     }
 
-    private async Task<AggregatedReadResult> GetAggregatedHealthDataInternal<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    private async Task<AggregatedReadResult> GetAggregatedHealthDataInternal<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         var operationName = $"{nameof(GetAggregatedHealthData)}<{typeof(TDto).Name}>";
@@ -548,19 +586,19 @@ public partial class HealthService : IHealthService
             {
                 return new AggregatedReadResult
                 {
+                    Error = ReadHealthDataError.SdkUnavailable,
                     ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
                 };
             }
 
-            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
-            if (requestPermissionResult.IsError)
+            if (shouldCheckPermissions)
             {
-                return new AggregatedReadResult
+                var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
+                if (requestPermissionResult.IsError)
                 {
-                    ErrorException = requestPermissionResult.ErrorException
-                        ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
-                };
+                    return PermissionRequestErrors.ToReadResult<AggregatedReadResult>(requestPermissionResult);
+                }
             }
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
@@ -626,6 +664,15 @@ public partial class HealthService : IHealthService
         {
             return BackgroundRead.ToRefusedResult<AggregatedReadResult>(_logger, operationName, ex);
         }
+        catch (Exception ex) when (ex.IsReadPermissionRefusal())
+        {
+            _logger.LogInformation(ex, "{Operation} returned {Error}", operationName, ReadHealthDataError.PermissionDenied);
+            return new AggregatedReadResult
+            {
+                Error = ReadHealthDataError.PermissionDenied,
+                ErrorException = ex,
+            };
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error aggregating health data for {DtoName}", typeof(TDto).Name);
@@ -635,16 +682,16 @@ public partial class HealthService : IHealthService
 
     //https://github.com/Kebechet/Maui.Health/pull/8/files
     //Split to `public partial` and `private async` method because of trimmer/linker issue
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return GetAggregatedHealthDataByIntervalInternal<TDto>(timeRange, interval, timeZone, cancellationToken);
+        return GetAggregatedHealthDataByIntervalInternal<TDto>(timeRange, interval, timeZone, shouldCheckPermissions, cancellationToken);
     }
 
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
-        return GetAggregatedHealthDataByCalendarPeriodInternal<TDto>(timeRange, unit, count, timeZone, cancellationToken);
+        return GetAggregatedHealthDataByCalendarPeriodInternal<TDto>(timeRange, unit, count, timeZone, shouldCheckPermissions, cancellationToken);
     }
 
     /// <summary>
@@ -663,7 +710,7 @@ public partial class HealthService : IHealthService
     /// </summary>
     private const int SafeChunkBucketCount = HealthConnectMaxBucketsPerCall - 1;
 
-    private async Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    private async Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByIntervalInternal<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         var operationName = $"{nameof(GetAggregatedHealthDataByInterval)}<{typeof(TDto).Name}>";
@@ -673,19 +720,19 @@ public partial class HealthService : IHealthService
             {
                 return new AggregatedIntervalReadResult
                 {
+                    Error = ReadHealthDataError.SdkUnavailable,
                     ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
                 };
             }
 
-            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
-            if (requestPermissionResult.IsError)
+            if (shouldCheckPermissions)
             {
-                return new AggregatedIntervalReadResult
+                var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
+                if (requestPermissionResult.IsError)
                 {
-                    ErrorException = requestPermissionResult.ErrorException
-                        ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
-                };
+                    return PermissionRequestErrors.ToReadResult<AggregatedIntervalReadResult>(requestPermissionResult);
+                }
             }
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
@@ -750,6 +797,15 @@ public partial class HealthService : IHealthService
         {
             return BackgroundRead.ToRefusedResult<AggregatedIntervalReadResult>(_logger, operationName, ex);
         }
+        catch (Exception ex) when (ex.IsReadPermissionRefusal())
+        {
+            _logger.LogInformation(ex, "{Operation} returned {Error}", operationName, ReadHealthDataError.PermissionDenied);
+            return new AggregatedIntervalReadResult
+            {
+                Error = ReadHealthDataError.PermissionDenied,
+                ErrorException = ex,
+            };
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error aggregating health data by interval for {DtoName}", typeof(TDto).Name);
@@ -757,7 +813,7 @@ public partial class HealthService : IHealthService
         }
     }
 
-    private async Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriodInternal<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    private async Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriodInternal<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         if (count <= 0)
@@ -775,19 +831,19 @@ public partial class HealthService : IHealthService
             {
                 return new AggregatedIntervalReadResult
                 {
+                    Error = ReadHealthDataError.SdkUnavailable,
                     ErrorException = new InvalidOperationException("Health Connect SDK is not available."),
                 };
             }
 
-            var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
-            var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
-            if (requestPermissionResult.IsError)
+            if (shouldCheckPermissions)
             {
-                return new AggregatedIntervalReadResult
+                var permission = MetricDtoExtensions.GetRequiredPermission<TDto>();
+                var requestPermissionResult = await RequestPermissions([permission], cancellationToken: cancellationToken);
+                if (requestPermissionResult.IsError)
                 {
-                    ErrorException = requestPermissionResult.ErrorException
-                        ?? new InvalidOperationException($"Permission request failed: {requestPermissionResult.Error}"),
-                };
+                    return PermissionRequestErrors.ToReadResult<AggregatedIntervalReadResult>(requestPermissionResult);
+                }
             }
 
             var healthDataType = MetricDtoExtensions.GetHealthDataType<TDto>();
@@ -823,6 +879,15 @@ public partial class HealthService : IHealthService
         catch (Exception ex) when (BackgroundRead.IsRefusal(ex))
         {
             return BackgroundRead.ToRefusedResult<AggregatedIntervalReadResult>(_logger, operationName, ex);
+        }
+        catch (Exception ex) when (ex.IsReadPermissionRefusal())
+        {
+            _logger.LogInformation(ex, "{Operation} returned {Error}", operationName, ReadHealthDataError.PermissionDenied);
+            return new AggregatedIntervalReadResult
+            {
+                Error = ReadHealthDataError.PermissionDenied,
+                ErrorException = ex,
+            };
         }
         catch (Exception ex)
         {
@@ -934,6 +999,28 @@ public partial class HealthService : IHealthService
     public partial void OpenStorePageOfHealthProvider()
     {
         _activityContext.OpenHealthConnectInPlayStore();
+    }
+
+    public partial Result<OpenPermissionSettingsError> OpenPermissionSettings()
+    {
+        try
+        {
+            if (!IsSupported)
+            {
+                return new Result<OpenPermissionSettingsError> { Error = OpenPermissionSettingsError.SdkUnavailable };
+            }
+
+            _activityContext.OpenHealthConnectPermissionSettings();
+            return new Result<OpenPermissionSettingsError>();
+        }
+        catch (Exception ex)
+        {
+            return new Result<OpenPermissionSettingsError>
+            {
+                Error = OpenPermissionSettingsError.UnexpectedException,
+                ErrorException = ex,
+            };
+        }
     }
 
     public async partial Task<DateTime> GetEarliestAccessibleDateTime(CancellationToken cancellationToken)

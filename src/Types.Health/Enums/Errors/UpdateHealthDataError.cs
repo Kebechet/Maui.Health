@@ -73,4 +73,9 @@ public enum UpdateHealthDataError
     /// ownership check up front.
     /// </summary>
     CrossSourceNotSupported = 10,
+
+    /// <summary>
+    /// The caller's cancellation token fired while the operation waited for its permission request.
+    /// </summary>
+    Cancelled = 11,
 }

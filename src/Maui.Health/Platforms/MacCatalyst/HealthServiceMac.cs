@@ -9,21 +9,14 @@ public partial class HealthService : IHealthService
 {
     public partial bool IsSupported => false;
 
-    public partial Task<RequestPermissionResult> RequestPermissions(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, bool canRequestBackgroundReadPermission, CancellationToken cancellationToken)
+    private partial Task<RequestPermissionResult> RequestPermissionsInternal(IList<HealthPermissionDto> healthPermissions, bool canRequestFullHistoryPermission, bool canRequestBackgroundReadPermission)
     {
-        return Task.FromResult(new RequestPermissionResult());
+        return Task.FromResult(new RequestPermissionResult { Error = RequestPermissionError.SdkUnavailable });
     }
 
     public partial Task<IList<HealthPermissionStatusResult>> GetPermissionStatuses(IList<HealthPermissionDto> permissions, CancellationToken cancellationToken)
     {
-        IList<HealthPermissionStatusResult> results = permissions
-            .Select(p => new HealthPermissionStatusResult
-            {
-                Permission = p,
-                Status = HealthPermissionStatus.NotDetermined
-            })
-            .ToList();
-
+        IList<HealthPermissionStatusResult> results = PermissionStatuses.ToUnavailable(permissions);
         return Task.FromResult(results);
     }
 
@@ -32,6 +25,7 @@ public partial class HealthService : IHealthService
     {
         return Task.FromResult(new HealthDataReadResult<TDto>
         {
+            Error = ReadHealthDataError.SdkUnavailable,
             ErrorException = new PlatformNotSupportedException("Health data is not supported on macOS Catalyst."),
         });
     }
@@ -41,6 +35,7 @@ public partial class HealthService : IHealthService
     {
         return Task.FromResult(new HealthRecordReadResult<TDto>
         {
+            Error = ReadHealthDataError.SdkUnavailable,
             ErrorException = new PlatformNotSupportedException("Health data is not supported on macOS Catalyst."),
         });
     }
@@ -63,29 +58,32 @@ public partial class HealthService : IHealthService
         return Task.FromResult(false);
     }
 
-    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, CancellationToken cancellationToken)
+    public partial Task<AggregatedReadResult> GetAggregatedHealthData<TDto>(HealthTimeRange timeRange, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult(new AggregatedReadResult
         {
+            Error = ReadHealthDataError.SdkUnavailable,
             ErrorException = new PlatformNotSupportedException("Health data is not supported on macOS Catalyst."),
         });
     }
 
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByInterval<TDto>(HealthTimeRange timeRange, TimeSpan interval, TimeZoneInfo timeZone, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult(new AggregatedIntervalReadResult
         {
+            Error = ReadHealthDataError.SdkUnavailable,
             ErrorException = new PlatformNotSupportedException("Health data is not supported on macOS Catalyst."),
         });
     }
 
-    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    public partial Task<AggregatedIntervalReadResult> GetAggregatedHealthDataByCalendarPeriod<TDto>(HealthTimeRange timeRange, CalendarUnit unit, int count, TimeZoneInfo timeZone, bool shouldCheckPermissions, CancellationToken cancellationToken)
         where TDto : HealthMetricBase
     {
         return Task.FromResult(new AggregatedIntervalReadResult
         {
+            Error = ReadHealthDataError.SdkUnavailable,
             ErrorException = new PlatformNotSupportedException("Health data is not supported on macOS Catalyst."),
         });
     }
@@ -107,6 +105,11 @@ public partial class HealthService : IHealthService
     }
 
     public partial void OpenStorePageOfHealthProvider() { }
+
+    public partial Result<OpenPermissionSettingsError> OpenPermissionSettings()
+    {
+        return new Result<OpenPermissionSettingsError> { Error = OpenPermissionSettingsError.NotSupported };
+    }
 
     public partial Task<DateTime> GetEarliestAccessibleDateTime(CancellationToken cancellationToken)
     {
