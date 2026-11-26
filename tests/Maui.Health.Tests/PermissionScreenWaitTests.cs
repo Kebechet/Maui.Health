@@ -204,4 +204,73 @@ public class PermissionScreenWaitTests
         Assert.False(isCompletedWhileTheScreenIsUp);
         Assert.Null(answer);
     }
+
+    /// <summary>
+    /// On a Pixel 6 (Android 16) Health Connect's screen only pauses the app's activity and never stops it, so the
+    /// activity on top of the app's task is what shows the screen.
+    /// </summary>
+    [Fact]
+    public void IsPermissionScreenShown_HealthConnectActivityOnTopWithoutTheActivityStopping_IsTrue()
+    {
+        // Arrange
+        var screenTracker = new PermissionScreenTracker(_shortGracePeriod);
+        screenTracker.OnRequestingActivityPaused();
+
+        // Act
+        screenTracker.OnTopActivityChanged("com.google.android.permissioncontroller", "com.example.app");
+        screenTracker.OnTopActivityChanged("com.google.android.healthconnect.controller", "com.example.app");
+
+        // Assert
+        Assert.True(screenTracker.IsPermissionScreenShown);
+    }
+
+    /// <summary>
+    /// A request Android declines to ask again passes through the permission controller's transparent activity and
+    /// never shows Health Connect's screen.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("com.example.app")]
+    [InlineData("com.google.android.permissioncontroller")]
+    [InlineData("com.android.permissioncontroller")]
+    public void IsPermissionScreenShown_OnlyTheAppOrThePermissionControllerOnTop_IsFalse(string? topActivityPackageName)
+    {
+        // Arrange
+        var screenTracker = new PermissionScreenTracker(_shortGracePeriod);
+        screenTracker.OnRequestingActivityPaused();
+
+        // Act
+        screenTracker.OnTopActivityChanged(topActivityPackageName, "com.example.app");
+
+        // Assert
+        Assert.False(screenTracker.IsPermissionScreenShown);
+    }
+
+    /// <summary>
+    /// Android recreates a destroyed activity under the permission screen and resumes the new one for a moment before
+    /// pausing it again (a Pixel 6 after a font scale change). That is not the user coming back: the wait goes on until
+    /// the app resumes and stays.
+    /// </summary>
+    [Fact]
+    public async Task WaitForAnswer_ReplacementActivityResumedAndPausedAtOnce_KeepsWaitingForTheUser()
+    {
+        // Arrange
+        var answerSource = new TaskCompletionSource<string?>();
+        var screenTracker = new PermissionScreenTracker(TimeSpan.FromMilliseconds(300));
+        screenTracker.OnRequestingActivityPaused();
+
+        // Act
+        var waitTask = PermissionScreenWait.WaitForAnswer(answerSource.Task, screenTracker);
+        screenTracker.OnRequestingActivityDestroyed();
+        screenTracker.OnActivityResumed(isRequestingActivity: false);
+        screenTracker.OnActivityPaused();
+        await Task.Delay(TimeSpan.FromMilliseconds(600));
+        var isCompletedWhileTheScreenIsUp = waitTask.IsCompleted;
+        screenTracker.OnActivityResumed(isRequestingActivity: false);
+        var answer = await waitTask.WaitAsync(_testTimeout);
+
+        // Assert
+        Assert.False(isCompletedWhileTheScreenIsUp);
+        Assert.Null(answer);
+    }
 }

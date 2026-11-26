@@ -171,7 +171,21 @@ public partial class HealthService : IHealthService
             launcher.Launch(new HashSet(missingPermissions));
             screenTracker.OnLaunched(PermissionScreenTracker.LaunchWindow);
 
-            var newlyGrantedPermissions = await PermissionScreenWait.WaitForAnswer(callback.Task, screenTracker);
+            // The screen may only pause the activity, never stop it, so the task's top activity is watched as well.
+            using var stopWatchingTopActivity = new CancellationTokenSource();
+            var taskId = activity.TaskId;
+            var topActivityWatch = Task.Run(() => PermissionScreenTopActivityWatcher.Watch(screenTracker, taskId, stopWatchingTopActivity.Token));
+            ISet? newlyGrantedPermissions;
+            try
+            {
+                newlyGrantedPermissions = await PermissionScreenWait.WaitForAnswer(callback.Task, screenTracker);
+            }
+            finally
+            {
+                stopWatchingTopActivity.Cancel();
+            }
+
+            await topActivityWatch;
 
             // Health Connect itself tells what is granted now. The answer is missing when the activity was destroyed
             // under the screen or the answer was lost, so it is used only when Health Connect cannot be asked.

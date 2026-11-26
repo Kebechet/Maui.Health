@@ -20,10 +20,18 @@ internal sealed class PermissionScreenTracker
     /// </summary>
     internal static readonly TimeSpan LaunchWindow = TimeSpan.FromSeconds(5);
 
+    /// <summary>
+    /// The permission controller is a package of its own and its name carries this on the devices checked
+    /// (com.google.android.permissioncontroller on a Pixel 6 and a Galaxy A53, Android 16) and in AOSP
+    /// (com.android.permissioncontroller).
+    /// </summary>
+    private const string PermissionControllerPackageMarker = "permissioncontroller";
+
     private readonly TaskCompletionSource _returnedWithoutAnswerSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly TimeSpan _answerGracePeriod;
     private volatile bool _hasRequestingActivityLeft;
     private volatile bool _isRequestingActivityDestroyed;
+    private int _activityPauseCount;
 
     internal PermissionScreenTracker(TimeSpan answerGracePeriod)
     {
@@ -31,9 +39,11 @@ internal sealed class PermissionScreenTracker
     }
 
     /// <summary>
-    /// Whether the requesting activity was stopped. Health Connect's permission screen is a full-screen activity, so
-    /// showing it stops the app's activity. When Android declines to ask again (a permission the user refused twice),
-    /// it only passes through a transparent activity that finishes at once and stops nothing.
+    /// Whether Health Connect's permission screen was shown: the requesting activity was stopped, or an activity of
+    /// another app than the permission controller was seen on top of the app's task. Either is enough, because on
+    /// some devices (a Pixel 6 on Android 16) the screen only pauses the app's activity and never stops it. When
+    /// Android declines to ask again (a permission the user refused twice), it only passes through the permission
+    /// controller's transparent activity, which finishes at once, stops nothing and has no other activity above it.
     /// </summary>
     internal bool IsPermissionScreenShown { get; private set; }
 
@@ -73,6 +83,23 @@ internal sealed class PermissionScreenTracker
     }
 
     /// <summary>
+    /// Fed with the package of the activity on top of the app's task while the request waits. The launch goes to the
+    /// permission controller, whose transparent activity either passes straight through or puts Health Connect's own
+    /// screen on top of itself, so a third package on top is that screen. A null package (not known) says nothing.
+    /// </summary>
+    internal void OnTopActivityChanged(string? topActivityPackageName, string ownPackageName)
+    {
+        if (topActivityPackageName is null ||
+            topActivityPackageName == ownPackageName ||
+            topActivityPackageName.Contains(PermissionControllerPackageMarker, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        IsPermissionScreenShown = true;
+    }
+
+    /// <summary>
     /// Android delivers the answer to the activity recreated in place of a destroyed one ("Don't keep activities", a
     /// locale or font change, memory pressure), which knows nothing of this request, so the answer is lost.
     /// </summary>
@@ -81,15 +108,24 @@ internal sealed class PermissionScreenTracker
         _isRequestingActivityDestroyed = true;
     }
 
+    /// <summary>
+    /// Any activity of the app pausing. Under a permission screen Android recreates a destroyed activity and resumes
+    /// the new one for a moment before pausing it again (seen on a Pixel 6 after a font scale change, 3 ms apart), so a
+    /// resume is only a return to the app when no pause follows it.
+    /// </summary>
+    internal void OnActivityPaused()
+    {
+        Interlocked.Increment(ref _activityPauseCount);
+    }
+
+    /// <summary>
+    /// The app is back on screen when its requesting activity resumes after the screen came up, or when the activity
+    /// that replaced a destroyed one resumes. Either way the answer can still be on its way, so the wait ends only
+    /// after <see cref="AnswerGracePeriod"/> and only if no activity of the app paused again in the meantime.
+    /// </summary>
     internal void OnActivityResumed(bool isRequestingActivity)
     {
-        if (_isRequestingActivityDestroyed)
-        {
-            _returnedWithoutAnswerSource.TrySetResult();
-            return;
-        }
-
-        if (isRequestingActivity && _hasRequestingActivityLeft)
+        if (_isRequestingActivityDestroyed || (isRequestingActivity && _hasRequestingActivityLeft))
         {
             _ = CompleteAfterGracePeriod();
         }
@@ -97,8 +133,12 @@ internal sealed class PermissionScreenTracker
 
     private async Task CompleteAfterGracePeriod()
     {
+        var activityPauseCountAtResume = Volatile.Read(ref _activityPauseCount);
         await Task.Delay(_answerGracePeriod);
-        _returnedWithoutAnswerSource.TrySetResult();
+        if (activityPauseCountAtResume == Volatile.Read(ref _activityPauseCount))
+        {
+            _returnedWithoutAnswerSource.TrySetResult();
+        }
     }
 
     private async Task CompleteIfNothingCoveredTheActivity(TimeSpan launchWindow)

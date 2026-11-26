@@ -46,6 +46,7 @@ internal sealed class PermissionScreenObserver : Java.Lang.Object, global::Andro
 
     public void OnActivityPaused(Activity activity)
     {
+        _screenTracker.OnActivityPaused();
         if (ReferenceEquals(activity, _requestingActivity))
         {
             _screenTracker.OnRequestingActivityPaused();
