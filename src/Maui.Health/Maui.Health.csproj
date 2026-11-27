@@ -44,7 +44,12 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
     <PackageReleaseNotes>
-v7.0.0 — permission requests report every permission, and aggregated reads can skip the permission screen.
+v7.0.1 — permission requests work on Android 13 and older.
+
+FIXED
+• Android 13 and older (#65): RequestPermissions opened no permission screen while nothing was granted yet, and a by-interval aggregate returned no buckets.
+
+PREVIOUS RELEASE — v7.0.0: permission requests report every permission, and aggregated reads can skip the permission screen.
 
 BREAKING CHANGES
 • Aggregated reads (#63): GetAggregatedHealthData, ByInterval and ByCalendarPeriod take shouldCheckPermissions before the CancellationToken; pass a token by name.
