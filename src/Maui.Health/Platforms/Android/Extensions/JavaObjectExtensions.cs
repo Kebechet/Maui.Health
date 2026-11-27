@@ -1,4 +1,6 @@
 using Android.Runtime;
+using JniEnvironment = Java.Interop.JniEnvironment;
+using JniType = Java.Interop.JniType;
 
 namespace Maui.Health.Platforms.Android.Extensions;
 
@@ -42,8 +44,12 @@ internal static class JavaObjectExtensions
             return null;
         }
 
-        using var interfaceClass = Java.Lang.Class.FromType(typeof(TInterface));
-        if (!interfaceClass.IsInstance(javaObject))
+        // Not `using var c = Java.Lang.Class.FromType(...)` with c.IsInstance(...): that aborted the app with "use of
+        // deleted global reference" on a Binder thread when reads ran concurrently (Maui.Health 7.0.1), apparently
+        // because the peer FromType returns is shared and one thread's dispose deletes it under another. A JniType owns
+        // its own local reference.
+        using var interfaceType = new JniType(JNIEnv.GetJniName(typeof(TInterface)));
+        if (!JniEnvironment.Types.IsInstanceOf(javaObject.PeerReference, interfaceType.PeerReference))
         {
             return null;
         }
