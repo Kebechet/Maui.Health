@@ -590,12 +590,8 @@ internal static class JavaReflectionHelper
         // May be JavaList or java.util.Arrays$ArrayList (IList)
         var results = new List<AggregatedResult>();
 
-        Java.Util.IList javaList;
-        if (result is Java.Util.IList iList)
-        {
-            javaList = iList;
-        }
-        else
+        var javaList = result.AsJavaInterface<Java.Util.IList>();
+        if (javaList is null)
         {
             return [];
         }
@@ -734,7 +730,8 @@ internal static class JavaReflectionHelper
         // Result is a List<AggregationResultGroupedByPeriod>
         var results = new List<AggregatedResult>();
 
-        if (result is not Java.Util.IList javaList)
+        var javaList = result.AsJavaInterface<Java.Util.IList>();
+        if (javaList is null)
         {
             return [];
         }
@@ -912,7 +909,8 @@ internal static class JavaReflectionHelper
         // GREF threshold mid-iteration — same root cause as the AggregateHealthRecordsByDuration
         // bucket-loop fix.
         using var changesList = ChangesResponseReflection.GetChanges.Invoke(result);
-        if (changesList is Java.Util.IList javaChangesList)
+        var javaChangesList = changesList.AsJavaInterface<Java.Util.IList>();
+        if (javaChangesList is not null)
         {
             var changeCount = javaChangesList.Size();
             for (int i = 0; i < changeCount; i++)
@@ -1166,7 +1164,8 @@ internal static class JavaReflectionHelper
         // calls inside the bucket loop in AggregateHealthRecordsByDuration accumulate refs
         // and trip Mono's GREF threshold — same root cause as the bucket-loop fix.
         using var originsObj = AggregationResultReflection.GetDataOrigins.Invoke(aggregationResult);
-        if (originsObj is not Java.Util.ISet originsSet)
+        using var originsSet = originsObj.AsJavaInterface<Java.Util.ISet>();
+        if (originsSet is null)
         {
             return dataOrigins;
         }

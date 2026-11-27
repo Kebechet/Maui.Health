@@ -65,7 +65,8 @@ internal static class KotlinResolver
             }
         }
 
-        if (result is Java.Util.IList javaList)
+        var javaList = result.AsJavaInterface<Java.Util.IList>();
+        if (javaList is not null)
         {
             var aggregationResults = new List<AggregationResultGroupedByDuration>();
             var listCount = javaList.Size();
@@ -88,7 +89,8 @@ internal static class KotlinResolver
         }
 
         // Handle any Set implementation (covers EmptySet, AbstractSet, AbstractMutableSet, etc.)
-        if (result is Java.Util.ISet javaSet)
+        var javaSet = result.AsJavaInterface<Java.Util.ISet>();
+        if (javaSet is not null)
         {
             return javaSet.IsEmpty ? [] : javaSet.ToList<TResult>();
         }
