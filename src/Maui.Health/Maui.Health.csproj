@@ -48,6 +48,7 @@ v7.0.1 — permission requests work on Android 13 and older.
 
 FIXED
 • Android 13 and older (#65): RequestPermissions opened no permission screen while nothing was granted yet, and a by-interval aggregate returned no buckets.
+• Android (#66): grouped energy aggregates were 1000 times too small (350 kcal read as 0.35); on Android 13 and older energy records and weight were too.
 
 PREVIOUS RELEASE — v7.0.0: permission requests report every permission, and aggregated reads can skip the permission screen.
 
