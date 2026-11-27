@@ -44,13 +44,18 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedAllSources>true</EmbedAllSources>
     <PackageReleaseNotes>
-v7.0.1 — permission requests work on Android 13 and older.
+v7.0.2 — fixes a crash in 7.0.1; do not use 7.0.1.
+
+FIXED
+• Android (#67): 7.0.1 could abort the app with "use of deleted global reference" when Health Connect reads ran at the same time; seen on Android 13 and older.
+
+PREVIOUS RELEASE — v7.0.1: permission requests work on Android 13 and older, and energy and weight units are right.
 
 FIXED
 • Android 13 and older (#65): RequestPermissions opened no permission screen while nothing was granted yet, and a by-interval aggregate returned no buckets.
 • Android (#66): grouped energy aggregates were 1000 times too small (350 kcal read as 0.35); on Android 13 and older energy records and weight were too.
 
-PREVIOUS RELEASE — v7.0.0: permission requests report every permission, and aggregated reads can skip the permission screen.
+OLDER RELEASE — v7.0.0: permission requests report every permission, and aggregated reads can skip the permission screen.
 
 BREAKING CHANGES
 • Aggregated reads (#63): GetAggregatedHealthData, ByInterval and ByCalendarPeriod take shouldCheckPermissions before the CancellationToken; pass a token by name.
