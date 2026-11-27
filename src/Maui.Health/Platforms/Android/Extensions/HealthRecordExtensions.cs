@@ -285,6 +285,13 @@ internal static class HealthRecordExtensions
                 return officialValue;
             }
 
+            // See ExtractEnergyValue: the raw `value` field below is in grams on the platform Health Connect but in
+            // kilograms on the Health Connect app of Android 13 and older.
+            if (mass.TryCallMethod("getKilograms", out double kilograms))
+            {
+                return kilograms;
+            }
+
             if (mass.TryGetPropertyValue("inKilograms", out double value1))
             {
                 return value1;
@@ -333,6 +340,12 @@ internal static class HealthRecordExtensions
                 return UnitsNet.Length.FromMeters(officialValue).Centimeters;
             }
 
+            // See ExtractEnergyValue: ask the SDK for meters instead of assuming the raw `value` field is in meters.
+            if (length.TryCallMethod("getMeters", out double meters))
+            {
+                return UnitsNet.Length.FromMeters(meters).Centimeters;
+            }
+
             if (length.TryGetPropertyValue("value", out double value1))
             {
                 return UnitsNet.Length.FromMeters(value1).Centimeters;
@@ -374,6 +387,14 @@ internal static class HealthRecordExtensions
             if (energy.TryOfficialUnitsApi("KILOCALORIES", out double officialValue))
             {
                 return officialValue;
+            }
+
+            // The SDK's Energy carries its own unit and converts on request. Its raw `value` field, read further down,
+            // is in calories for a record but in kilocalories for an aggregate, and on the Health Connect app of
+            // Android 13 and older for a record too, so it cannot be trusted without the unit.
+            if (energy.TryCallMethod("getKilocalories", out double kilocalories))
+            {
+                return kilocalories;
             }
 
             if (energy.TryGetPropertyValue("inKilocalories", out double value1))
